@@ -31,11 +31,17 @@ class UI {
     TextProps? props,
   }) {
     final propsMap = props?.toMap() ?? {};
-    propsMap['content'] = content;
+
+    // Ensure content is properly converted to a stable string representation
+    // This prevents issues with string interpolation and state changes
+    propsMap['content'] = content.toString();
+
+    // Add a timestamp to force refresh when content changes
+    propsMap['_contentHash'] = content.hashCode;
 
     return VDomElement(
       type: 'Text',
-      key: key,
+      key: key ?? 'text_${content.hashCode}', // Add stable key based on content
       props: propsMap,
     );
   }
@@ -61,11 +67,11 @@ class UI {
   /// Create an Image component
   static VDomElement Image({
     String? key,
-    required String source,
+    // required String source,
     ImageProps? props,
   }) {
     final propsMap = props?.toMap() ?? {};
-    propsMap['source'] = source;
+    // propsMap['source'] = source;
 
     return VDomElement(
       type: 'Image',
