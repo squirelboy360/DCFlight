@@ -1,5 +1,6 @@
 
 # DCNative (MAUI/Multi-platform App UI)
+## Flutter Sucks but Native UI + Flutter(Skia/impeller) = 🔥
 ## 🚧 This CLI is Under Development
 
 Its aim is to simplify cross-platform app development for personal future projects.
