@@ -1,0 +1,21 @@
+PODS:
+  - Yoga (0.0.0)
+
+DEPENDENCIES:
+  - Yoga (from `https://github.com/squirelboy360/yoga.git`)
+
+EXTERNAL SOURCES:
+  Yoga:
+    :git: https://github.com/squirelboy360/yoga.git
+
+CHECKOUT OPTIONS:
+  Yoga:
+    :commit: 6455a848a76f433bdb48b2640b7f4644774c76fd
+    :git: https://github.com/squirelboy360/yoga.git
+
+SPEC CHECKSUMS:
+  Yoga: 8e9eab0c6275f1896490dd5f6638be12d57741ac
+
+PODFILE CHECKSUM: cf6bfd72b3d1be5d72b8db09ba6eaf427f7f0caf
+
+COCOAPODS: 1.16.2

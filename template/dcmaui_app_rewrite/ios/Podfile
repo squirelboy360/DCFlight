@@ -1,0 +1,13 @@
+platform :ios, '13.5'
+
+target 'Runner' do
+  use_frameworks!
+
+  pod 'Yoga', :git => 'https://github.com/squirelboy360/yoga.git'
+
+
+end
+
+target 'RunnerTests' do
+  inherit! :search_paths
+end

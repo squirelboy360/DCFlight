@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dotcorr - Development Tools</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        header {
+            padding: 2rem;
+            text-align: center;
+            background-color: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            font-weight: bold;
+            background: linear-gradient(90deg, #4d94ff, #00ccff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        .tagline {
+            font-size: 1.2rem;
+            color: #b3b3cc;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 4rem 2rem;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 3rem;
+            font-size: 2rem;
+            background: linear-gradient(90deg, #ffffff, #b3b3cc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .intro {
+            text-align: center;
+            max-width: 800px;
+            margin: 0 auto 4rem auto;
+            color: #b3b3cc;
+            line-height: 1.6;
+        }
+
+        .cards {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 2rem;
+        }
+
+        .card {
+            width: 340px;
+            height: 420px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            position: relative;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.05), 
+                transparent);
+            transform: rotate(45deg);
+            animation: shine 6s infinite;
+        }
+
+        @keyframes shine {
+            0% { 
+                top: -50%; 
+                left: -50%;
+            }
+            100% { 
+                top: 150%; 
+                left: 150%;
+            }
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 1;
+        }
+
+        .card-icon {
+            font-size: 3.5rem;
+            color: #00ccff;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .platform-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .platform-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 0.5rem;
+        }
+
+        .platform-icon {
+            font-size: 1.2rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .platform-name {
+            font-size: 0.7rem;
+            text-align: center;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+
+        .card-description {
+            font-size: 1rem;
+            color: #b3b3cc;
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .code-sample {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            width: 100%;
+            overflow: hidden;
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: #00ccff;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn {
+            padding: 0.8rem 1.5rem;
+            background: linear-gradient(90deg, #4d94ff, #00ccff);
+            color: #ffffff;
+            border: none;
+            border-radius: 30px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(77, 148, 255, 0.5);
+        }
+
+        .features {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 2rem;
+            margin: 4rem 0;
+        }
+
+        .feature {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 2rem;
+            width: 280px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            color: #00ccff;
+            margin-bottom: 1rem;
+        }
+
+        .feature-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+
+        .feature-description {
+            color: #b3b3cc;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer-text {
+            color: #b3b3cc;
+            font-size: 0.9rem;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 1rem;
+        }
+
+        .footer-link {
+            color: #00ccff;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s ease;
+        }
+
+        .footer-link:hover {
+            color: #4d94ff;
+        }
+
+        /* Animations */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .float-animation {
+            animation: float 4s ease-in-out infinite;
+        }
+
+        #maui-card {
+            animation-delay: 0s;
+        }
+
+        #voltron-card {
+            animation-delay: 2s;
+        }
+
+        /* Code animation */
+        .typing {
+            overflow: hidden;
+            white-space: nowrap;
+            border-right: 2px solid #00ccff;
+            width: 0;
+            animation: typing 4s steps(60, end) forwards, blink 1s step-end infinite;
+        }
+
+        @keyframes typing {
+            from { width: 0 }
+            to { width: 100% }
+        }
+
+        @keyframes blink {
+            from, to { border-color: transparent }
+            50% { border-color: #00ccff }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 2rem 1rem;
+            }
+            
+            .cards {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .card {
+                width: 100%;
+                max-width: 340px;
+            }
+            
+            .features {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <header>
+        <div class="logo">Dotcorr</div>
+        <p class="tagline">A suite of development tools designed to make developers' lives easier</p>
+    </header>
+
+    <div class="container">
+        <div class="intro">
+            <p>Dotcorr provides a comprehensive toolkit that streamlines application development, deployment, and maintenance. Our open-source tools are designed by developers, for developers, to solve real-world problems in modern software development.</p>
+        </div>
+        
+        <h2>Our Development Tools</h2>
+        
+        <div class="cards">
+            <div id="maui-card" class="card float-animation" onclick="window.open('http://dotcorr.maui.com', '_blank')">
+                <div class="card-inner">
+                    <div class="card-icon">
+                        <i class="fas fa-mobile-alt"></i> <i class="fas fa-laptop"></i> <i class="fas fa-desktop"></i>
+                    </div>
+                    
+                    <div class="platform-grid">
+                        <div class="platform-item">
+                            <div class="platform-icon"><i class="fab fa-android"></i></div>
+                            <div class="platform-name">Android</div>
+                        </div>
+                        <div class="platform-item">
+                            <div class="platform-icon"><i class="fab fa-apple"></i></div>
+                            <div class="platform-name">iOS</div>
+                        </div>
+                        <div class="platform-item">
+                            <div class="platform-icon"><i class="fab fa-windows"></i></div>
+                            <div class="platform-name">Windows</div>
+                        </div>
+                        <div class="platform-item">
+                            <div class="platform-icon"><i class="fab fa-linux"></i></div>
+                            <div class="platform-name">Linux</div>
+                        </div>
+                        <div class="platform-item">
+                            <div class="platform-icon"><i class="fab fa-apple"></i></div>
+                            <div class="platform-name">macOS</div>
+                        </div>
+                        <div class="platform-item">
+                            <div class="platform-icon"><i class="fas fa-globe"></i></div>
+                            <div class="platform-name">Web</div>
+                        </div>
+                    </div>
+                    
+                    <h3 class="card-title">Dotcorr Maui</h3>
+                    <p class="card-description">Build native cross-platform apps with a single codebase</p>
+                    
+                    <div class="code-sample">
+                        <div class="typing">
+                            import 'package:dotcorr/ui_composer.dart';
+                            
+                
+                        </div>
+                    </div>
+                    
+                    <a href="http://dotcorr.maui.com" class="btn">Explore Maui</a>
+                </div>
+            </div>
+            
+            <div id="voltron-card" class="card float-animation" onclick="window.open('http://dotcorr.voltron.com', '_blank')">
+                <div class="card-inner">
+                    <div class="card-icon">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                    </div>
+                    
+                    <div class="platform-grid">
+                        <div class="platform-item">
+                            <div class="platform-icon"><i class="fas fa-bolt"></i></div>
+                            <div class="platform-name">Fast</div>
+                        </div>
+                        <div class="platform-item">
+                            <div class="platform-icon"><i class="fas fa-lock"></i></div>
+                            <div class="platform-name">Secure</div>
+                        </div>
+                        <div class="platform-item">
+                            <div class="platform-icon"><i class="fas fa-code-branch"></i></div>
+                            <div class="platform-name">Versioned</div>
+                        </div>
+                        <div class="platform-item">
+                            <div class="platform-icon"><i class="fas fa-history"></i></div>
+                            <div class="platform-name">Rollback</div>
+                        </div>
+                        <div class="platform-item">
+                            <div class="platform-icon"><i class="fas fa-tachometer-alt"></i></div>
+                            <div class="platform-name">Metrics</div>
+                        </div>
+                        <div class="platform-item">
+                            <div class="platform-icon"><i class="fas fa-users"></i></div>
+                            <div class="platform-name">A/B Test</div>
+                        </div>
+                    </div>
+                    
+                    <h3 class="card-title">Dotcorr Voltron</h3>
+                    <p class="card-description">Open-source code push updates without app resubmission</p>
+                    
+                    <div class="code-sample">
+                        <div class="typing">
+                            import 'package:dotcorr_voltron/voltron.dart';
+                            
+                            final voltron = Voltron();
+                            voltron.initialize();
+                            voltron.pushUpdate(
+                              version: '1.0.2',
+                              target: 'production',
+                              silent: true
+                            );
+                        </div>
+                    </div>
+                    
+                    <a href="http://dotcorr.voltron.com" class="btn">Discover Voltron</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">
+                    <i class="fas fa-rocket"></i>
+                </div>
+                <h3 class="feature-title">Accelerate Development</h3>
+                <p class="feature-description">Build once, deploy everywhere with our cross-platform tools and hot-reload capabilities that speed up your development cycle.</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">
+                    <i class="fas fa-code"></i>
+                </div>
+                <h3 class="feature-title">Developer-First Design</h3>
+                <p class="feature-description">Created by developers who understand real-world challenges, our tools are intuitive, well-documented, and integrate seamlessly into existing workflows.</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h3 class="feature-title">Enterprise Ready</h3>
+                <p class="feature-description">Built with security and scalability in mind, our tools are trusted by startups and Fortune 500 companies alike for mission-critical applications.</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">
+                    <i class="fas fa-handshake"></i>
+                </div>
+                <h3 class="feature-title">Open Source Community</h3>
+                <p class="feature-description">Join our thriving community of developers. Contribute, customize, and collaborate to make Dotcorr tools even better for everyone.</p>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p class="footer-text">© 2025 Dotcorr. All rights reserved. Open-source tools for developers.</p>
+        <div class="footer-links">
+            <a href="#" class="footer-link">Documentation</a>
+            <a href="#" class="footer-link">GitHub</a>
+            <a href="#" class="footer-link">Community</a>
+            <a href="#" class="footer-link">Contact</a>
+        </div>
+    </footer>
+
+    <script>
+        // Card animation and interaction script
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.card');
+            
+            cards.forEach(card => {
+                card.addEventListener('mouseover', function() {
+                    this.style.animationPlayState = 'paused';
+                });
+                
+                card.addEventListener('mouseout', function() {
+                    this.style.animationPlayState = 'running';
+                });
+            });
+            
+            // Reset typing animation every few seconds
+            const typingElements = document.querySelectorAll('.typing');
+            
+            function resetTyping() {
+                typingElements.forEach(el => {
+                    el.style.animation = 'none';
+                    setTimeout(() => {
+                        el.style.animation = 'typing 4s steps(60, end) forwards, blink 1s step-end infinite';
+                    }, 100);
+                });
+            }
+            
+            setInterval(resetTyping, 8000);
+        });
+    </script>
+</body>
+</html>

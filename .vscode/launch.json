@@ -1,0 +1,41 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "cli",
+            "cwd": "cli",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "dcmaui_app",
+            "cwd": "template/dcmaui_app",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "dcmaui_app (profile mode)",
+            "cwd": "template/dcmaui_app",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "dcmaui_app (release mode)",
+            "cwd": "template/dcmaui_app",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
+        },
+        {
+            "name": "Flutter (lib/templating/framework/controls/animated_image.dart)",
+            "type": "dart",
+            "request": "launch",
+            "cwd": "template/dcmaui_app",
+            "program": "lib/templating/framework/controls/animated_image.dart"
+        }
+    ]
+}
