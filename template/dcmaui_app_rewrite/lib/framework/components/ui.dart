@@ -61,11 +61,9 @@ class UI {
   /// Create an Image component
   static VDomElement Image({
     String? key,
-    required String source,
     ImageProps? props,
   }) {
     final propsMap = props?.toMap() ?? {};
-    propsMap['source'] = source;
 
     return VDomElement(
       type: 'Image',
