@@ -2,7 +2,7 @@ import 'base_props.dart';
 
 /// Image component properties
 class ImageProps extends BaseProps {
-  final String source;
+  final String? source;
   final String? resizeMode; // 'cover', 'contain', 'stretch', 'repeat', 'center'
   final double? aspectRatio;
   final bool? fadeDuration;
@@ -10,7 +10,7 @@ class ImageProps extends BaseProps {
   final bool? loadingIndicatorSource;
 
   const ImageProps({
-    required this.source,
+    this.source,
     this.resizeMode,
     this.aspectRatio,
     this.fadeDuration,
@@ -44,7 +44,7 @@ class ImageProps extends BaseProps {
   Map<String, dynamic> toMap() {
     final map = super.toMap();
 
-    map['source'] = source;
+    if (source != null) map['source'] = source;
     if (resizeMode != null) map['resizeMode'] = resizeMode;
     if (aspectRatio != null) map['aspectRatio'] = aspectRatio;
     if (fadeDuration != null) map['fadeDuration'] = fadeDuration;
