@@ -1,5 +1,5 @@
 
-### DCNative (MAUI/Multi-platform App UI)
+# DCNative (MAUI/Multi-platform App UI)
 # 🚧 This CLI is Under Development
 
 Its aim is to simplify cross-platform app development for personal future projects.
