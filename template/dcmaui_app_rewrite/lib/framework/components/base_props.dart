@@ -170,14 +170,18 @@ class BaseProps {
     }
     if (opacity != null) map['opacity'] = opacity;
     if (borderRadius != null) map['borderRadius'] = borderRadius;
-    if (borderTopLeftRadius != null)
+    if (borderTopLeftRadius != null) {
       map['borderTopLeftRadius'] = borderTopLeftRadius;
-    if (borderTopRightRadius != null)
+    }
+    if (borderTopRightRadius != null) {
       map['borderTopRightRadius'] = borderTopRightRadius;
-    if (borderBottomLeftRadius != null)
+    }
+    if (borderBottomLeftRadius != null) {
       map['borderBottomLeftRadius'] = borderBottomLeftRadius;
-    if (borderBottomRightRadius != null)
+    }
+    if (borderBottomRightRadius != null) {
       map['borderBottomRightRadius'] = borderBottomRightRadius;
+    }
     if (borderColor != null) map['borderColor'] = borderColor;
     if (borderWidth != null) map['borderWidth'] = borderWidth;
 

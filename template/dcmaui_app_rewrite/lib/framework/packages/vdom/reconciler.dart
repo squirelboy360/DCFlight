@@ -172,7 +172,7 @@ class Reconciler {
 
       VDomNode? oldChild = oldChildrenMap[key];
 
-      if (oldChild != null && oldChild.equals(newChild)) {
+      if (oldChild != null) {
         // Reusable child - update it
         await reconcile(oldChild, newChild);
 
@@ -204,12 +204,12 @@ class Reconciler {
 
     // Remove any old children that aren't in the new list
     for (var oldChild in oldChildren) {
-      // Use object identity directly without storing the key
-      final stillExists = newChildren.any((c) =>
-          c.key == oldChild.key || (c.key == null && oldChild.key == null));
-
-      if (!stillExists && oldChild.nativeViewId != null) {
-        await vdom.deleteView(oldChild.nativeViewId!);
+      final key = oldChild.key ?? oldChildren.indexOf(oldChild).toString();
+      if (!newChildren.any((newChild) =>
+          (newChild.key ?? newChildren.indexOf(newChild).toString()) == key)) {
+        if (oldChild.nativeViewId != null) {
+          await vdom.deleteView(oldChild.nativeViewId!);
+        }
       }
     }
 

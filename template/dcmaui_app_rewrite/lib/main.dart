@@ -106,7 +106,7 @@ class CounterComponent extends StatefulComponent {
         children: [
           UI.ScrollView(
               props: ScrollViewProps(
-                height: '80%',
+                height: '100%',
                 width: '100%',
                 showsHorizontalScrollIndicator: true,
                 backgroundColor: Colors.indigoAccent,
