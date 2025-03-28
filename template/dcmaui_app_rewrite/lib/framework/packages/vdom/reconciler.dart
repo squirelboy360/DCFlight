@@ -15,7 +15,7 @@ class Reconciler {
 
   /// Reconcile two nodes and apply minimal changes
   Future<void> reconcile(VDomNode oldNode, VDomNode newNode) async {
-    developer.log('Reconciling: $oldNode -> $newNode', name: 'Reconciler');
+    // developer.log('Reconciling: $oldNode -> $newNode', name: 'Reconciler');
 
     // Handle different types of nodes
     if (oldNode.runtimeType != newNode.runtimeType) {

@@ -62,7 +62,7 @@ class CounterComponent extends StatefulComponent {
       final rnd = math.Random();
       Color color() => Color(rnd.nextInt(0xffffffff));
       // Set up a timer to update the color every second
-      final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      final timer = Timer.periodic(const Duration(seconds: 1), (timer) {     
         // Update the background color
         bg.setValue(color());
 
@@ -106,7 +106,7 @@ class CounterComponent extends StatefulComponent {
         children: [
           UI.ScrollView(
               props: ScrollViewProps(
-                height: '100%',
+                height: '80%',
                 width: '100%',
                 showsHorizontalScrollIndicator: true,
                 backgroundColor: Colors.indigoAccent,

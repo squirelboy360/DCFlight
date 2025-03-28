@@ -5,275 +5,374 @@ class DCMauiTextComponent: NSObject, DCMauiComponentProtocol {
     static func createView(props: [String: Any]) -> UIView {
         let label = UILabel()
         
-        // Essential for visibility
-        label.numberOfLines = 0
+        // Configure default properties
+        label.numberOfLines = 0  // Default to multi-line
         label.lineBreakMode = .byWordWrapping
+        label.backgroundColor = .clear
         
-        // Default text alignment left (natural) - will be overridden by props
-        label.textAlignment = .center
-        
-        // Set default color - white (visible on most backgrounds)
-        label.textColor = .white
-        
-        // Set default font size if not specified
-        label.font = UIFont.systemFont(ofSize: 18)
-        
-        // Create Yoga node for this view
+        // Create Yoga node for this label
         let _ = DCMauiLayoutManager.shared.createYogaNode(for: label)
         
-        // Apply all props including layout
+        // Set text content if available
+        if let content = props["content"] as? String {
+            label.text = content
+        }
+        
+        // Apply all props
         updateView(label, props: props)
         
         return label
     }
     
     static func updateView(_ view: UIView, props: [String: Any]) {
-        guard let textView = view as? UILabel else { return }
+        guard let label = view as? UILabel else { return }
         
-        // Set content if available
+        // Store original text before any attribute processing
+        var originalText = label.text ?? ""
+        
+        // Basic text content
         if let content = props["content"] as? String {
-            textView.text = content
-            print("DEBUG: Set text content: \(content)")
+            originalText = content
+            label.text = content
+            
+            // Debug logging to track text content
+            print("DCMauiTextComponent: Setting content to: '\(content)'")
         }
         
-        // Text color handling - now supporting both string and Color object from Dart
-        if let color = props["color"] as? String {
-            textView.textColor = UIColorFromHex(color)
-            print("DEBUG: Set text color to: \(color)")
-        }
+        // Font family and style properties
+        var fontName: String?
+        var fontSize: CGFloat = label.font?.pointSize ?? 17.0 // Default iOS font size
+        var fontWeight: UIFont.Weight = .regular
+        var fontStyle: UIFontDescriptor.SymbolicTraits = []
         
-        // Debug existing color
-        if textView.textColor != nil {
-            print("DEBUG: Current text color: \(textView.textColor!)")
-        }
-        
-        // Font properties
-        var fontDescriptor: UIFontDescriptor? = textView.font.fontDescriptor
-        var fontSize: CGFloat = textView.font.pointSize
-        
+        // Get font family
         if let fontFamily = props["fontFamily"] as? String {
-            // Check if this is a custom font from assets or system font
-            if let customFont = loadCustomFont(fontFamily, size: fontSize) {
-                textView.font = customFont
-            } else {
-                fontDescriptor = UIFontDescriptor(name: fontFamily, size: fontSize)
+            fontName = fontFamily
+        }
+        
+        // Get font size
+        if let size = props["fontSize"] as? CGFloat {
+            fontSize = size
+        }
+        
+        // Get font weight
+        if let weight = props["fontWeight"] as? String {
+            switch weight {
+            case "bold":
+                fontWeight = .bold
+            case "100":
+                fontWeight = .ultraLight
+            case "200":
+                fontWeight = .thin
+            case "300":
+                fontWeight = .light
+            case "400":
+                fontWeight = .regular
+            case "500":
+                fontWeight = .medium
+            case "600":
+                fontWeight = .semibold
+            case "700":
+                fontWeight = .bold
+            case "800":
+                fontWeight = .heavy
+            case "900":
+                fontWeight = .black
+            default:
+                fontWeight = .regular
             }
         }
         
-        if let newFontSize = props["fontSize"] as? CGFloat {
-            fontSize = newFontSize
+        // Get font style
+        if let style = props["fontStyle"] as? String, style == "italic" {
+            fontStyle.insert(.traitItalic)
         }
         
-        // Font weight handling
-        if let fontWeight = props["fontWeight"] as? String {
-            var traits: [UIFontDescriptor.TraitKey: Any] = [:]
+        // Create the font
+        var font: UIFont?
+        
+        if let fontName = fontName {
+            // Try to load custom font
+            font = FontLoader.shared.loadFont(name: fontName, size: fontSize)
             
-            switch fontWeight {
-            case "bold":
-                traits[.weight] = UIFont.Weight.bold
-            case "100":
-                traits[.weight] = UIFont.Weight.ultraLight
-            case "200":
-                traits[.weight] = UIFont.Weight.thin
-            case "300":
-                traits[.weight] = UIFont.Weight.light
-            case "400":
-                traits[.weight] = UIFont.Weight.regular
-            case "500":
-                traits[.weight] = UIFont.Weight.medium
-            case "600":
-                traits[.weight] = UIFont.Weight.semibold
-            case "700":
-                traits[.weight] = UIFont.Weight.bold
-            case "800":
-                traits[.weight] = UIFont.Weight.heavy
-            case "900":
-                traits[.weight] = UIFont.Weight.black
+            // Apply weight if possible
+            if let loadedFont = font {
+                if let descriptor = loadedFont.fontDescriptor.withSymbolicTraits(fontStyle) {
+                    font = UIFont(descriptor: descriptor, size: fontSize)
+                }
+            }
+        }
+        
+        // Fallback to system font if custom font loading failed
+        if font == nil {
+            if fontStyle.contains(.traitItalic) {
+                // For italic, we need to use the italicSystemFont or create a font descriptor with the italic trait
+                if fontWeight == .bold {
+                    let descriptor = UIFontDescriptor.preferredFontDescriptor(withTextStyle: .body)
+                        .withSymbolicTraits([.traitBold, .traitItalic])!
+                    font = UIFont(descriptor: descriptor, size: fontSize)
+                } else {
+                    font = UIFont.italicSystemFont(ofSize: fontSize)
+                    
+                    // Apply weight if not bold
+                    if fontWeight != .regular {
+                        let descriptor = font!.fontDescriptor.withSymbolicTraits(.traitItalic)!
+                        let weightedDescriptor = UIFontDescriptor(fontAttributes: [
+                            .family: font!.familyName,
+                            .traits: [UIFontDescriptor.TraitKey.weight: fontWeight]
+                        ])
+                        font = UIFont(descriptor: descriptor.addingAttributes([
+                            .traits: [UIFontDescriptor.TraitKey.weight: fontWeight]
+                        ]), size: fontSize)
+                    }
+                }
+            } else {
+                // Regular case - use system font with weight
+                font = UIFont.systemFont(ofSize: fontSize, weight: fontWeight)
+            }
+        }
+        
+        // Apply the font
+        if let font = font {
+            label.font = font
+        }
+        
+        // Create a base attributed string to work with - ONLY if needed
+        // Using the most up-to-date text content
+        let currentText = label.text ?? originalText
+        let attributedText = NSMutableAttributedString(string: currentText)
+        var hasAttributedChanges = false
+        
+        // Apply base font to the attributed string - only if we have text to work with
+        if !currentText.isEmpty {
+            attributedText.addAttribute(
+                .font,
+                value: label.font as Any,
+                range: NSRange(location: 0, length: currentText.count)
+            )
+        }
+        
+        // Letter spacing - only apply if we have text
+        if let letterSpacing = props["letterSpacing"] as? CGFloat, !currentText.isEmpty {
+            attributedText.addAttribute(
+                .kern,
+                value: letterSpacing,
+                range: NSRange(location: 0, length: currentText.count)
+            )
+            hasAttributedChanges = true
+            print("DCMauiTextComponent: Applied letter spacing: \(letterSpacing)")
+        }
+        
+        // Line height - only apply if we have text
+        if let lineHeight = props["lineHeight"] as? CGFloat, !currentText.isEmpty {
+            let paragraphStyle = NSMutableParagraphStyle()
+            paragraphStyle.minimumLineHeight = lineHeight
+            paragraphStyle.maximumLineHeight = lineHeight
+            
+            attributedText.addAttribute(
+                .paragraphStyle,
+                value: paragraphStyle,
+                range: NSRange(location: 0, length: currentText.count)
+            )
+            hasAttributedChanges = true
+            print("DCMauiTextComponent: Applied line height: \(lineHeight)")
+        }
+        
+        // Text decoration - only apply if we have text
+        if let decoration = props["textDecorationLine"] as? String, !currentText.isEmpty {
+            switch decoration {
+            case "underline":
+                attributedText.addAttribute(
+                    .underlineStyle,
+                    value: NSUnderlineStyle.single.rawValue,
+                    range: NSRange(location: 0, length: currentText.count)
+                )
+                hasAttributedChanges = true
+                print("DCMauiTextComponent: Applied underline decoration")
+            case "line-through":
+                attributedText.addAttribute(
+                    .strikethroughStyle,
+                    value: NSUnderlineStyle.single.rawValue,
+                    range: NSRange(location: 0, length: currentText.count)
+                )
+                hasAttributedChanges = true
+                print("DCMauiTextComponent: Applied line-through decoration")
             default:
                 break
             }
-            
-            if !traits.isEmpty {
-                fontDescriptor = fontDescriptor?.addingAttributes([.traits: traits])
+        }
+        
+        // Apply the attributed text if we have any attribute changes AND text content
+        if hasAttributedChanges && !currentText.isEmpty {
+            label.attributedText = attributedText
+            print("DCMauiTextComponent: Applied attributed text: '\(attributedText.string)'")
+        }
+        
+        // Handle text transformation with additional safeguards
+        if let transform = props["textTransform"] as? String {
+            // Get the latest text content from either attributed or plain text
+            let textToTransform: String
+            if hasAttributedChanges, let attrText = label.attributedText?.string, !attrText.isEmpty {
+                textToTransform = attrText
+            } else if let plainText = label.text, !plainText.isEmpty {
+                textToTransform = plainText
+            } else {
+                textToTransform = originalText
             }
-        }
-        
-        // Font style handling
-        if let fontStyle = props["fontStyle"] as? String, fontStyle == "italic" {
-            fontDescriptor = fontDescriptor?.withSymbolicTraits(.traitItalic)
-        }
-        
-        // Apply font if we have changes and we're not using custom fonts
-        if let descriptor = fontDescriptor, textView.font?.fontName.lowercased().contains("custom") != true {
-            textView.font = UIFont(descriptor: descriptor, size: fontSize)
-        } else if textView.font?.fontName.lowercased().contains("custom") != true {
-            textView.font = UIFont.systemFont(ofSize: fontSize)
+            
+            // Skip transformation if we don't have any text
+            if textToTransform.isEmpty {
+                print("DCMauiTextComponent: Warning - No text to transform")
+            } else {
+                var transformedText = textToTransform
+                
+                // Apply the transformation
+                switch transform {
+                case "uppercase":
+                    transformedText = textToTransform.uppercased()
+                    print("DCMauiTextComponent: Applied uppercase transform: '\(textToTransform)' → '\(transformedText)'")
+                case "lowercase":
+                    transformedText = textToTransform.lowercased()
+                    print("DCMauiTextComponent: Applied lowercase transform: '\(textToTransform)' → '\(transformedText)'")
+                case "capitalize":
+                    transformedText = textToTransform.capitalized
+                    print("DCMauiTextComponent: Applied capitalize transform: '\(textToTransform)' → '\(transformedText)'")
+                default:
+                    break
+                }
+                
+                // Apply the transformed text
+                if hasAttributedChanges {
+                    // Update the attributed text to preserve all attributes
+                    let newAttributedText = NSMutableAttributedString(attributedString: label.attributedText!)
+                    
+                    // Only update the string part while keeping attributes
+                    if newAttributedText.length > 0 {
+                        newAttributedText.mutableString.setString(transformedText)
+                        label.attributedText = newAttributedText
+                    } else {
+                        // If for some reason we have empty attributed text, create a new one
+                        let freshAttributedText = NSMutableAttributedString(string: transformedText)
+                        // Copy attributes from original if possible
+                        if let font = label.font {
+                            freshAttributedText.addAttribute(.font, value: font, range: NSRange(location: 0, length: transformedText.count))
+                        }
+                        label.attributedText = freshAttributedText
+                    }
+                } else {
+                    label.text = transformedText
+                }
+            }
         }
         
         // Text alignment
         if let textAlign = props["textAlign"] as? String {
             switch textAlign {
+            case "left":
+                label.textAlignment = .left
             case "center":
-                textView.textAlignment = .center
+                label.textAlignment = .center
             case "right":
-                textView.textAlignment = .right
+                label.textAlignment = .right
             case "justify":
-                textView.textAlignment = .justified
+                label.textAlignment = .justified
             default:
-                textView.textAlignment = .left
+                label.textAlignment = .natural
             }
         }
         
-        // Letter spacing
-        if let letterSpacing = props["letterSpacing"] as? CGFloat {
-            textView.attributedText = NSAttributedString(
-                string: textView.text ?? "",
-                attributes: [.kern: letterSpacing]
-            )
+        // Text color
+        if let color = props["color"] as? String {
+            label.textColor = UIColorFromHex(color)
+        } else if let color = props["textColor"] as? String {
+            // Support alternate property name for consistency
+            label.textColor = UIColorFromHex(color)
         }
         
-        // Line height
-        if let lineHeight = props["lineHeight"] as? CGFloat {
-            let paragraphStyle = NSMutableParagraphStyle()
-            paragraphStyle.lineSpacing = lineHeight - textView.font.lineHeight
-            textView.attributedText = NSAttributedString(
-                string: textView.text ?? "",
-                attributes: [.paragraphStyle: paragraphStyle]
-            )
-        }
-        
-        // Text decoration
-        if let textDecorationLine = props["textDecorationLine"] as? String {
-            var attributes: [NSAttributedString.Key: Any] = [:]
-            
-            switch textDecorationLine {
-            case "underline":
-                attributes[.underlineStyle] = NSUnderlineStyle.single.rawValue
-            case "line-through":
-                attributes[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
-            default:
-                break
-            }
-            
-            if !attributes.isEmpty {
-                let attributedString = NSMutableAttributedString(string: textView.text ?? "")
-                attributedString.addAttributes(
-                    attributes,
-                    range: NSRange(location: 0, length: attributedString.length)
-                )
-                textView.attributedText = attributedString
-            }
-        }
-        
-        // Text transform
-        if let textTransform = props["textTransform"] as? String,
-           let text = textView.text {
-            switch textTransform {
-            case "uppercase":
-                textView.text = text.uppercased()
-            case "lowercase":
-                textView.text = text.lowercased()
-            case "capitalize":
-                textView.text = text.capitalized
-            default:
-                break
-            }
-        }
-        
-        // Number of lines - iOS specific
+        // Number of lines
         if let numberOfLines = props["numberOfLines"] as? Int {
-            textView.numberOfLines = numberOfLines
+            label.numberOfLines = numberOfLines
         }
         
-        // Text adjustments - Fixed property name
-        if let adjustsFontSizeToFit = props["adjustsFontSizeToFit"] as? Bool {
-            textView.adjustsFontSizeToFitWidth = adjustsFontSizeToFit
+        // Enhanced verification with specific debugging 
+        let finalText = label.attributedText?.string ?? label.text
+        if finalText?.isEmpty ?? true {
+            print("DCMauiTextComponent: WARNING - Text is empty after processing!")
+            print("  - Original text: '\(originalText)'")
+            print("  - Has attributed changes: \(hasAttributedChanges)")
+            print("  - Props: \(props)")
             
-            if adjustsFontSizeToFit {
-                if let minimumFontSize = props["minimumFontSize"] as? CGFloat {
-                    textView.minimumScaleFactor = minimumFontSize / fontSize
-                } else {
-                    textView.minimumScaleFactor = 0.5 // Default
-                }
-            }
+            // Restore original text as a last resort
+            label.text = originalText
+            print("DCMauiTextComponent: Restored original text: '\(originalText)'")
+        } else {
+            print("DCMauiTextComponent: Final text content: '\(finalText ?? "")'")
         }
         
-        // Apply standard View styling
-        applyViewStyling(view: textView, props: props)
-        
-        // Apply layout properties
-        applyLayoutProps(textView, props: props)
-        
-        // Important: After settings are applied, make sure the text view can 
-        // calculate its own intrinsic content size to help layout
-        if textView.text?.isEmpty == false {
-            textView.setNeedsLayout()
-            textView.layoutIfNeeded()
+        // Auto-adjust font size
+        if let adjustsFontSizeToFit = props["adjustsFontSizeToFit"] as? Bool, adjustsFontSizeToFit {
+            label.adjustsFontSizeToFitWidth = true
+            label.minimumScaleFactor = props["minimumFontSize"] as? CGFloat ?? 0.5
         }
-    }
-    
-    static func applyViewStyling(view: UIView, props: [String: Any]) {
-        // Apply opacity
+        
+        // Background color
+        if let bgColorStr = props["backgroundColor"] as? String {
+            label.backgroundColor = UIColorFromHex(bgColorStr)
+        }
+        
+        // Opacity
         if let opacity = props["opacity"] as? CGFloat {
-            view.alpha = opacity
+            label.alpha = opacity
         }
         
-        // Apply background color
-        if let backgroundColor = props["backgroundColor"] as? String {
-            view.backgroundColor = UIColorFromHex(backgroundColor)
+        // Border properties
+        if let borderRadius = props["borderRadius"] as? CGFloat {
+            label.layer.cornerRadius = borderRadius
+            label.clipsToBounds = true
+        }
+        
+        if let borderWidth = props["borderWidth"] as? CGFloat {
+            label.layer.borderWidth = borderWidth
+        }
+        
+        if let borderColor = props["borderColor"] as? String {
+            label.layer.borderColor = UIColorFromHex(borderColor).cgColor
+        }
+        
+        // Apply layout properties - this will handle all positioning and sizing
+        applyLayoutProps(label, props: props)
+    }
+    
+    static func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], eventCallback: @escaping (String, String, [String: Any]) -> Void) {
+        guard let label = view as? UILabel else { return }
+        
+        // Text components don't typically have many events, but we can add a tap recognizer
+        if eventTypes.contains("press") || eventTypes.contains("tap") {
+            // Make sure user interaction is enabled
+            label.isUserInteractionEnabled = true
+            
+            // Add tap gesture recognizer
+            let tapGesture = UITapGestureRecognizer(target: nil, action: nil)
+            tapGesture.addTarget { recognizer in
+                let location = recognizer.location(in: view)
+                eventCallback(viewId, "press", [
+                    "x": location.x,
+                    "y": location.y,
+                    "text": label.text ?? ""
+                ])
+            }
+            view.addGestureRecognizer(tapGesture)
         }
     }
     
-    // No standard events for text components
-    static func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], eventCallback: @escaping (String, String, [String: Any]) -> Void) {}
-    
-    static func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String]) {}
-    
-    // Helper function to load custom fonts from the app bundle
-    private static func loadCustomFont(_ fontFamily: String, size: CGFloat) -> UIFont? {
-        // Check if font is already registered
-        if let font = UIFont(name: fontFamily, size: size) {
-            return font
-        }
-        
-        // Try various font extensions
-        let extensions = ["ttf", "otf"]
-        
-        for ext in extensions {
-            // Check the app bundle for the font
-            if let fontURL = Bundle.main.url(forResource: fontFamily, withExtension: ext) {
-                // Register font
-                CTFontManagerRegisterFontsForURL(fontURL as CFURL, .process, nil)
-                
-                // Try to create font after registration
-                if let font = UIFont(name: fontFamily, size: size) {
-                    print("Successfully loaded custom font: \(fontFamily)")
-                    return font
-                }
-            }
-            
-            // Try asset folder structure
-            let assetPathFormats = [
-                "fonts/\(fontFamily)",
-                "assets/fonts/\(fontFamily)",
-                "flutter_assets/fonts/\(fontFamily)",
-                "flutter_assets/assets/fonts/\(fontFamily)"
-            ]
-            
-            for path in assetPathFormats {
-                if let fontURL = Bundle.main.url(forResource: path, withExtension: ext) {
-                    CTFontManagerRegisterFontsForURL(fontURL as CFURL, .process, nil)
-                    
-                    // Try to create font after registration
-                    if let font = UIFont(name: fontFamily, size: size) {
-                        print("Successfully loaded custom font from assets: \(fontFamily)")
-                        return font
-                    }
+    static func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String]) {
+        if eventTypes.contains("press") || eventTypes.contains("tap") {
+            // Remove all gesture recognizers (this is a simple implementation)
+            if let recognizers = view.gestureRecognizers {
+                for recognizer in recognizers {
+                    view.removeGestureRecognizer(recognizer)
                 }
             }
         }
-        
-        print("Could not load custom font: \(fontFamily)")
-        return nil
     }
 }

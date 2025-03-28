@@ -36,8 +36,8 @@ class DCMauiComponentRegistry {
     private init() {
         // Register all built-in components
         registerComponent("View", componentClass: DCMauiViewComponent.self)
-        registerComponent("Text", componentClass: DCMauiTextComponent.self)
         registerComponent("Button", componentClass: DCMauiButtonComponent.self)
+        registerComponent("Text", componentClass: DCMauiTextComponent.self)
         registerComponent("Image", componentClass: DCMauiImageComponent.self)
         registerComponent("ScrollView", componentClass: DCMauiScrollComponent.self)
         
