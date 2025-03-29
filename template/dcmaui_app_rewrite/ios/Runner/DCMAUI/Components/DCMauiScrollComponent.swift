@@ -99,6 +99,25 @@ class DCMauiScrollComponent: NSObject, DCMauiComponentProtocol {
             )
         }
         
+        // Also store flexDirection property for proper layout handling
+        if let flexDirection = props["flexDirection"] as? String {
+            objc_setAssociatedObject(
+                scrollView,
+                UnsafeRawPointer(bitPattern: "flexDirection".hashValue)!,
+                flexDirection,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+            
+            // Also update the Yoga node to match
+            if let yogaNode = DCMauiLayoutManager.shared.yogaNode(for: scrollView) {
+                if flexDirection == "row" {
+                    YGNodeStyleSetFlexDirection(yogaNode, .row)
+                } else if flexDirection == "column" {
+                    YGNodeStyleSetFlexDirection(yogaNode, .column)
+                }
+            }
+        }
+        
         scrollView.layoutSubviews()
     }
     
@@ -209,52 +228,85 @@ class DirectScrollView: UIScrollView {
     override func layoutSubviews() {
         super.layoutSubviews()
         
+        // Get flex props for better layout calculation
+        let flexWrap = objc_getAssociatedObject(
+            self,
+            UnsafeRawPointer(bitPattern: "flexWrap".hashValue)!
+        ) as? String
+        
+        // Get flex direction from associated object if available
+        let flexDirection = objc_getAssociatedObject(
+            self,
+            UnsafeRawPointer(bitPattern: "flexDirection".hashValue)!
+        ) as? String
+        
+        // Determine if we're supposed to wrap (critical for proper layout!)
+        let shouldWrap = flexWrap == "wrap"
+        
+        print("📋 ScrollView layout with flexWrap: \(flexWrap ?? "none"), flexDirection: \(flexDirection ?? "default"), isHorizontal: \(isHorizontal)")
+        
         // CRITICAL: Calculate content size based on subview frames
         var contentWidth: CGFloat = 0
         var contentHeight: CGFloat = 0
         
-        // Let Yoga calculate layout for all subviews
-        for view in self.subviews {
-            DCMauiLayoutManager.shared.calculateAndApplyLayout(
-                for: view,
-                width: isHorizontal ? CGFloat.greatestFiniteMagnitude : self.bounds.width,
-                height: isHorizontal ? self.bounds.height : CGFloat.greatestFiniteMagnitude
-            )
+        // For wrapping views, we need to configure Yoga properly first
+        if shouldWrap, let yogaNode = DCMauiLayoutManager.shared.yogaNode(for: self) {
+            // Set flex direction explicitly on the yoga node
+            if isHorizontal || flexDirection == "row" {
+                YGNodeStyleSetFlexDirection(yogaNode, .row)
+            } else {
+                YGNodeStyleSetFlexDirection(yogaNode, .column)
+            }
             
-            // Update content dimensions based on view position and size - NO PADDING AT ALL
-            contentWidth = max(contentWidth, view.frame.maxX)
-            contentHeight = max(contentHeight, view.frame.maxY)
+            // Set flex wrap explicitly on the yoga node
+            YGNodeStyleSetFlexWrap(yogaNode, .wrap)
+            
+            // For wrapping content, we need proper width constraints
+            let availableWidth = isHorizontal ? CGFloat.greatestFiniteMagnitude : self.bounds.width
+            let availableHeight = isHorizontal ? self.bounds.height : CGFloat.greatestFiniteMagnitude
+            
+            print("📏 Available space for layout: \(availableWidth) x \(availableHeight)")
         }
         
-        // NO MINIMUM PADDING - exactness is key for percentage layouts
+        // Let Yoga calculate layout for all subviews with correct constraints
+        if shouldWrap && isHorizontal {
+            // For horizontal wrapped layouts, use fixed width constraint
+            for view in self.subviews {
+                DCMauiLayoutManager.shared.calculateAndApplyLayout(
+                    for: view,
+                    width: self.bounds.width,
+                    height: self.bounds.height
+                )
+                contentWidth = max(contentWidth, view.frame.maxX)
+                contentHeight = max(contentHeight, view.frame.maxY)
+            }
+        } else {
+            // Standard layout calculation
+            for view in self.subviews {
+                DCMauiLayoutManager.shared.calculateAndApplyLayout(
+                    for: view,
+                    width: isHorizontal ? CGFloat.greatestFiniteMagnitude : self.bounds.width,
+                    height: isHorizontal ? self.bounds.height : CGFloat.greatestFiniteMagnitude
+                )
+                contentWidth = max(contentWidth, view.frame.maxX)
+                contentHeight = max(contentHeight, view.frame.maxY)
+            }
+        }
         
-        // Set content size based on direction - EXACT SIZE OF CONTENTS
+        // Set final content size with proper handling for wrapping
         if isHorizontal {
-            self.contentSize = CGSize(
-                width: max(contentWidth, bounds.width),
-                height: self.bounds.height
-            )
+            // For horizontal scrolling, content height is never less than view height
+            self.contentSize = CGSize(width: max(contentWidth, bounds.width), 
+                                      height: shouldWrap ? max(contentHeight, bounds.height) : bounds.height)
             self.alwaysBounceHorizontal = contentWidth > self.bounds.width
         } else {
-            self.contentSize = CGSize(
-                width: self.bounds.width,
-                height: max(contentHeight, bounds.height)
-            )
+            // For vertical scrolling, content width is always view width
+            self.contentSize = CGSize(width: bounds.width,
+                                     height: max(contentHeight, bounds.height))
             self.alwaysBounceVertical = contentHeight > self.bounds.height
         }
         
-        print("📏 EXACT ScrollView content size: \(self.contentSize) based on content: \(contentWidth) x \(contentHeight)")
-        
-        // Special handling for flexWrap cases - these need extra attention
-        if self.subviews.count > 0 {
-            if let wrapProp = objc_getAssociatedObject(
-                self,
-                UnsafeRawPointer(bitPattern: "flexWrap".hashValue)!
-            ) as? String, wrapProp == "wrap" {
-                // For wrapped content, trust our calculated size completely
-                print("📏 Using exact content height for wrapped content: \(contentHeight)")
-            }
-        }
+        print("📐 Final ScrollView contentSize: \(self.contentSize) for flex direction \(flexDirection ?? "default")")
     }
     
     override func touchesShouldCancel(in view: UIView) -> Bool {

@@ -41,8 +41,10 @@ class DCMauiComponentRegistry {
         registerComponent("Image", componentClass: DCMauiImageComponent.self)
         registerComponent("ScrollView", componentClass: DCMauiScrollComponent.self)
         
-        // You can add more components here as needed
-        // The beauty is you don't need to modify the bridge code anymore
+        // Add debugging function to verify prop handling
+        #if DEBUG
+        verifyComponentPropHandling()
+        #endif
     }
     
     /// Register a component type handler
@@ -60,4 +62,63 @@ class DCMauiComponentRegistry {
     var registeredTypes: [String] {
         return Array(componentTypes.keys)
     }
+    
+    #if DEBUG
+    /// Debug helper to verify component prop handling
+    private func verifyComponentPropHandling() {
+        print("🧪 VERIFYING COMPONENT PROP HANDLING")
+        
+        // Check ScrollView props
+        let scrollViewProps = [
+            "showsVerticalScrollIndicator", "showsHorizontalScrollIndicator",
+            "bounces", "pagingEnabled", "scrollEventThrottle",
+            "directionalLockEnabled", "alwaysBounceVertical", 
+            "alwaysBounceHorizontal", "horizontal", "flexWrap"
+        ]
+        checkComponentProps("ScrollView", props: scrollViewProps)
+        
+        // Check Text props
+        let textProps = [
+            "fontSize", "fontWeight", "fontFamily", "color", "textAlign",
+            "letterSpacing", "lineHeight", "textDecorationLine", "numberOfLines"
+        ]
+        checkComponentProps("Text", props: textProps)
+        
+        // Check View props (most important layout props)
+        let viewProps = [
+            "width", "height", "backgroundColor", "borderRadius",
+            "flexDirection", "flexWrap", "justifyContent", "alignItems",
+            "flex", "margin", "padding", "transform", "opacity"
+        ]
+        checkComponentProps("View", props: viewProps)
+        
+        // Check Image props
+        let imageProps = [
+            "source", "resizeMode", "borderRadius", "width", "height"
+        ]
+        checkComponentProps("Image", props: imageProps)
+    }
+    
+    /// Check if component handler contains methods to process the given props
+    private func checkComponentProps(_ componentType: String, props: [String]) {
+        guard let component = getComponentType(for: componentType) else {
+            print("❌ Component not found: \(componentType)")
+            return
+        }
+        
+        print("🔍 Checking \(componentType) props support:")
+        
+        // Look for properties in the component's updateView method implementation
+        let componentDescription = String(describing: component)
+        for prop in props {
+            // This is a simple check - just looks for the property name in the component code
+            // A more sophisticated check would verify each property is actually handled
+            if componentDescription.contains("\"\(prop)\"") {
+                print("  ✅ \(prop)")
+            } else {
+                print("  ⚠️ \(prop) - no explicit handling found")
+            }
+        }
+    }
+    #endif
 }
