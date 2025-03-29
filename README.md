@@ -1,4 +1,4 @@
-# Phase: Validation phase (everything is in the template until fully validated then modularised)
+# Phase: Validation phase 65% (everything is in the template until fully validated then modularised)
 # DCNative (MAUI/Multi-platform App UI)
 
 ## Flutter Native Sucks but Native UI (in pure dart) + Flutter(Skia/impeller) = 🔥
