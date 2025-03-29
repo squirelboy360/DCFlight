@@ -1,6 +1,5 @@
 import '../text_props.dart';
 import '../../../framework/packages/vdom/vdom_element.dart';
-import 'dart:ui';
 
 /// A text segment with its own props
 class TextSegment {

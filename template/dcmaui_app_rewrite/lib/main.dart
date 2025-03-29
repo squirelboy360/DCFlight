@@ -134,11 +134,17 @@ class CounterComponent extends StatefulComponent {
 
     return UI.View(
         props: ViewProps(
-            height: '100%',
-            width: '100%',
-            backgroundColor: Colors.yellow,
-            padding: 30),
+          height: '100%',
+          width: '100%',
+          backgroundColor: Colors.yellow,
+        ),
         children: [
+          UI.View(
+              props: ViewProps(
+            height: 60,
+            width: '100%',
+            backgroundColor: Colors.red,
+          )),
           UI.ScrollView(
               props: ScrollViewProps(
                 height: '95%',
