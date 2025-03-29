@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:dc_test/framework/components/button_props.dart';
 import 'package:dc_test/framework/components/image_props.dart';
 import 'package:dc_test/framework/components/modifiers/text_content.dart';
 import 'package:dc_test/framework/components/scroll_view_props.dart';
@@ -285,45 +284,6 @@ class CounterComponent extends StatefulComponent {
                       ...boxes,
                     ]),
               ]),
-         
         ]);
   }
 }
-
-
-    // UI.Image(
-                      //     props: ImageProps(
-                      //   margin: 20,
-                      //   resizeMode: ResizeMode.cover,
-                      //   borderRadius: 20,
-                      //   borderWidth: 10,
-                      //   height: '50%',
-                      //   width: '90%',
-                      //   borderColor: borderBgs.value,
-                      //   source:
-                      //       'https://avatars.githubusercontent.com/u/205313423?s=400&u=2abecc79555be8a9b63ddd607489676ab93b2373&v=4',
-                      // )),
-                      // UI.Image(
-                      //     props: ImageProps(
-                      //   margin: 20,
-                      //   resizeMode: ResizeMode.cover,
-                      //   borderRadius: 20,
-                      //   borderWidth: 10,
-                      //   height: '50%',
-                      //   width: '90%',
-                      //   borderColor: borderBgs.value,
-                      //   source:
-                      //       'https://encrypted-tbn2.gstatic.com/licensed-image?q=tbn:ANd9GcQdMytXURczdY2WtIcNPaoFkgXdFhhbRLvujtCW4xHeSlQP02D_Lb6cwNuuxr7IiTsgbFpkUa7SQz5Xpsg',
-                      // )),
-                      // UI.Image(
-                      //     props: ImageProps(
-                      //   margin: 20,
-                      //   resizeMode: ResizeMode.cover,
-                      //   borderRadius: 20,
-                      //   borderWidth: 10,
-                      //   height: '50%',
-                      //   width: '90%',
-                      //   borderColor: borderBgs.value,
-                      //   source:
-                      //       'https://encrypted-tbn2.gstatic.com/licensed-image?q=tbn:ANd9GcQdMytXURczdY2WtIcNPaoFkgXdFhhbRLvujtCW4xHeSlQP02D_Lb6cwNuuxr7IiTsgbFpkUa7SQz5Xpsg',
-                      // )),
