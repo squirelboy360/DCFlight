@@ -308,9 +308,7 @@ The architecture is loosely inspired by .NET MAUI, Flutter and React, but instea
 
 ### 4️⃣ Hot Reload/Restart Issues ⚡
 
-- Hot Reload does not work ❌.
-- Hot Restart works but duplicates the native UIs or stacks them on top of each other, which is annoying. 😕
-
+- Hot Reload does not work yet ❌.
 ---
 
 This project is still in early development, and many improvements will be made along the way.  
