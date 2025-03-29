@@ -1,4 +1,4 @@
-
+# Phase: Validation phase (everything is in the template until fully validated then modularised)
 # DCNative (MAUI/Multi-platform App UI)
 # 🚧 This CLI is Under Development
 
