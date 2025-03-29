@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:dc_test/framework/components/button_props.dart';
 import 'package:dc_test/framework/components/image_props.dart';
+import 'package:dc_test/framework/components/modifiers/text_content.dart';
 import 'package:dc_test/framework/components/scroll_view_props.dart';
 import 'package:dc_test/framework/components/text_props.dart';
 import 'package:dc_test/framework/constants/layout_enums.dart';
@@ -67,12 +68,12 @@ class CounterComponent extends StatefulComponent {
       ),
       children: [
         UI.Text(
-          content: (index + 1).toString(),
-          props: TextProps(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+          content: TextContent((index + 1).toString(),
+              props: TextProps(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              )),
         ),
       ],
     );
@@ -174,21 +175,28 @@ class CounterComponent extends StatefulComponent {
                           ),
                           children: [
                             UI.Text(
-                                content: "Test App ",
-                                props: TextProps(
-                                  fontSize: 20,
-                                  color: Colors.white,
-                                  textAlign: TextAlign.center,
-                                  fontWeight: FontWeight.bold,
-                                )),
+                              content: TextContent("Test App",
+                                  props: TextProps(
+                                    fontSize: 20,
+                                    color: Colors.white,
+                                    textAlign: TextAlign.center,
+                                    fontWeight: FontWeight.bold,
+                                  )),
+                            ),
                             UI.Text(
-                                content: "Counter Value: ${counter.value}",
-                                props: TextProps(
-                                  fontSize: 20,
-                                  color: Colors.amber,
-                                  textAlign: TextAlign.center,
-                                  fontWeight: FontWeight.bold,
-                                ))
+                              content: TextContent("Counter Value: ",
+                                  props: TextProps(
+                                    fontSize: 20,
+                                    color: Colors.amber,
+                                    textAlign: TextAlign.center,
+                                    fontWeight: FontWeight.bold,
+                                  )).interpolate(counter.value,props: TextProps(
+                                    fontSize: 20,
+                                    color: Colors.red,
+                                    textAlign: TextAlign.center,
+                                    fontWeight: FontWeight.bold,
+                                  )),
+                            )
                           ]),
                     ]),
                 UI.View(
@@ -216,21 +224,37 @@ class CounterComponent extends StatefulComponent {
                           ),
                           children: [
                             UI.Text(
-                                content: "Color Change ${borderBgs.value}",
-                                props: TextProps(
-                                  fontSize: 20,
-                                  color: Colors.white,
-                                  textAlign: TextAlign.center,
-                                  fontWeight: FontWeight.bold,
-                                )),
-                            UI.Text(
-                                content: "Counter Value: ${counter.value}",
-                                props: TextProps(
-                                  fontSize: 20,
-                                  color: Colors.amber,
-                                  textAlign: TextAlign.center,
-                                  fontWeight: FontWeight.bold,
-                                ))
+                              content: TextContent("Color Change ",
+                                  props: TextProps(
+                                    fontSize: 20,
+                                    color: Colors.white,
+                                    textAlign: TextAlign.center,
+                                    fontWeight: FontWeight.bold,
+                                  )).interpolate(borderBgs.value),
+                            ),
+                            UI.View(
+                                props: ViewProps(
+                                  flexDirection: FlexDirection.row,
+                                  justifyContent: JustifyContent.center,
+                                ),
+                                children: [
+                                  UI.Text(
+                                    content: TextContent("Counter Value: ",
+                                        props: TextProps(
+                                          fontSize: 20,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        )),
+                                  ),
+                                  UI.Text(
+                                    content: TextContent("",
+                                        props: TextProps(
+                                          fontSize: 20,
+                                          color: Color(0xFFFFBF00),
+                                          fontWeight: FontWeight.bold,
+                                        )).interpolate(counter.value),
+                                  )
+                                ])
                           ]),
                     ]),
                 UI.ScrollView(
@@ -263,7 +287,7 @@ class CounterComponent extends StatefulComponent {
                     onPress: (v) {
                       counter.setValue(counter.value + 1);
                     })
-              ])
+              ]),
         ]);
   }
 }
