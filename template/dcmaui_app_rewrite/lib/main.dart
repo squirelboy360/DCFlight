@@ -50,6 +50,34 @@ void startNativeApp() async {
 }
 
 class CounterComponent extends StatefulComponent {
+  VDomNode createBox(int index) {
+    final hue = (index * 30) % 360;
+    final color = HSVColor.fromAHSV(1.0, hue.toDouble(), 0.7, 0.9).toColor();
+
+    return UI.View(
+      key: 'box_$index',
+      props: ViewProps(
+        width: 80, // Smaller fixed width
+        height: 80, // Smaller fixed height
+        backgroundColor: color,
+        borderRadius: 8,
+        margin: 8,
+        alignItems: AlignItems.center,
+        justifyContent: JustifyContent.center,
+      ),
+      children: [
+        UI.Text(
+          content: (index + 1).toString(),
+          props: TextProps(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   VDomNode render() {
     final itemCount = useState<int>(12);
@@ -107,14 +135,16 @@ class CounterComponent extends StatefulComponent {
 
     return UI.View(
         props: ViewProps(
-          height: '100%',
-          width: '100%',
-        ),
+            height: '100%',
+            width: '100%',
+            backgroundColor: Colors.yellow,
+            padding: 30),
         children: [
           UI.ScrollView(
               props: ScrollViewProps(
-                height: '90%',
+                height: '95%',
                 width: '100%',
+                padding: 40,
                 showsHorizontalScrollIndicator: true,
                 backgroundColor: Colors.indigoAccent,
               ),
@@ -131,7 +161,88 @@ class CounterComponent extends StatefulComponent {
                         height: '20%',
                         backgroundColor: bg.value),
                     children: [
-                     
+                      UI.View(
+                          props: ViewProps(
+                            alignItems: AlignItems.center,
+                            justifyContent: JustifyContent.center,
+                            borderRadius: 20,
+                            borderColor: borderBgs.value,
+                            borderWidth: 10,
+                            height: '80%',
+                            width: '80%',
+                            backgroundColor: Colors.green,
+                          ),
+                          children: [
+                            UI.Text(
+                                content: "Test App ",
+                                props: TextProps(
+                                  fontSize: 20,
+                                  color: Colors.white,
+                                  textAlign: TextAlign.center,
+                                  fontWeight: FontWeight.bold,
+                                )),
+                            UI.Text(
+                                content: "Counter Value: ${counter.value}",
+                                props: TextProps(
+                                  fontSize: 20,
+                                  color: Colors.amber,
+                                  textAlign: TextAlign.center,
+                                  fontWeight: FontWeight.bold,
+                                ))
+                          ]),
+                    ]),UI.View(
+                    props: ViewProps(
+                        padding: 20,
+                        margin: 20,
+                        borderRadius: 20,
+                        borderWidth: 10,
+                        width: '90%',
+                        alignItems: AlignItems.center,
+                        justifyContent: JustifyContent.center,
+                        height: '20%',
+                        backgroundColor: bg.value),
+                    children: [
+                      UI.View(
+                          props: ViewProps(
+                            alignItems: AlignItems.center,
+                            justifyContent: JustifyContent.center,
+                            borderRadius: 20,
+                            borderColor: borderBgs.value,
+                            borderWidth: 10,
+                            height: '80%',
+                            width: '80%',
+                            backgroundColor: Colors.green,
+                          ),
+                          children: [
+                            UI.Text(
+                                content: "Test App ",
+                                props: TextProps(
+                                  fontSize: 20,
+                                  color: Colors.white,
+                                  textAlign: TextAlign.center,
+                                  fontWeight: FontWeight.bold,
+                                )),
+                            UI.Text(
+                                content: "Counter Value: ${counter.value}",
+                                props: TextProps(
+                                  fontSize: 20,
+                                  color: Colors.amber,
+                                  textAlign: TextAlign.center,
+                                  fontWeight: FontWeight.bold,
+                                ))
+                          ]),
+                    ]),UI.View(
+                    props: ViewProps(
+                        padding: 20,
+                        margin: 20,
+                        borderRadius: 20,
+                        borderWidth: 10,
+                        width: '90%',
+                        alignItems: AlignItems.center,
+                        justifyContent: JustifyContent.center,
+                        height: '20%',
+                        backgroundColor: bg.value),
+                    children: [
                       UI.View(
                           props: ViewProps(
                             alignItems: AlignItems.center,
@@ -164,13 +275,13 @@ class CounterComponent extends StatefulComponent {
                     ]),
                 UI.ScrollView(
                     props: ScrollViewProps(
-                      height: '70%',
-                      width: '100%',
-                      showsHorizontalScrollIndicator: true,
-                      backgroundColor: Colors.red,
-                    ),
+                        height: '70%',
+                        width: '100%',
+                        showsHorizontalScrollIndicator: true,
+                        backgroundColor: Colors.red,
+                        flexWrap: FlexWrap.wrap),
                     children: [
-                       ...boxes,
+                      ...boxes,
                       UI.Image(
                           props: ImageProps(
                         margin: 20,
@@ -228,33 +339,5 @@ class CounterComponent extends StatefulComponent {
                     })
               ])
         ]);
-  }
-
-  VDomNode createBox(int index) {
-    final hue = (index * 30) % 360;
-    final color = HSVColor.fromAHSV(1.0, hue.toDouble(), 0.7, 0.9).toColor();
-
-    return UI.View(
-      key: 'box_$index',
-      props: ViewProps(
-        width: 80, // Smaller fixed width
-        height: 80, // Smaller fixed height
-        backgroundColor: color,
-        borderRadius: 8,
-        margin: 8,
-        alignItems: AlignItems.center,
-        justifyContent: JustifyContent.center,
-      ),
-      children: [
-        UI.Text(
-          content: (index + 1).toString(),
-          props: TextProps(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
   }
 }

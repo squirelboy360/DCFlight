@@ -46,7 +46,7 @@ class ScrollViewProps extends BaseProps {
     super.paddingHorizontal,
     super.paddingVertical,
 
-    // Flexbox properties - CRITICAL: Passing these to the superclass
+    // Flexbox properties
     super.flex,
     super.flexDirection,
     super.flexWrap,

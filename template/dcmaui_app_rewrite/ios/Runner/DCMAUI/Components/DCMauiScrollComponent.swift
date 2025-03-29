@@ -5,30 +5,29 @@ class DCMauiScrollComponent: NSObject, DCMauiComponentProtocol {
     private static var scrollViewDelegates: [UIScrollView: ScrollViewDelegate] = [:]
     
     static func createView(props: [String: Any]) -> UIView {
-        let scrollView = EnhancedScrollView()
+        // Create DirectScrollView - our optimized implementation
+        let scrollView = DirectScrollView()
         
+        // Basic configuration
         scrollView.showsVerticalScrollIndicator = true
         scrollView.showsHorizontalScrollIndicator = false
         scrollView.bounces = true
+        scrollView.clipsToBounds = true
         
         if #available(iOS 11.0, *) {
             scrollView.contentInsetAdjustmentBehavior = .never
         }
         
-        let contentView = UIView()
-        contentView.backgroundColor = .clear
-        scrollView.addSubview(contentView)
-        scrollView.contentView = contentView
-        
+        // Create yoga node for layout
         let _ = DCMauiLayoutManager.shared.createYogaNode(for: scrollView)
-        let _ = DCMauiLayoutManager.shared.createYogaNode(for: contentView)
         
+        // Apply properties
         updateView(scrollView, props: props)
         return scrollView
     }
     
     static func updateView(_ view: UIView, props: [String: Any]) {
-        guard let scrollView = view as? EnhancedScrollView else { return }
+        guard let scrollView = view as? DirectScrollView else { return }
         
         if let showsVertical = props["showsVerticalScrollIndicator"] as? Bool {
             scrollView.showsVerticalScrollIndicator = showsVertical
@@ -90,12 +89,14 @@ class DCMauiScrollComponent: NSObject, DCMauiComponentProtocol {
         
         applyLayoutProps(scrollView, props: props)
         
-        if let contentView = scrollView.contentView {
-            let contentProps: [String: Any] = [
-                "flexDirection": horizontal ? "row" : "column",
-                "flexWrap": props["flexWrap"] ?? "nowrap"
-            ]
-            DCMauiLayoutManager.shared.applyLayout(to: contentView, withProps: contentProps)
+        // Store flexWrap property for special handling in layout
+        if let flexWrap = props["flexWrap"] as? String {
+            objc_setAssociatedObject(
+                scrollView,
+                UnsafeRawPointer(bitPattern: "flexWrap".hashValue)!,
+                flexWrap,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
         }
         
         scrollView.layoutSubviews()
@@ -177,73 +178,99 @@ class DCMauiScrollComponent: NSObject, DCMauiComponentProtocol {
     }
 }
 
-class EnhancedScrollView: UIScrollView {
-    var contentView: UIView?
+// Optimized ScrollView that manages content directly
+class DirectScrollView: UIScrollView {
+    // Flag to track scroll direction
     var isHorizontal: Bool = false
+    
+    // Track content elements for cleanup
+    private var contentElements: [UIView] = []
+    
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        self.backgroundColor = .clear
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+    }
+    
+    override func addSubview(_ view: UIView) {
+        // Add the view directly to the scroll view
+        super.addSubview(view)
+        
+        // Track content elements for size calculation
+        contentElements.append(view)
+        
+        // Force layout update
+        setNeedsLayout()
+    }
     
     override func layoutSubviews() {
         super.layoutSubviews()
         
-        guard let contentView = contentView else { return }
+        // CRITICAL: Calculate content size based on subview frames
+        var contentWidth: CGFloat = 0
+        var contentHeight: CGFloat = 0
         
-        let layoutManager = DCMauiLayoutManager.shared
+        // Let Yoga calculate layout for all subviews
+        for view in self.subviews {
+            DCMauiLayoutManager.shared.calculateAndApplyLayout(
+                for: view,
+                width: isHorizontal ? CGFloat.greatestFiniteMagnitude : self.bounds.width,
+                height: isHorizontal ? self.bounds.height : CGFloat.greatestFiniteMagnitude
+            )
+            
+            // Update content dimensions based on view position and size - NO PADDING AT ALL
+            contentWidth = max(contentWidth, view.frame.maxX)
+            contentHeight = max(contentHeight, view.frame.maxY)
+        }
         
+        // NO MINIMUM PADDING - exactness is key for percentage layouts
+        
+        // Set content size based on direction - EXACT SIZE OF CONTENTS
         if isHorizontal {
-            layoutManager.calculateAndApplyLayout(
-                for: contentView,
-                width: .greatestFiniteMagnitude,
+            self.contentSize = CGSize(
+                width: max(contentWidth, bounds.width),
                 height: self.bounds.height
             )
-            
-            contentSize = CGSize(
-                width: max(contentView.bounds.width, self.bounds.width),
-                height: self.bounds.height
-            )
-            
-            contentView.frame = CGRect(
-                x: 0,
-                y: 0,
-                width: contentSize.width,
-                height: self.bounds.height
-            )
+            self.alwaysBounceHorizontal = contentWidth > self.bounds.width
         } else {
-            layoutManager.calculateAndApplyLayout(
-                for: contentView,
+            self.contentSize = CGSize(
                 width: self.bounds.width,
-                height: .greatestFiniteMagnitude
+                height: max(contentHeight, bounds.height)
             )
-            
-            contentSize = CGSize(
-                width: self.bounds.width,
-                height: max(contentView.bounds.height, self.bounds.height)
-            )
-            
-            contentView.frame = CGRect(
-                x: 0,
-                y: 0,
-                width: self.bounds.width,
-                height: contentSize.height
-            )
+            self.alwaysBounceVertical = contentHeight > self.bounds.height
         }
         
-        if contentSize.width < bounds.width {
-            contentSize.width = bounds.width
-        }
+        print("📏 EXACT ScrollView content size: \(self.contentSize) based on content: \(contentWidth) x \(contentHeight)")
         
-        if contentSize.height < bounds.height {
-            contentSize.height = bounds.height
+        // Special handling for flexWrap cases - these need extra attention
+        if self.subviews.count > 0 {
+            if let wrapProp = objc_getAssociatedObject(
+                self,
+                UnsafeRawPointer(bitPattern: "flexWrap".hashValue)!
+            ) as? String, wrapProp == "wrap" {
+                // For wrapped content, trust our calculated size completely
+                print("📏 Using exact content height for wrapped content: \(contentHeight)")
+            }
         }
     }
     
-    override func addSubview(_ view: UIView) {
-        if contentView != nil && view != contentView {
-            contentView?.addSubview(view)
-        } else {
-            super.addSubview(view)
+    override func touchesShouldCancel(in view: UIView) -> Bool {
+        return true // Helps scrolling work better
+    }
+    
+    // Clear out content elements when removed
+    override func willRemoveSubview(_ subview: UIView) {
+        super.willRemoveSubview(subview)
+        if let index = contentElements.firstIndex(of: subview) {
+            contentElements.remove(at: index)
         }
     }
 }
 
+// Keep ScrollViewDelegate separate - it implements UIScrollViewDelegate
 class ScrollViewDelegate: NSObject, UIScrollViewDelegate {
     let viewId: String
     let callback: (String, String, [String: Any]) -> Void
@@ -305,10 +332,8 @@ class ScrollViewDelegate: NSObject, UIScrollViewDelegate {
         
         if !decelerate {
             callback(viewId, "scrollEnd", [
-                "contentOffset": [
-                    "x": scrollView.contentOffset.x,
-                    "y": scrollView.contentOffset.y
-                ]
+                "x": scrollView.contentOffset.x,
+                "y": scrollView.contentOffset.y
             ])
         }
     }
