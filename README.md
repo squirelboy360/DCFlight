@@ -1,6 +1,8 @@
 # Phase: Validation phase (everything is in the template until fully validated then modularised)
 # DCNative (MAUI/Multi-platform App UI)
-# 🚧 This CLI is Under Development
+
+## Flutter Native Sucks but Native UI (in pure dart) + Flutter(Skia/impeller) = 🔥
+## 🚧 This CLI is Under Development
 
 Its aim is to simplify cross-platform app development for personal future projects.
 
