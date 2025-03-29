@@ -12,7 +12,7 @@ If you want to test it, do not use the CLI as it currently does nothing. However
 
 ## 📌 Key Points
 
-### 1️⃣ Flutter Engine Usage (Current branch uses C header file to communicates between native and dart, no more abstaction for UI rendering, the Vdom uses direct native communication for UI CRUD i short)
+### 1️⃣ Flutter Engine Usage (Current branch uses C header file to communicates between native and dart, no more abstaction for UI rendering, the Vdom uses direct native communication for UI CRUD in short)
 
 Developers might notice that the framework is built on Flutter—but in actuality, it is not.  
 It is almost impossible to decouple the Dart VM from Flutter. To work around this:
