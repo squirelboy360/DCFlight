@@ -15,9 +15,8 @@ If you want to test it, do not use the CLI as it currently does nothing. However
 Developers might notice that the framework is built on Flutter—but in actuality, it is not.  
 It is almost impossible to decouple the Dart VM from Flutter. To work around this:
 
-- The framework is built parallel to Flutter Engine and not on top(This means we get Dart VM and the rest is handled by the native layer instead of Platform Views or any flutter abstraction while your usual flutter engine runs parallel idle untle(obviously the the dart runtime is not idle as its needed to start the the communication with native side and if flutter View is needed to be spawned for canvas rendering the flutter view definately is full active), but not as a Flutter framework.
-- When abstracting the Flutter engine, I separate it into a dedicated package.
-- The framework only exposes method channels and essential functions like `runApp()(no more needed)`.
+- The framework is built parallel to Flutter Engine and not on top(This means we get Dart VM and the rest is handled by the native layer instead of Platform Views or any flutter abstraction while your usual flutter engine runs parallel for the dart runtime as its needed to start the the communication with native side and if flutter View is needed to be spawned for canvas rendering.
+- When abstracting the Flutter engine, I separate it into a dedicated package. Currenttly everything is handled as a package.
 - This allows communication with the Flutter engine in headless mode, letting the native side handle rendering.
 
 ### 2️⃣ Current Syntax Needs Improvement 🤦‍♂️
