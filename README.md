@@ -1,5 +1,6 @@
-
+# Phase: Validation phase (everything is in the template until fully validated then modularised)
 # DCNative (MAUI/Multi-platform App UI)
+
 ## Flutter Native Sucks but Native UI (in pure dart) + Flutter(Skia/impeller) = 🔥
 ## 🚧 This CLI is Under Development
 
@@ -16,9 +17,8 @@ If you want to test it, do not use the CLI as it currently does nothing. However
 Developers might notice that the framework is built on Flutter—but in actuality, it is not.  
 It is almost impossible to decouple the Dart VM from Flutter. To work around this:
 
-- The framework is built parallel to Flutter Engine and not on top(This means we get Dart VM and the rest is handled by the native layer instead of Platform Views or any flutter abstraction while your usual flutter engine runs parallel idle untle(obviously the the dart runtime is not idle as its needed to start the the communication with native side and if flutter View is needed to be spawned for canvas rendering the flutter view definately is full active), but not as a Flutter framework.
-- When abstracting the Flutter engine, I separate it into a dedicated package.
-- The framework only exposes method channels and essential functions like `runApp()(no more needed)`.
+- The framework is built parallel to Flutter Engine and not on top(This means we get Dart VM and the rest is handled by the native layer instead of Platform Views or any flutter abstraction while your usual flutter engine runs parallel for the dart runtime as its needed to start the the communication with native side and if flutter View is needed to be spawned for canvas rendering.
+- When abstracting the Flutter engine, I separate it into a dedicated package. Currenttly everything is handled as a package.
 - This allows communication with the Flutter engine in headless mode, letting the native side handle rendering.
 
 ### 2️⃣ Current Syntax Needs Improvement 🤦‍♂️
@@ -28,19 +28,15 @@ The current syntax is not great, but I will abstract over it later.
 ## 📝 Dart Example
 
 ```dart
-import 'package:flutter/material.dart';
-import 'framework/packages/vdom/vdom.dart';
-import 'framework/packages/vdom/vdom_node.dart';
-import 'framework/packages/vdom/component.dart';
-import 'framework/packages/performance/performance_monitor.dart';
-import 'dart:developer' as developer;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  developer.log('Starting DCMAUI application', name: 'App');
 
   // Start performance monitoring
   PerformanceMonitor().startMonitoring();
 
+  // Start the native UI application
   startNativeApp();
 }
 
@@ -52,194 +48,257 @@ void startNativeApp() async {
   await vdom.isReady;
   developer.log('VDom is ready', name: 'App');
 
-  // Create a counter component with initial props
+  // Create our counter component
   final counterComponent = CounterComponent();
 
-  // Create a component node with our component
-  final counterNode = VDom.createComponent(counterComponent);
+  // Create a component node
+  final counterNode = vdom.createComponent(counterComponent);
 
-  // Render to the native UI
+  // Render the component to native UI
   final viewId =
       await vdom.renderToNative(counterNode, parentId: "root", index: 0);
   developer.log('Rendered counter component with ID: $viewId', name: 'App');
 
   developer.log('DCMAUI framework started in headless mode', name: 'App');
-
-  // Artificially generate some load to demonstrate dual-thread benefits
-  _runPerformanceDemo();
 }
 
-// Create artificial load to demonstrate the dual-thread architecture benefits
-void _runPerformanceDemo() {
-  Future.delayed(Duration(seconds: 5), () {
-    developer.log('Starting performance demonstration...', name: 'PerfDemo');
-
-    // Simulate heavy UI operations in the background
-    _simulateHeavyUIWork();
-
-    // Simultaneously handle events to show non-blocking behavior
-    _simulateEventHandling();
-
-    developer.log('Performance demonstration started', name: 'PerfDemo');
-  });
-}
-
-// Simulate heavy UI operations (would run on FFI thread)
-void _simulateHeavyUIWork() {
-  for (int i = 0; i < 10; i++) {
-    Future.delayed(Duration(seconds: i * 2), () {
-      final perf = PerformanceMonitor();
-
-      // Time a heavy UI operation
-      perf.startTimer('complex_layout_update_$i');
-
-      // Simulate complex layout work
-      final result = _performHeavyCalculation();
-
-      perf.endTimer('complex_layout_update_$i');
-
-      developer.log('Completed heavy UI work batch $i: $result',
-          name: 'PerfDemo');
-    });
-  }
-}
-
-// Simulate event handling (would run on method channel thread)
-void _simulateEventHandling() {
-  for (int i = 0; i < 20; i++) {
-    Future.delayed(Duration(milliseconds: i * 750), () {
-      final perf = PerformanceMonitor();
-
-      // Time an event operation
-      perf.startTimer('button_press_event_$i');
-
-      // Simulate event handling logic
-      final eventResult = _handleSimulatedEvent(i);
-
-      perf.endTimer('button_press_event_$i', category: 'event');
-
-      developer.log('Processed event $i: $eventResult', name: 'PerfDemo');
-    });
-  }
-}
-
-// Perform a computationally intensive task to simulate UI work
-int _performHeavyCalculation() {
-  int result = 0;
-  // Simulate a complex calculation that would block the thread
-  for (int i = 0; i < 5000000; i++) {
-    result += i % 17;
-  }
-  return result;
-}
-
-// Handle a simulated event
-String _handleSimulatedEvent(int eventId) {
-  // Simulate event processing logic
-  String result = 'Event-$eventId';
-
-  // Add some work to make it measurable
-  for (int i = 0; i < 1000000; i++) {
-    if (i % 10000 == 0) {
-      result += '.';
-    }
-  }
-
-  return result;
-}
-
-// A stateful counter component using the simpler hook-based API
 class CounterComponent extends StatefulComponent {
+  VDomNode createBox(int index) {
+    final hue = (index * 30) % 360;
+    final color = HSVColor.fromAHSV(1.0, hue.toDouble(), 0.7, 0.9).toColor();
+
+    return UI.View(
+      props: ViewProps(
+        width: 80,
+        height: 80,
+        backgroundColor: color,
+        borderRadius: 8,
+        margin: 8,
+        alignItems: AlignItems.center,
+        justifyContent: JustifyContent.center,
+      ),
+      children: [
+        UI.Text(
+          content: TextContent((index + 1).toString(),
+              props: TextProps(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              )),
+        ),
+      ],
+    );
+  }
+
   @override
   VDomNode render() {
-    // Use the hook-based API from component.dart directly
-    final counter = useState(0, 'count');
+    final itemCount = useState<int>(100);
+    final boxes = List.generate(
+      itemCount.value,
+      (i) => createBox(i),
+    );
 
-    developer.log("Rendering with count=${counter.value}",
-        name: 'CounterComponent');
+    final counter = useState(0, 'counter');
+    final bg =
+        useState(Color(Colors.indigoAccent.toARGB32()), 'scrollViewBGColor');
 
-    // Create a container view with more explicit styling
-    return VDom.createElement('View', props: {
-      'backgroundColor': '#372FB8', // Strong blue background
-      'padding': 20,
-      'width': 400.0, // Explicit width
-      'height': 800.0, // Explicit height
-    }, children: [
-      // Spacer
-      VDom.createElement('View', props: {
-        'height': 50,
-      }),
+    final borderBgs =
+        useState(Color(Colors.indigoAccent.toARGB32()), 'scrollViewBGColor');
+    // Use an effect to update the ScrollView background color every second
+    useEffect(() {
+      final rnd = math.Random();
+      Color color() => Color(rnd.nextInt(0xffffffff));
+      // Set up a timer to update the color every second
+      final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        // Update the background color
+        bg.setValue(color());
 
-      // Title text with proper spacing
-      VDom.createElement('Text', props: {
-        'content': "App Counter",
-        'fontSize': 24,
-        'fontWeight': 'bold',
-        'color': '#000000',
-        'textAlign': 'center',
-      }),
+        developer.log('Updated ScrollView background color to: $color',
+            name: 'ColorAnimation');
+      });
 
-      // Spacer
-      VDom.createElement('View', props: {
-        'height': 50,
-      }),
+      // Clean up the timer when the component is unmounted
+      return () {
+        timer.cancel();
+        developer.log('Canceled background color animation timer',
+            name: 'ColorAnimation');
+      };
+    }, dependencies: []);
 
-      // Counter text with better styling - should update with state
-      VDom.createElement('Text', props: {
-        'content': 'Count: ${counter.value}',
-        'fontSize': 36,
-        'color': '#000000',
-        'textAlign': 'center',
-        'testId': 'counter-text',
-      }),
+    useEffect(() {
+      final rnd = math.Random();
+      Color color() => Color(rnd.nextInt(0xffffffff));
+      // Set up a timer to update the color every second
+      final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        // Update the background color
+        borderBgs.setValue(color());
+        counter.setValue(counter.value + 1);
+        developer.log('Updated border color to: $color',
+            name: 'ColorAnimation');
+      });
 
-      // Spacer
-      VDom.createElement('View', props: {
-        'height': 40,
-      }),
+      // Clean up the timer when the component is unmounted
+      return () {
+        timer.cancel();
+        developer.log('Canceled background color animation timer',
+            name: 'ColorAnimation');
+      };
+    }, dependencies: []);
 
-      // Button with better interactivity and styling
-      VDom.createElement('Button', props: {
-        'title': 'Tap to Increment',
-        'backgroundColor': '#4CAF50', // Keep green color
-        'color': '#FFFFFF',
-        'disabled': false,
-        'fontSize': 18.0,
-        'padding': 12.0,
-        'margin': 12.0,
-        'width': 200.0, // Explicit width
-        'height': 50.0, // Explicit height
-        'onPress': (eventData) {
-          // With hooks, we can simply call setValue with the new value
-          counter.setValue(counter.value + 1);
-          developer.log('Button pressed, new count: ${counter.value}',
-              name: 'CounterComponent');
-        },
-      }),
-
-      VDom.createElement('View', props: {
-        'height': 50,
-        'backgroundColor': '#FFFFFF',
-      }),
-
-      VDom.createElement('Button', props: {
-        'title': 'Tap to Decrement',
-        'backgroundColor': '#9600ff',
-        'color': '#FFFFFF',
-        'disabled': false,
-        'fontSize': 18.0,
-        'padding': 12.0,
-        'margin': 12.0,
-        'width': 200.0, // Explicit width
-        'height': 50.0, // Explicit height
-        'onPress': (eventData) {
-          // Just a one-liner with the hook API
-          counter.setValue(counter.value - 1);
-          developer.log('Decremented counter to ${counter.value}',
-              name: 'CounterComponent');
-        },
-      }),
-    ]);
+    return UI.View(
+        props: ViewProps(
+            height: '100%',
+            width: '100%',
+            backgroundColor: Colors.yellow,
+            padding: 30),
+        children: [
+          UI.ScrollView(
+              props: ScrollViewProps(
+                height: '95%',
+                width: '100%',
+                padding: 8,
+                showsHorizontalScrollIndicator: true,
+                backgroundColor: Colors.indigoAccent,
+              ),
+              children: [
+                UI.Image(
+                    props: ImageProps(
+                  margin: 20,
+                  resizeMode: ResizeMode.cover,
+                  borderRadius: 20,
+                  borderWidth: 10,
+                  height: '50%',
+                  width: '90%',
+                  borderColor: borderBgs.value,
+                  source:
+                      'https://avatars.githubusercontent.com/u/205313423?s=400&u=2abecc79555be8a9b63ddd607489676ab93b2373&v=4',
+                )),
+                UI.View(
+                    props: ViewProps(
+                        padding: 2,
+                        margin: 20,
+                        borderRadius: 20,
+                        borderWidth: 10,
+                        width: '90%',
+                        alignItems: AlignItems.center,
+                        justifyContent: JustifyContent.center,
+                        height: '20%',
+                        backgroundColor: bg.value),
+                    children: [
+                      UI.View(
+                          props: ViewProps(
+                            alignItems: AlignItems.center,
+                            justifyContent: JustifyContent.center,
+                            borderRadius: 2,
+                            borderColor: borderBgs.value,
+                            borderWidth: 2,
+                            height: '80%',
+                            width: '100%',
+                            shadowRadius: 2,
+                            backgroundColor: Colors.green,
+                          ),
+                          children: [
+                            UI.Text(
+                              content: TextContent("Test App",
+                                  props: TextProps(
+                                    fontSize: 20,
+                                    color: Colors.white,
+                                    textAlign: TextAlign.center,
+                                    fontWeight: FontWeight.bold,
+                                  )),
+                            ),
+                            UI.Text(
+                              content: TextContent("Counter Value: ",
+                                      props: TextProps(
+                                        fontSize: 20,
+                                        color: Colors.amber,
+                                        textAlign: TextAlign.center,
+                                        fontWeight: FontWeight.bold,
+                                      ))
+                                  .interpolate(counter.value,
+                                      props: TextProps(
+                                        fontSize: 20,
+                                        color: Colors.red,
+                                        textAlign: TextAlign.center,
+                                        fontWeight: FontWeight.bold,
+                                      ))
+                                  .interpolate("  value"),
+                            )
+                          ]),
+                    ]),
+                UI.View(
+                    props: ViewProps(
+                        padding: 20,
+                        margin: 20,
+                        borderRadius: 20,
+                        borderWidth: 10,
+                        width: '90%',
+                        alignItems: AlignItems.center,
+                        justifyContent: JustifyContent.center,
+                        height: '20%',
+                        backgroundColor: bg.value),
+                    children: [
+                      UI.View(
+                          props: ViewProps(
+                            alignItems: AlignItems.center,
+                            justifyContent: JustifyContent.center,
+                            borderRadius: 2,
+                            borderColor: borderBgs.value,
+                            borderWidth: 10,
+                            height: '80%',
+                            width: '100%',
+                            backgroundColor: Colors.green,
+                          ),
+                          children: [
+                            UI.Text(
+                              content: TextContent("Color Change ",
+                                  props: TextProps(
+                                    fontSize: 20,
+                                    color: Colors.orange,
+                                    textAlign: TextAlign.center,
+                                    fontWeight: FontWeight.bold,
+                                  )).interpolate(borderBgs.value),
+                            ),
+                            UI.View(
+                                props: ViewProps(
+                                  flexDirection: FlexDirection.row,
+                                  justifyContent: JustifyContent.center,
+                                ),
+                                children: [
+                                  UI.Text(
+                                    content: TextContent("Counter Value: ",
+                                        props: TextProps(
+                                          fontSize: 20,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        )),
+                                  ),
+                                  UI.Text(
+                                    content: TextContent("",
+                                        props: TextProps(
+                                          fontSize: 20,
+                                          color: Color(0xFFFFBF00),
+                                          fontWeight: FontWeight.bold,
+                                        )).interpolate(counter.value),
+                                  )
+                                ])
+                          ]),
+                    ]),
+                UI.ScrollView(
+                    props: ScrollViewProps(
+                        height: '70%',
+                        width: '100%',
+                        showsHorizontalScrollIndicator: true,
+                        backgroundColor: borderBgs.value,
+                        // Add flexDirection row to make flex wrap work horizontally
+                        flexDirection: FlexDirection.row,
+                        flexWrap: FlexWrap.wrap),
+                    children: [
+                      ...boxes,
+                    ]),
+              ]),
+         
+        ]);
   }
 }
 ```
@@ -251,9 +310,7 @@ The architecture is loosely inspired by .NET MAUI, Flutter and React, but instea
 
 ### 4️⃣ Hot Reload/Restart Issues ⚡
 
-- Hot Reload does not work ❌.
-- Hot Restart works but duplicates the native UIs or stacks them on top of each other, which is annoying. 😕
-
+- Hot Reload does not work yet ❌.
 ---
 
 This project is still in early development, and many improvements will be made along the way.  

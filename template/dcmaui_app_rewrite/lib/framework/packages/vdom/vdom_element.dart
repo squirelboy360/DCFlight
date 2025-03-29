@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'vdom_node.dart';
 
 /// Represents an element in the Virtual DOM tree
@@ -40,7 +41,11 @@ class VDomElement extends VDomNode {
     if (type != other.type) return false;
     if (key != other.key) return false;
 
-    // Deep props comparison is handled by the reconciliation engine
+    // Deep props comparison
+    if (!DeepCollectionEquality().equals(props, other.props)) {
+      return false;
+    }
+
     return true;
   }
 

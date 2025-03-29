@@ -1,16 +1,40 @@
 import 'base_props.dart';
 
+/// Image resize mode options
+enum ResizeMode {
+  cover,
+  contain,
+  stretch,
+  repeat,
+  center;
+
+  String get value {
+    switch (this) {
+      case ResizeMode.cover:
+        return 'cover';
+      case ResizeMode.contain:
+        return 'contain';
+      case ResizeMode.stretch:
+        return 'stretch';
+      case ResizeMode.repeat:
+        return 'repeat';
+      case ResizeMode.center:
+        return 'center';
+    }
+  }
+}
+
 /// Image component properties
 class ImageProps extends BaseProps {
-  final String? source;
-  final String? resizeMode; // 'cover', 'contain', 'stretch', 'repeat', 'center'
+  final String source;
+  final ResizeMode? resizeMode;
   final double? aspectRatio;
   final bool? fadeDuration;
   final String? defaultSource;
   final bool? loadingIndicatorSource;
 
   const ImageProps({
-    this.source,
+    required this.source,
     this.resizeMode,
     this.aspectRatio,
     this.fadeDuration,
@@ -44,8 +68,8 @@ class ImageProps extends BaseProps {
   Map<String, dynamic> toMap() {
     final map = super.toMap();
 
-    if (source != null) map['source'] = source;
-    if (resizeMode != null) map['resizeMode'] = resizeMode;
+    map['source'] = source;
+    if (resizeMode != null) map['resizeMode'] = resizeMode?.value;
     if (aspectRatio != null) map['aspectRatio'] = aspectRatio;
     if (fadeDuration != null) map['fadeDuration'] = fadeDuration;
     if (defaultSource != null) map['defaultSource'] = defaultSource;

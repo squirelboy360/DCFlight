@@ -166,6 +166,9 @@ import yoga
         // Remove from parent view
         view.removeFromSuperview()
         
+        // Clean up Yoga node
+        DCMauiLayoutManager.shared.cleanUpYogaNode(for: view)
+        
         // Remove from registry
         viewRegistry.removeValue(forKey: viewIdString)
         

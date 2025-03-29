@@ -6,7 +6,9 @@ import 'text_props.dart';
 import 'button_props.dart';
 import 'image_props.dart';
 import 'scroll_view_props.dart';
+import 'modifiers/text_content.dart';
 import 'package:flutter/material.dart' show Colors;
+import 'package:flutter/foundation.dart';
 
 /// Helper class with factory methods to create UI components
 class UI {
@@ -24,19 +26,37 @@ class UI {
     );
   }
 
-  /// Create a Text component
+  /// Create a Text component - STRICT version that ONLY accepts TextContent
   static VDomElement Text({
     String? key,
-    required String content,
-    TextProps? props,
+    required TextContent content,
   }) {
-    final propsMap = props?.toMap() ?? {};
-    propsMap['content'] = content;
+    // Generate React Native style text nodes from TextContent
+    final textNodes = content.generateTextNodes(null);
 
+    // If only one node, return it directly with the correct key
+    if (textNodes.length == 1) {
+      // Instead of modifying the existing element's key (which is final)
+      // Create a new element with the key we want
+      final node = textNodes.first;
+      if (key != null) {
+        // Create a new element with the same props but with our key
+        return VDomElement(
+          type: node.type,
+          key: key,
+          props: node.props,
+          children: node.children,
+        );
+      }
+      return node;
+    }
+
+    // For multiple segments, create a row of text nodes
     return VDomElement(
-      type: 'Text',
-      key: key,
-      props: propsMap,
+      type: 'View',
+      key: key, // Pass key to the container view
+      props: {'flexDirection': 'row', 'flexWrap': 'wrap'},
+      children: textNodes,
     );
   }
 
@@ -61,11 +81,9 @@ class UI {
   /// Create an Image component
   static VDomElement Image({
     String? key,
-    required String source,
     ImageProps? props,
   }) {
     final propsMap = props?.toMap() ?? {};
-    propsMap['source'] = source;
 
     return VDomElement(
       type: 'Image',

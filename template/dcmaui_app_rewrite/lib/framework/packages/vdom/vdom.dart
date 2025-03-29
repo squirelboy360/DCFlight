@@ -486,33 +486,6 @@ class VDom {
       return _componentNodes[component.instanceId];
     }
 
-    // Fallback: look through the entire node tree (slower)
-    for (final entry in _nodeTree.entries) {
-      final node = entry.value;
-      if (node is ComponentNode &&
-          node.component.instanceId == component.instanceId) {
-        // Store for future lookups
-        _componentNodes[component.instanceId] = node;
-        return node;
-      }
-    }
-
-    developer.log(
-        'Component node not found, looking by type: ${component.runtimeType}',
-        name: 'VDom');
-
-    // More aggressive search - look for any node with matching component type
-    for (final entry in _nodeTree.entries) {
-      final node = entry.value;
-      if (node is ComponentNode &&
-          node.component.runtimeType == component.runtimeType) {
-        developer.log('Found component by type instead of ID', name: 'VDom');
-        // Store for future lookups
-        _componentNodes[component.instanceId] = node;
-        return node;
-      }
-    }
-
     return null;
   }
 

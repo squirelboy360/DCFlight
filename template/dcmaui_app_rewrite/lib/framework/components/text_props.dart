@@ -1,17 +1,18 @@
 import 'dart:ui' show Color;
 import 'base_props.dart';
+import '../constants/layout_enums.dart';
 
 /// Text component properties
 class TextProps extends BaseProps {
   final String? fontFamily;
   final double? fontSize;
-  final String? fontWeight; // 'normal', 'bold', '100'...'900'
-  final String? fontStyle; // 'normal', 'italic'
+  final FontWeight? fontWeight;
+  final FontStyle? fontStyle;
   final double? letterSpacing;
   final double? lineHeight;
-  final String? textAlign; // 'left', 'center', 'right', 'justify'
-  final String? textDecorationLine; // 'none', 'underline', 'line-through'
-  final String? textTransform; // 'none', 'uppercase', 'lowercase', 'capitalize'
+  final TextAlign? textAlign;
+  final TextDecorationLine? textDecorationLine;
+  final TextTransform? textTransform;
   final Color? color;
   final int? numberOfLines;
   final bool? selectable;
@@ -33,11 +34,15 @@ class TextProps extends BaseProps {
     this.selectable,
     this.adjustsFontSizeToFit,
     this.minimumFontSize,
+
+    // BaseProps
     super.id,
     super.testID,
     super.accessible,
     super.accessibilityLabel,
     super.style,
+
+    // Layout properties
     super.width,
     super.height,
     super.margin,
@@ -45,17 +50,39 @@ class TextProps extends BaseProps {
     super.marginRight,
     super.marginBottom,
     super.marginLeft,
+    super.marginHorizontal,
+    super.marginVertical,
     super.padding,
     super.paddingTop,
     super.paddingRight,
     super.paddingBottom,
     super.paddingLeft,
+    super.paddingHorizontal,
+    super.paddingVertical,
+
+    // Flexbox properties
     super.flexDirection,
     super.justifyContent,
     super.alignItems,
+    super.alignContent,
     super.alignSelf,
     super.flex,
+    super.flexGrow,
+    super.flexShrink,
+    super.flexBasis,
+    super.flexWrap,
+
+    // Additional layout properties
+    super.position,
+    super.zIndex,
+    super.top,
+    super.right,
+    super.bottom,
+    super.left,
+
+    // Styling
     super.opacity,
+    super.backgroundColor,
   });
 
   @override
@@ -64,16 +91,19 @@ class TextProps extends BaseProps {
 
     if (fontFamily != null) map['fontFamily'] = fontFamily;
     if (fontSize != null) map['fontSize'] = fontSize;
-    if (fontWeight != null) map['fontWeight'] = fontWeight;
-    if (fontStyle != null) map['fontStyle'] = fontStyle;
+    if (fontWeight != null) map['fontWeight'] = fontWeight?.value;
+    if (fontStyle != null) map['fontStyle'] = fontStyle?.value;
     if (letterSpacing != null) map['letterSpacing'] = letterSpacing;
     if (lineHeight != null) map['lineHeight'] = lineHeight;
-    if (textAlign != null) map['textAlign'] = textAlign;
+    if (textAlign != null) map['textAlign'] = textAlign?.value;
     if (textDecorationLine != null) {
-      map['textDecorationLine'] = textDecorationLine;
+      map['textDecorationLine'] = textDecorationLine?.value;
     }
-    if (textTransform != null) map['textTransform'] = textTransform;
-    if (color != null) map['color'] = color;
+    if (textTransform != null) map['textTransform'] = textTransform?.value;
+    if (color != null) {
+      final hexValue = color!.value & 0xFFFFFF;
+      map['color'] = '#${hexValue.toRadixString(16).padLeft(6, '0')}';
+    }
     if (numberOfLines != null) map['numberOfLines'] = numberOfLines;
     if (selectable != null) map['selectable'] = selectable;
     if (adjustsFontSizeToFit != null) {

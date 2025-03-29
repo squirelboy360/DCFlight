@@ -5,27 +5,30 @@ class DCMauiScrollComponent: NSObject, DCMauiComponentProtocol {
     private static var scrollViewDelegates: [UIScrollView: ScrollViewDelegate] = [:]
     
     static func createView(props: [String: Any]) -> UIView {
-        let scrollView = UIScrollView()
+        // Create DirectScrollView - our optimized implementation
+        let scrollView = DirectScrollView()
         
-        // Configure default properties
+        // Basic configuration
         scrollView.showsVerticalScrollIndicator = true
         scrollView.showsHorizontalScrollIndicator = false
         scrollView.bounces = true
+        scrollView.clipsToBounds = true
         
-        // Create Yoga node for layout management
+        if #available(iOS 11.0, *) {
+            scrollView.contentInsetAdjustmentBehavior = .never
+        }
+        
+        // Create yoga node for layout
         let _ = DCMauiLayoutManager.shared.createYogaNode(for: scrollView)
         
-        // Apply all props
+        // Apply properties
         updateView(scrollView, props: props)
         return scrollView
     }
     
     static func updateView(_ view: UIView, props: [String: Any]) {
-        guard let scrollView = view as? UIScrollView else { return }
+        guard let scrollView = view as? DirectScrollView else { return }
         
-        // ScrollView-specific properties
-        
-        // Indicator visibility
         if let showsVertical = props["showsVerticalScrollIndicator"] as? Bool {
             scrollView.showsVerticalScrollIndicator = showsVertical
         }
@@ -34,33 +37,27 @@ class DCMauiScrollComponent: NSObject, DCMauiComponentProtocol {
             scrollView.showsHorizontalScrollIndicator = showsHorizontal
         }
         
-        // Bouncing behavior
         if let bounces = props["bounces"] as? Bool {
             scrollView.bounces = bounces
         }
         
-        // Paging behavior
         if let pagingEnabled = props["pagingEnabled"] as? Bool {
             scrollView.isPagingEnabled = pagingEnabled
         }
         
-        // Scroll event throttling
         if let scrollEventThrottle = props["scrollEventThrottle"] as? Float {
-            // Store the throttle value as an associated object
             objc_setAssociatedObject(
-                scrollView,
+                scrollView, 
                 UnsafeRawPointer(bitPattern: "scrollEventThrottle".hashValue)!,
                 scrollEventThrottle,
                 .OBJC_ASSOCIATION_RETAIN_NONATOMIC
             )
         }
         
-        // Directional lock behavior
         if let directionalLockEnabled = props["directionalLockEnabled"] as? Bool {
             scrollView.isDirectionalLockEnabled = directionalLockEnabled
         }
         
-        // iOS-specific scroll bounce behaviors
         if let alwaysBounceVertical = props["alwaysBounceVertical"] as? Bool {
             scrollView.alwaysBounceVertical = alwaysBounceVertical
         }
@@ -69,48 +66,70 @@ class DCMauiScrollComponent: NSObject, DCMauiComponentProtocol {
             scrollView.alwaysBounceHorizontal = alwaysBounceHorizontal
         }
         
-        // Background color
-        if let bgColorStr = props["backgroundColor"] as? String {
-            scrollView.backgroundColor = UIColorFromHex(bgColorStr)
-        }
-        
-        // Apply border styling
-        applyBorderStyling(to: scrollView, with: props)
-        
-        // Scrolling direction - allow horizontal, vertical or both
         let horizontal = props["horizontal"] as? Bool ?? false
+        scrollView.isHorizontal = horizontal
         
         if horizontal {
-            // For horizontal scrolling
             scrollView.alwaysBounceVertical = false
             scrollView.alwaysBounceHorizontal = true
         } else {
-            // Default to vertical scrolling
             scrollView.alwaysBounceVertical = true
             scrollView.alwaysBounceHorizontal = false
         }
         
-        // Apply opacity
+        if let bgColorStr = props["backgroundColor"] as? String {
+            scrollView.backgroundColor = UIColorFromHex(bgColorStr)
+        }
+        
+        applyBorderStyling(to: scrollView, with: props)
+        
         if let opacity = props["opacity"] as? CGFloat {
             scrollView.alpha = opacity
         }
         
-        // Apply standard Yoga layout props
         applyLayoutProps(scrollView, props: props)
+        
+        // Store flexWrap property for special handling in layout
+        if let flexWrap = props["flexWrap"] as? String {
+            objc_setAssociatedObject(
+                scrollView,
+                UnsafeRawPointer(bitPattern: "flexWrap".hashValue)!,
+                flexWrap,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+        }
+        
+        // Also store flexDirection property for proper layout handling
+        if let flexDirection = props["flexDirection"] as? String {
+            objc_setAssociatedObject(
+                scrollView,
+                UnsafeRawPointer(bitPattern: "flexDirection".hashValue)!,
+                flexDirection,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+            
+            // Also update the Yoga node to match
+            if let yogaNode = DCMauiLayoutManager.shared.yogaNode(for: scrollView) {
+                if flexDirection == "row" {
+                    YGNodeStyleSetFlexDirection(yogaNode, .row)
+                } else if flexDirection == "column" {
+                    YGNodeStyleSetFlexDirection(yogaNode, .column)
+                }
+            }
+        }
+        
+        scrollView.layoutSubviews()
     }
     
     static func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], eventCallback: @escaping (String, String, [String: Any]) -> Void) {
         guard let scrollView = view as? UIScrollView else { return }
         
-        // If we need to handle events, create a delegate
         if eventTypes.contains("scroll") || eventTypes.contains("scrollBegin") || 
            eventTypes.contains("scrollEnd") || eventTypes.contains("momentumScrollBegin") || 
            eventTypes.contains("momentumScrollEnd") {
             
-            // Create and store delegate that bridges to our callback
             let delegate = ScrollViewDelegate(viewId: viewId, callback: eventCallback)
             
-            // Set throttle value if provided earlier
             if let throttle = objc_getAssociatedObject(
                 scrollView,
                 UnsafeRawPointer(bitPattern: "scrollEventThrottle".hashValue)!
@@ -118,29 +137,22 @@ class DCMauiScrollComponent: NSObject, DCMauiComponentProtocol {
                 delegate.scrollEventThrottle = throttle
             }
             
-            // Track which events this delegate should handle
             delegate.enabledEvents = eventTypes
             
             scrollView.delegate = delegate
             scrollViewDelegates[scrollView] = delegate
-            
-            // Debug
-            print("Added scroll event listeners for: \(eventTypes.joined(separator: ", "))")
         }
     }
     
     static func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String]) {
         guard let scrollView = view as? UIScrollView else { return }
         
-        // If removing all scroll events, remove delegate entirely
         if eventTypes.contains("scroll") || eventTypes.contains("scrollEnd") {
             scrollView.delegate = nil
             scrollViewDelegates.removeValue(forKey: scrollView)
         } else if let delegate = scrollViewDelegates[scrollView] {
-            // Otherwise, just update which events to track
             delegate.enabledEvents = delegate.enabledEvents.filter { !eventTypes.contains($0) }
             
-            // If no events left, remove the delegate
             if delegate.enabledEvents.isEmpty {
                 scrollView.delegate = nil
                 scrollViewDelegates.removeValue(forKey: scrollView)
@@ -148,15 +160,12 @@ class DCMauiScrollComponent: NSObject, DCMauiComponentProtocol {
         }
     }
     
-    // Helper to apply border styling
     private static func applyBorderStyling(to view: UIView, with props: [String: Any]) {
-        // Border radius
         if let borderRadius = props["borderRadius"] as? CGFloat {
             view.layer.cornerRadius = borderRadius
             view.clipsToBounds = true
         }
         
-        // Border properties
         if let borderWidth = props["borderWidth"] as? CGFloat {
             view.layer.borderWidth = borderWidth
         }
@@ -165,7 +174,6 @@ class DCMauiScrollComponent: NSObject, DCMauiComponentProtocol {
             view.layer.borderColor = UIColorFromHex(borderColor).cgColor
         }
         
-        // Individual corner radii
         let corners: [(String, CACornerMask)] = [
             ("borderTopLeftRadius", .layerMinXMinYCorner),
             ("borderTopRightRadius", .layerMaxXMinYCorner),
@@ -178,7 +186,7 @@ class DCMauiScrollComponent: NSObject, DCMauiComponentProtocol {
         for (propName, cornerMask) in corners {
             if let radius = props[propName] as? CGFloat {
                 hasCustomCornerRadius = true
-                view.layer.cornerRadius = radius // This will be overridden if multiple corners have different values
+                view.layer.cornerRadius = radius
                 view.layer.maskedCorners.insert(cornerMask)
             }
         }
@@ -189,16 +197,138 @@ class DCMauiScrollComponent: NSObject, DCMauiComponentProtocol {
     }
 }
 
-// Helper class to bridge UIScrollViewDelegate events to our callback system with throttling
+// Optimized ScrollView that manages content directly
+class DirectScrollView: UIScrollView {
+    // Flag to track scroll direction
+    var isHorizontal: Bool = false
+    
+    // Track content elements for cleanup
+    private var contentElements: [UIView] = []
+    
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        self.backgroundColor = .clear
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+    }
+    
+    override func addSubview(_ view: UIView) {
+        // Add the view directly to the scroll view
+        super.addSubview(view)
+        
+        // Track content elements for size calculation
+        contentElements.append(view)
+        
+        // Force layout update
+        setNeedsLayout()
+    }
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        
+        // Get flex props for better layout calculation
+        let flexWrap = objc_getAssociatedObject(
+            self,
+            UnsafeRawPointer(bitPattern: "flexWrap".hashValue)!
+        ) as? String
+        
+        // Get flex direction from associated object if available
+        let flexDirection = objc_getAssociatedObject(
+            self,
+            UnsafeRawPointer(bitPattern: "flexDirection".hashValue)!
+        ) as? String
+        
+        // Determine if we're supposed to wrap (critical for proper layout!)
+        let shouldWrap = flexWrap == "wrap"
+        
+        print("📋 ScrollView layout with flexWrap: \(flexWrap ?? "none"), flexDirection: \(flexDirection ?? "default"), isHorizontal: \(isHorizontal)")
+        
+        // CRITICAL: Calculate content size based on subview frames
+        var contentWidth: CGFloat = 0
+        var contentHeight: CGFloat = 0
+        
+        // For wrapping views, we need to configure Yoga properly first
+        if shouldWrap, let yogaNode = DCMauiLayoutManager.shared.yogaNode(for: self) {
+            // Set flex direction explicitly on the yoga node
+            if isHorizontal || flexDirection == "row" {
+                YGNodeStyleSetFlexDirection(yogaNode, .row)
+            } else {
+                YGNodeStyleSetFlexDirection(yogaNode, .column)
+            }
+            
+            // Set flex wrap explicitly on the yoga node
+            YGNodeStyleSetFlexWrap(yogaNode, .wrap)
+            
+            // For wrapping content, we need proper width constraints
+            let availableWidth = isHorizontal ? CGFloat.greatestFiniteMagnitude : self.bounds.width
+            let availableHeight = isHorizontal ? self.bounds.height : CGFloat.greatestFiniteMagnitude
+            
+            print("📏 Available space for layout: \(availableWidth) x \(availableHeight)")
+        }
+        
+        // Let Yoga calculate layout for all subviews with correct constraints
+        if shouldWrap && isHorizontal {
+            // For horizontal wrapped layouts, use fixed width constraint
+            for view in self.subviews {
+                DCMauiLayoutManager.shared.calculateAndApplyLayout(
+                    for: view,
+                    width: self.bounds.width,
+                    height: self.bounds.height
+                )
+                contentWidth = max(contentWidth, view.frame.maxX)
+                contentHeight = max(contentHeight, view.frame.maxY)
+            }
+        } else {
+            // Standard layout calculation
+            for view in self.subviews {
+                DCMauiLayoutManager.shared.calculateAndApplyLayout(
+                    for: view,
+                    width: isHorizontal ? CGFloat.greatestFiniteMagnitude : self.bounds.width,
+                    height: isHorizontal ? self.bounds.height : CGFloat.greatestFiniteMagnitude
+                )
+                contentWidth = max(contentWidth, view.frame.maxX)
+                contentHeight = max(contentHeight, view.frame.maxY)
+            }
+        }
+        
+        // Set final content size with proper handling for wrapping
+        if isHorizontal {
+            // For horizontal scrolling, content height is never less than view height
+            self.contentSize = CGSize(width: max(contentWidth, bounds.width), 
+                                      height: shouldWrap ? max(contentHeight, bounds.height) : bounds.height)
+            self.alwaysBounceHorizontal = contentWidth > self.bounds.width
+        } else {
+            // For vertical scrolling, content width is always view width
+            self.contentSize = CGSize(width: bounds.width,
+                                     height: max(contentHeight, bounds.height))
+            self.alwaysBounceVertical = contentHeight > self.bounds.height
+        }
+        
+        print("📐 Final ScrollView contentSize: \(self.contentSize) for flex direction \(flexDirection ?? "default")")
+    }
+    
+    override func touchesShouldCancel(in view: UIView) -> Bool {
+        return true // Helps scrolling work better
+    }
+    
+    // Clear out content elements when removed
+    override func willRemoveSubview(_ subview: UIView) {
+        super.willRemoveSubview(subview)
+        if let index = contentElements.firstIndex(of: subview) {
+            contentElements.remove(at: index)
+        }
+    }
+}
+
+// Keep ScrollViewDelegate separate - it implements UIScrollViewDelegate
 class ScrollViewDelegate: NSObject, UIScrollViewDelegate {
-    private let viewId: String
-    private let callback: (String, String, [String: Any]) -> Void
+    let viewId: String
+    let callback: (String, String, [String: Any]) -> Void
     
-    // Tracking which events this delegate should handle
     var enabledEvents: [String] = []
-    
-    // Scroll throttling state
-    var scrollEventThrottle: Float = 0 // In milliseconds
+    var scrollEventThrottle: Float = 0
     private var lastScrollEventTime: TimeInterval = 0
     
     init(viewId: String, callback: @escaping (String, String, [String: Any]) -> Void) {
@@ -207,22 +337,19 @@ class ScrollViewDelegate: NSObject, UIScrollViewDelegate {
         super.init()
     }
     
-    // Called when scroll view is scrolling
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         guard enabledEvents.contains("scroll") else { return }
         
-        let now = Date().timeIntervalSince1970 * 1000 // Current time in ms
+        let now = Date().timeIntervalSince1970 * 1000
         
-        // Apply throttling if needed
         if scrollEventThrottle > 0 {
             if (now - lastScrollEventTime) < Double(scrollEventThrottle) {
-                return // Skip this event due to throttle
+                return
             }
         }
         
         lastScrollEventTime = now
         
-        // Send scroll event
         callback(viewId, "scroll", [
             "contentOffset": [
                 "x": scrollView.contentOffset.x,
@@ -241,7 +368,6 @@ class ScrollViewDelegate: NSObject, UIScrollViewDelegate {
         ])
     }
     
-    // Called when user begins dragging scroll view
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
         guard enabledEvents.contains("scrollBegin") else { return }
         
@@ -253,21 +379,17 @@ class ScrollViewDelegate: NSObject, UIScrollViewDelegate {
         ])
     }
     
-    // Called when dragging ends and deceleration begins
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
         guard enabledEvents.contains("scrollEnd") else { return }
         
         if !decelerate {
             callback(viewId, "scrollEnd", [
-                "contentOffset": [
-                    "x": scrollView.contentOffset.x,
-                    "y": scrollView.contentOffset.y
-                ]
+                "x": scrollView.contentOffset.x,
+                "y": scrollView.contentOffset.y
             ])
         }
     }
     
-    // Called when scroll view finishes decelerating
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
         guard enabledEvents.contains("scrollEnd") else { return }
         
@@ -279,7 +401,6 @@ class ScrollViewDelegate: NSObject, UIScrollViewDelegate {
         ])
     }
     
-    // Called when momentum scrolling begins
     func scrollViewWillBeginDecelerating(_ scrollView: UIScrollView) {
         guard enabledEvents.contains("momentumScrollBegin") else { return }
         
@@ -291,7 +412,6 @@ class ScrollViewDelegate: NSObject, UIScrollViewDelegate {
         ])
     }
     
-    // Called when momentum scrolling ends
     func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
         guard enabledEvents.contains("momentumScrollEnd") else { return }
         

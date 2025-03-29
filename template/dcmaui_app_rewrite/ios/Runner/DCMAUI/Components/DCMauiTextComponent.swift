@@ -3,277 +3,228 @@ import yoga
 
 class DCMauiTextComponent: NSObject, DCMauiComponentProtocol {
     static func createView(props: [String: Any]) -> UIView {
-        let label = UILabel()
+        // Create custom label implementation with built-in size guarantees
+        let label = RobustLabel()
         
-        // Essential for visibility
+        // Configure default properties
         label.numberOfLines = 0
         label.lineBreakMode = .byWordWrapping
+        label.backgroundColor = .clear
+        label.textColor = .black // Set default text color to ensure visibility
         
-        // Default text alignment left (natural) - will be overridden by props
-        label.textAlignment = .center
-        
-        // Set default color - white (visible on most backgrounds)
-        label.textColor = .white
-        
-        // Set default font size if not specified
-        label.font = UIFont.systemFont(ofSize: 18)
-        
-        // Create Yoga node for this view
+        // Create Yoga node for layout
         let _ = DCMauiLayoutManager.shared.createYogaNode(for: label)
         
-        // Apply all props including layout
+        // Store original style props with the label for later updates
+        storeStylePropsWithLabel(label, props: props)
+        
+        // Apply props
         updateView(label, props: props)
         
         return label
     }
     
     static func updateView(_ view: UIView, props: [String: Any]) {
-        guard let textView = view as? UILabel else { return }
+        guard let label = view as? UILabel else { return }
         
-        // Set content if available
-        if let content = props["content"] as? String {
-            textView.text = content
-            print("DEBUG: Set text content: \(content)")
+        // CRITICAL: Get the complete props map including stored style props
+        let completeProps = getCompleteProps(for: label, newProps: props)
+        
+        let textContent = completeProps["content"] as? String ?? ""
+        print("📝 TEXT UPDATE: Content = '\(textContent)', Props = \(completeProps["color"] ?? "no color")")
+        
+        // Apply text content
+        label.text = textContent
+        
+        // Apply text styling with complete props
+        applyTextStyling(label, props: completeProps)
+        
+        // Store the updated props for future updates
+        storeStylePropsWithLabel(label, props: completeProps)
+        
+        // Force layout if needed
+        if let robustLabel = label as? RobustLabel {
+            robustLabel.enforceMinimumSize()
         }
         
-        // Text color handling - now supporting both string and Color object from Dart
+        // Apply layout props
+        applyLayoutProps(label, props: completeProps)
+    }
+    
+    // Store style properties with the label for future updates
+    private static func storeStylePropsWithLabel(_ label: UILabel, props: [String: Any]) {
+        var styleProps: [String: Any] = [:]
+        
+        // List of style properties to preserve
+        let styleKeys = ["color", "fontSize", "fontWeight", "fontStyle", 
+                         "fontFamily", "textAlign", "letterSpacing", "lineHeight", 
+                         "textDecorationLine", "numberOfLines"]
+        
+        // Only store props that are actually present
+        for key in styleKeys {
+            if let value = props[key] {
+                styleProps[key] = value
+            }
+        }
+        
+        if !styleProps.isEmpty {
+            objc_setAssociatedObject(
+                label,
+                UnsafeRawPointer(bitPattern: "textStyleProps".hashValue)!,
+                styleProps,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+            
+            print("💾 Stored style props: \(styleProps)")
+        }
+    }
+    
+    // Get complete props by merging new props with stored style props
+    private static func getCompleteProps(for label: UILabel, newProps: [String: Any]) -> [String: Any] {
+        // Start with new props
+        var completeProps = newProps
+        
+        // Get stored style props (if any)
+        if let storedProps = objc_getAssociatedObject(
+            label,
+            UnsafeRawPointer(bitPattern: "textStyleProps".hashValue)!
+        ) as? [String: Any] {
+            // Only use stored props for keys that aren't in the new props
+            for (key, value) in storedProps {
+                if newProps[key] == nil {
+                    completeProps[key] = value
+                }
+            }
+            
+            print("📤 Using stored style props: \(storedProps)")
+        }
+        
+        return completeProps
+    }
+    
+    private static func applyTextStyling(_ label: UILabel, props: [String: Any]) {
+        // Set basic text color - CRITICAL for visibility
         if let color = props["color"] as? String {
-            textView.textColor = UIColorFromHex(color)
-            print("DEBUG: Set text color to: \(color)")
+            label.textColor = UIColorFromHex(color)
+            print("🎨 Applied color \(color) to text: '\(label.text ?? "")'")
+        } else {
+            // Default to black if no color specified
+            label.textColor = .black
         }
         
-        // Debug existing color
-        if textView.textColor != nil {
-            print("DEBUG: Current text color: \(textView.textColor!)")
+        // Font size - ensure reasonable default
+        var fontSize: CGFloat = 17.0
+        if let size = props["fontSize"] as? CGFloat {
+            fontSize = size
+        } else if let size = props["fontSize"] as? Double {
+            fontSize = CGFloat(size)
+        } else if let size = props["fontSize"] as? Int {
+            fontSize = CGFloat(size)
         }
         
-        // Font properties
-        var fontDescriptor: UIFontDescriptor? = textView.font.fontDescriptor
-        var fontSize: CGFloat = textView.font.pointSize
-        
-        if let fontFamily = props["fontFamily"] as? String {
-            // Check if this is a custom font from assets or system font
-            if let customFont = loadCustomFont(fontFamily, size: fontSize) {
-                textView.font = customFont
-            } else {
-                fontDescriptor = UIFontDescriptor(name: fontFamily, size: fontSize)
+        // Font weight
+        var fontWeight: UIFont.Weight = .regular
+        if let weight = props["fontWeight"] as? String {
+            switch weight {
+            case "bold": fontWeight = .bold
+            case "100": fontWeight = .ultraLight
+            case "200": fontWeight = .thin
+            case "300": fontWeight = .light
+            case "400": fontWeight = .regular
+            case "500": fontWeight = .medium
+            case "600": fontWeight = .semibold
+            case "700": fontWeight = .bold
+            case "800": fontWeight = .heavy
+            case "900": fontWeight = .black
+            default: fontWeight = .regular
             }
         }
         
-        if let newFontSize = props["fontSize"] as? CGFloat {
-            fontSize = newFontSize
-        }
+        // Apply font with weight
+        label.font = UIFont.systemFont(ofSize: fontSize, weight: fontWeight)
         
-        // Font weight handling
-        if let fontWeight = props["fontWeight"] as? String {
-            var traits: [UIFontDescriptor.TraitKey: Any] = [:]
-            
-            switch fontWeight {
-            case "bold":
-                traits[.weight] = UIFont.Weight.bold
-            case "100":
-                traits[.weight] = UIFont.Weight.ultraLight
-            case "200":
-                traits[.weight] = UIFont.Weight.thin
-            case "300":
-                traits[.weight] = UIFont.Weight.light
-            case "400":
-                traits[.weight] = UIFont.Weight.regular
-            case "500":
-                traits[.weight] = UIFont.Weight.medium
-            case "600":
-                traits[.weight] = UIFont.Weight.semibold
-            case "700":
-                traits[.weight] = UIFont.Weight.bold
-            case "800":
-                traits[.weight] = UIFont.Weight.heavy
-            case "900":
-                traits[.weight] = UIFont.Weight.black
-            default:
-                break
-            }
-            
-            if !traits.isEmpty {
-                fontDescriptor = fontDescriptor?.addingAttributes([.traits: traits])
-            }
-        }
-        
-        // Font style handling
-        if let fontStyle = props["fontStyle"] as? String, fontStyle == "italic" {
-            fontDescriptor = fontDescriptor?.withSymbolicTraits(.traitItalic)
-        }
-        
-        // Apply font if we have changes and we're not using custom fonts
-        if let descriptor = fontDescriptor, textView.font?.fontName.lowercased().contains("custom") != true {
-            textView.font = UIFont(descriptor: descriptor, size: fontSize)
-        } else if textView.font?.fontName.lowercased().contains("custom") != true {
-            textView.font = UIFont.systemFont(ofSize: fontSize)
-        }
-        
-        // Text alignment
+        // Apply text alignment
         if let textAlign = props["textAlign"] as? String {
             switch textAlign {
-            case "center":
-                textView.textAlignment = .center
-            case "right":
-                textView.textAlignment = .right
-            case "justify":
-                textView.textAlignment = .justified
-            default:
-                textView.textAlignment = .left
+            case "left": label.textAlignment = .left
+            case "center": label.textAlignment = .center
+            case "right": label.textAlignment = .right
+            case "justify": label.textAlignment = .justified
+            default: label.textAlignment = .natural
             }
-        }
-        
-        // Letter spacing
-        if let letterSpacing = props["letterSpacing"] as? CGFloat {
-            textView.attributedText = NSAttributedString(
-                string: textView.text ?? "",
-                attributes: [.kern: letterSpacing]
-            )
-        }
-        
-        // Line height
-        if let lineHeight = props["lineHeight"] as? CGFloat {
-            let paragraphStyle = NSMutableParagraphStyle()
-            paragraphStyle.lineSpacing = lineHeight - textView.font.lineHeight
-            textView.attributedText = NSAttributedString(
-                string: textView.text ?? "",
-                attributes: [.paragraphStyle: paragraphStyle]
-            )
-        }
-        
-        // Text decoration
-        if let textDecorationLine = props["textDecorationLine"] as? String {
-            var attributes: [NSAttributedString.Key: Any] = [:]
-            
-            switch textDecorationLine {
-            case "underline":
-                attributes[.underlineStyle] = NSUnderlineStyle.single.rawValue
-            case "line-through":
-                attributes[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
-            default:
-                break
-            }
-            
-            if !attributes.isEmpty {
-                let attributedString = NSMutableAttributedString(string: textView.text ?? "")
-                attributedString.addAttributes(
-                    attributes,
-                    range: NSRange(location: 0, length: attributedString.length)
-                )
-                textView.attributedText = attributedString
-            }
-        }
-        
-        // Text transform
-        if let textTransform = props["textTransform"] as? String,
-           let text = textView.text {
-            switch textTransform {
-            case "uppercase":
-                textView.text = text.uppercased()
-            case "lowercase":
-                textView.text = text.lowercased()
-            case "capitalize":
-                textView.text = text.capitalized
-            default:
-                break
-            }
-        }
-        
-        // Number of lines - iOS specific
-        if let numberOfLines = props["numberOfLines"] as? Int {
-            textView.numberOfLines = numberOfLines
-        }
-        
-        // Text adjustments - Fixed property name
-        if let adjustsFontSizeToFit = props["adjustsFontSizeToFit"] as? Bool {
-            textView.adjustsFontSizeToFitWidth = adjustsFontSizeToFit
-            
-            if adjustsFontSizeToFit {
-                if let minimumFontSize = props["minimumFontSize"] as? CGFloat {
-                    textView.minimumScaleFactor = minimumFontSize / fontSize
-                } else {
-                    textView.minimumScaleFactor = 0.5 // Default
-                }
-            }
-        }
-        
-        // Apply standard View styling
-        applyViewStyling(view: textView, props: props)
-        
-        // Apply layout properties
-        applyLayoutProps(textView, props: props)
-        
-        // Important: After settings are applied, make sure the text view can 
-        // calculate its own intrinsic content size to help layout
-        if textView.text?.isEmpty == false {
-            textView.setNeedsLayout()
-            textView.layoutIfNeeded()
         }
     }
     
-    static func applyViewStyling(view: UIView, props: [String: Any]) {
-        // Apply opacity
-        if let opacity = props["opacity"] as? CGFloat {
-            view.alpha = opacity
-        }
-        
-        // Apply background color
-        if let backgroundColor = props["backgroundColor"] as? String {
-            view.backgroundColor = UIColorFromHex(backgroundColor)
+    static func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], eventCallback: @escaping (String, String, [String: Any]) -> Void) {
+        // No standard events for text
+    }
+    
+    static func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String]) {
+        // No standard events for text
+    }
+}
+
+// Custom label class with built-in size guarantees
+class RobustLabel: UILabel {
+    // Override intrinsic content size to provide minimum size
+    override var intrinsicContentSize: CGSize {
+        let size = super.intrinsicContentSize
+        return CGSize(
+            width: max(size.width, 10),  // At least 10pt wide
+            height: max(size.height, 10) // At least 10pt high
+        )
+    }
+    
+    // Override text property to always update size
+    override var text: String? {
+        didSet {
+            print("🔤 Text set to: '\(text ?? "")'")
+            super.text = text
+            self.setNeedsLayout()
+            self.invalidateIntrinsicContentSize()
+            enforceMinimumSize()
         }
     }
     
-    // No standard events for text components
-    static func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], eventCallback: @escaping (String, String, [String: Any]) -> Void) {}
-    
-    static func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String]) {}
-    
-    // Helper function to load custom fonts from the app bundle
-    private static func loadCustomFont(_ fontFamily: String, size: CGFloat) -> UIFont? {
-        // Check if font is already registered
-        if let font = UIFont(name: fontFamily, size: size) {
-            return font
-        }
-        
-        // Try various font extensions
-        let extensions = ["ttf", "otf"]
-        
-        for ext in extensions {
-            // Check the app bundle for the font
-            if let fontURL = Bundle.main.url(forResource: fontFamily, withExtension: ext) {
-                // Register font
-                CTFontManagerRegisterFontsForURL(fontURL as CFURL, .process, nil)
-                
-                // Try to create font after registration
-                if let font = UIFont(name: fontFamily, size: size) {
-                    print("Successfully loaded custom font: \(fontFamily)")
-                    return font
-                }
-            }
+    // Ensure visibility by forcing layout
+    func enforceMinimumSize() {
+        let textSize = self.sizeThatFits(CGSize(width: 10000, height: 10000))
+        if textSize.width > 0 && textSize.height > 0 {
+            // If we have valid text size, ensure view can accommodate it
+            let minFrame = CGRect(
+                x: self.frame.origin.x,
+                y: self.frame.origin.y,
+                width: max(self.frame.width, textSize.width),
+                height: max(self.frame.height, textSize.height)
+            )
             
-            // Try asset folder structure
-            let assetPathFormats = [
-                "fonts/\(fontFamily)",
-                "assets/fonts/\(fontFamily)",
-                "flutter_assets/fonts/\(fontFamily)",
-                "flutter_assets/assets/fonts/\(fontFamily)"
-            ]
-            
-            for path in assetPathFormats {
-                if let fontURL = Bundle.main.url(forResource: path, withExtension: ext) {
-                    CTFontManagerRegisterFontsForURL(fontURL as CFURL, .process, nil)
-                    
-                    // Try to create font after registration
-                    if let font = UIFont(name: fontFamily, size: size) {
-                        print("Successfully loaded custom font from assets: \(fontFamily)")
-                        return font
-                    }
-                }
+            // Only update if needed
+            if self.frame.width < textSize.width || self.frame.height < textSize.height {
+                print("📏 Enforcing minimum size: \(minFrame.width) x \(minFrame.height) for text: '\(self.text ?? "")'")
+                self.frame = minFrame
             }
         }
+    }
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
         
-        print("Could not load custom font: \(fontFamily)")
-        return nil
+        // Ensure our frame is visible after layout
+        if let text = self.text, !text.isEmpty, (frame.width < 1 || frame.height < 1) {
+            print("⚠️ Label frame too small after layout: \(frame) for text: '\(text)'")
+            sizeToFit()
+        }
+    }
+    
+    // Force drawing of the text even for zero-sized frames
+    override func draw(_ rect: CGRect) {
+        if let text = self.text, !text.isEmpty, rect.width < 1 || rect.height < 1 {
+            // Force a minimum drawing rect
+            let minRect = CGRect(x: rect.origin.x, y: rect.origin.y, 
+                                width: max(rect.width, 100), height: max(rect.height, 20))
+            super.draw(minRect)
+        } else {
+            super.draw(rect)
+        }
     }
 }

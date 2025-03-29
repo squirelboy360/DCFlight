@@ -91,7 +91,32 @@ class DCMauiLayoutManager {
         // Get or create yoga node
         let node = yogaNode(for: view) ?? createYogaNode(for: view)
         
-        // Apply all flex properties from props
+        // Special additional handling for text views to guarantee visibility
+        if let label = view as? UILabel {
+            // For text views, ensure they have a valid min size regardless of content
+            YGNodeStyleSetMinWidth(node, 10)  // At least 10pt wide
+            YGNodeStyleSetMinHeight(node, 10) // At least 10pt tall
+            
+            // If we have text content, ensure layout accommodates it
+            if let text = label.text, !text.isEmpty {
+                // Calculate text size
+                let textSize = label.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, 
+                                                        height: CGFloat.greatestFiniteMagnitude))
+                
+                print("📏 Layout manager: text size for \(text): \(textSize.width) x \(textSize.height)")
+                
+                // Set minimum dimensions based on text content
+                if textSize.width > 0 {
+                    YGNodeStyleSetMinWidth(node, Float(textSize.width))
+                }
+                
+                if textSize.height > 0 {
+                    YGNodeStyleSetMinHeight(node, Float(textSize.height))
+                }
+            }
+        }
+        
+        // Apply flex properties from props
         applyFlexboxProps(props, to: node)
     }
     
