@@ -56,10 +56,9 @@ class CounterComponent extends StatefulComponent {
     final color = HSVColor.fromAHSV(1.0, hue.toDouble(), 0.7, 0.9).toColor();
 
     return UI.View(
-      key: 'box_$index',
       props: ViewProps(
-        width: 80, // Smaller fixed width
-        height: 80, // Smaller fixed height
+        width: 80,
+        height: 80,
         backgroundColor: color,
         borderRadius: 8,
         margin: 8,
@@ -150,6 +149,18 @@ class CounterComponent extends StatefulComponent {
                 backgroundColor: Colors.indigoAccent,
               ),
               children: [
+                UI.Image(
+                    props: ImageProps(
+                  margin: 20,
+                  resizeMode: ResizeMode.cover,
+                  borderRadius: 20,
+                  borderWidth: 10,
+                  height: '50%',
+                  width: '90%',
+                  borderColor: borderBgs.value,
+                  source:
+                      'https://avatars.githubusercontent.com/u/205313423?s=400&u=2abecc79555be8a9b63ddd607489676ab93b2373&v=4',
+                )),
                 UI.View(
                     props: ViewProps(
                         padding: 2,
@@ -170,7 +181,8 @@ class CounterComponent extends StatefulComponent {
                             borderColor: borderBgs.value,
                             borderWidth: 2,
                             height: '80%',
-                            width: '80%',
+                            width: '100%',
+                            shadowRadius: 2,
                             backgroundColor: Colors.green,
                           ),
                           children: [
@@ -185,17 +197,20 @@ class CounterComponent extends StatefulComponent {
                             ),
                             UI.Text(
                               content: TextContent("Counter Value: ",
-                                  props: TextProps(
-                                    fontSize: 20,
-                                    color: Colors.amber,
-                                    textAlign: TextAlign.center,
-                                    fontWeight: FontWeight.bold,
-                                  )).interpolate(counter.value,props: TextProps(
-                                    fontSize: 20,
-                                    color: Colors.red,
-                                    textAlign: TextAlign.center,
-                                    fontWeight: FontWeight.bold,
-                                  )),
+                                      props: TextProps(
+                                        fontSize: 20,
+                                        color: Colors.amber,
+                                        textAlign: TextAlign.center,
+                                        fontWeight: FontWeight.bold,
+                                      ))
+                                  .interpolate(counter.value,
+                                      props: TextProps(
+                                        fontSize: 20,
+                                        color: Colors.red,
+                                        textAlign: TextAlign.center,
+                                        fontWeight: FontWeight.bold,
+                                      ))
+                                  .interpolate("  value"),
                             )
                           ]),
                     ]),
@@ -215,11 +230,11 @@ class CounterComponent extends StatefulComponent {
                           props: ViewProps(
                             alignItems: AlignItems.center,
                             justifyContent: JustifyContent.center,
-                            borderRadius: 20,
+                            borderRadius: 2,
                             borderColor: borderBgs.value,
                             borderWidth: 10,
                             height: '80%',
-                            width: '80%',
+                            width: '100%',
                             backgroundColor: Colors.green,
                           ),
                           children: [
@@ -227,7 +242,7 @@ class CounterComponent extends StatefulComponent {
                               content: TextContent("Color Change ",
                                   props: TextProps(
                                     fontSize: 20,
-                                    color: Colors.white,
+                                    color: Colors.orange,
                                     textAlign: TextAlign.center,
                                     fontWeight: FontWeight.bold,
                                   )).interpolate(borderBgs.value),
@@ -270,24 +285,7 @@ class CounterComponent extends StatefulComponent {
                       ...boxes,
                     ]),
               ]),
-          UI.View(
-              props: ViewProps(
-                width: '100%',
-                backgroundColor: Colors.red,
-                height: 50,
-                flexDirection: FlexDirection.row,
-              ),
-              children: [
-                UI.Button(
-                    title: "Increment Counter",
-                    props: ButtonProps(
-                        marginBottom: 20,
-                        width: '50%',
-                        backgroundColor: Colors.amberAccent),
-                    onPress: (v) {
-                      counter.setValue(counter.value + 1);
-                    })
-              ]),
+         
         ]);
   }
 }

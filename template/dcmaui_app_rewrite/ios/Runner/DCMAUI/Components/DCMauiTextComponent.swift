@@ -15,6 +15,9 @@ class DCMauiTextComponent: NSObject, DCMauiComponentProtocol {
         // Create Yoga node for layout
         let _ = DCMauiLayoutManager.shared.createYogaNode(for: label)
         
+        // Store original style props with the label for later updates
+        storeStylePropsWithLabel(label, props: props)
+        
         // Apply props
         updateView(label, props: props)
         
@@ -24,40 +27,86 @@ class DCMauiTextComponent: NSObject, DCMauiComponentProtocol {
     static func updateView(_ view: UIView, props: [String: Any]) {
         guard let label = view as? UILabel else { return }
         
-        // TRACKING
-        let textContent = props["content"] as? String ?? ""
-        print("📝 TEXT COMPONENT UPDATE: '\(textContent)'")
+        // CRITICAL: Get the complete props map including stored style props
+        let completeProps = getCompleteProps(for: label, newProps: props)
         
-        // STEP 1: Set text content DIRECTLY - no async, no complex processing
+        let textContent = completeProps["content"] as? String ?? ""
+        print("📝 TEXT UPDATE: Content = '\(textContent)', Props = \(completeProps["color"] ?? "no color")")
+        
+        // Apply text content
         label.text = textContent
         
-        // STEP 2: Apply styling directly
-        applyTextStyling(label, props: props)
+        // Apply text styling with complete props
+        applyTextStyling(label, props: completeProps)
         
-        // STEP 3: Force layout if needed
+        // Store the updated props for future updates
+        storeStylePropsWithLabel(label, props: completeProps)
+        
+        // Force layout if needed
         if let robustLabel = label as? RobustLabel {
             robustLabel.enforceMinimumSize()
         }
         
-        // STEP 4: Apply layout properties AFTER setting content
-        if let yogaNode = DCMauiLayoutManager.shared.yogaNode(for: label) {
-            // Calculate size needed for text
-            let idealSize = label.sizeThatFits(CGSize(width: 10000, height: 10000))
-            print("📏 Text needs size: \(idealSize.width) x \(idealSize.height) for: '\(textContent)'")
-            
-            // Set minimum width and height
-            YGNodeStyleSetMinWidth(yogaNode, Float(idealSize.width))
-            YGNodeStyleSetMinHeight(yogaNode, Float(idealSize.height))
+        // Apply layout props
+        applyLayoutProps(label, props: completeProps)
+    }
+    
+    // Store style properties with the label for future updates
+    private static func storeStylePropsWithLabel(_ label: UILabel, props: [String: Any]) {
+        var styleProps: [String: Any] = [:]
+        
+        // List of style properties to preserve
+        let styleKeys = ["color", "fontSize", "fontWeight", "fontStyle", 
+                         "fontFamily", "textAlign", "letterSpacing", "lineHeight", 
+                         "textDecorationLine", "numberOfLines"]
+        
+        // Only store props that are actually present
+        for key in styleKeys {
+            if let value = props[key] {
+                styleProps[key] = value
+            }
         }
         
-        // Apply other layout props
-        applyLayoutProps(label, props: props)
+        if !styleProps.isEmpty {
+            objc_setAssociatedObject(
+                label,
+                UnsafeRawPointer(bitPattern: "textStyleProps".hashValue)!,
+                styleProps,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+            
+            print("💾 Stored style props: \(styleProps)")
+        }
+    }
+    
+    // Get complete props by merging new props with stored style props
+    private static func getCompleteProps(for label: UILabel, newProps: [String: Any]) -> [String: Any] {
+        // Start with new props
+        var completeProps = newProps
+        
+        // Get stored style props (if any)
+        if let storedProps = objc_getAssociatedObject(
+            label,
+            UnsafeRawPointer(bitPattern: "textStyleProps".hashValue)!
+        ) as? [String: Any] {
+            // Only use stored props for keys that aren't in the new props
+            for (key, value) in storedProps {
+                if newProps[key] == nil {
+                    completeProps[key] = value
+                }
+            }
+            
+            print("📤 Using stored style props: \(storedProps)")
+        }
+        
+        return completeProps
     }
     
     private static func applyTextStyling(_ label: UILabel, props: [String: Any]) {
         // Set basic text color - CRITICAL for visibility
         if let color = props["color"] as? String {
             label.textColor = UIColorFromHex(color)
+            print("🎨 Applied color \(color) to text: '\(label.text ?? "")'")
         } else {
             // Default to black if no color specified
             label.textColor = .black
@@ -67,6 +116,10 @@ class DCMauiTextComponent: NSObject, DCMauiComponentProtocol {
         var fontSize: CGFloat = 17.0
         if let size = props["fontSize"] as? CGFloat {
             fontSize = size
+        } else if let size = props["fontSize"] as? Double {
+            fontSize = CGFloat(size)
+        } else if let size = props["fontSize"] as? Int {
+            fontSize = CGFloat(size)
         }
         
         // Font weight
