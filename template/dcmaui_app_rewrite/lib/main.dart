@@ -284,6 +284,14 @@ class CounterComponent extends StatefulComponent {
                       ...boxes,
                     ]),
               ]),
+          UI.Text(
+            content: TextContent("",
+                props: TextProps(
+                  fontSize: 20,
+                  color: Color(0xFFFFBF00),
+                  fontWeight: FontWeight.bold,
+                )).interpolate(counter.value),
+          )
         ]);
   }
 }
