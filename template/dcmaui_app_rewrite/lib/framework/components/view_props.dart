@@ -1,3 +1,4 @@
+import '../constants/layout_enums.dart';
 import 'base_props.dart';
 
 /// View component properties
@@ -9,6 +10,8 @@ class ViewProps extends BaseProps {
     super.accessibilityLabel,
     super.style,
     super.pointerEvents,
+
+    // Layout properties
     super.width,
     super.height,
     super.margin,
@@ -16,19 +19,36 @@ class ViewProps extends BaseProps {
     super.marginRight,
     super.marginBottom,
     super.marginLeft,
+    super.marginHorizontal,
+    super.marginVertical,
     super.padding,
     super.paddingTop,
     super.paddingRight,
     super.paddingBottom,
     super.paddingLeft,
+    super.paddingHorizontal,
+    super.paddingVertical,
+
+    // Flexbox properties
     super.flexDirection,
+    super.flexWrap,
     super.justifyContent,
     super.alignItems,
+    super.alignContent,
     super.alignSelf,
     super.flex,
     super.flexGrow,
     super.flexShrink,
     super.flexBasis,
+    super.aspectRatio,
+
+    // Min/max dimensions
+    super.minWidth,
+    super.maxWidth,
+    super.minHeight,
+    super.maxHeight,
+
+    // Styling
     super.backgroundColor,
     super.opacity,
     super.borderRadius,
@@ -39,10 +59,14 @@ class ViewProps extends BaseProps {
     super.borderColor,
     super.borderWidth,
     super.transform,
+
+    // Shadow
     super.shadowColor,
     super.shadowOpacity,
     super.shadowRadius,
     super.shadowOffset,
+
+    // Position
     super.overflow,
     super.zIndex,
     super.position,
@@ -50,5 +74,7 @@ class ViewProps extends BaseProps {
     super.right,
     super.bottom,
     super.left,
+    super.start,
+    super.end,
   });
 }

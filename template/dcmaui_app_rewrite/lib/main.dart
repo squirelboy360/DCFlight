@@ -5,6 +5,7 @@ import 'package:dc_test/framework/components/button_props.dart';
 import 'package:dc_test/framework/components/image_props.dart';
 import 'package:dc_test/framework/components/scroll_view_props.dart';
 import 'package:dc_test/framework/components/text_props.dart';
+import 'package:dc_test/framework/constants/layout_enums.dart';
 
 import 'framework/packages/vdom/vdom.dart';
 import 'framework/packages/vdom/vdom_node.dart';
@@ -51,6 +52,12 @@ void startNativeApp() async {
 class CounterComponent extends StatefulComponent {
   @override
   VDomNode render() {
+    final itemCount = useState<int>(12);
+    final boxes = List.generate(
+      itemCount.value,
+      (i) => createBox(i),
+    );
+
     final counter = useState(0, 'counter');
     final bg =
         useState(Color(Colors.indigoAccent.toARGB32()), 'scrollViewBGColor');
@@ -106,7 +113,7 @@ class CounterComponent extends StatefulComponent {
         children: [
           UI.ScrollView(
               props: ScrollViewProps(
-                height: '80%',
+                height: '90%',
                 width: '100%',
                 showsHorizontalScrollIndicator: true,
                 backgroundColor: Colors.indigoAccent,
@@ -119,15 +126,16 @@ class CounterComponent extends StatefulComponent {
                         borderRadius: 20,
                         borderWidth: 10,
                         width: '90%',
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        alignItems: AlignItems.center,
+                        justifyContent: JustifyContent.center,
                         height: '20%',
                         backgroundColor: bg.value),
                     children: [
+                     
                       UI.View(
                           props: ViewProps(
-                            alignItems: 'center',
-                            justifyContent: 'center',
+                            alignItems: AlignItems.center,
+                            justifyContent: JustifyContent.center,
                             borderRadius: 20,
                             borderColor: borderBgs.value,
                             borderWidth: 10,
@@ -141,16 +149,16 @@ class CounterComponent extends StatefulComponent {
                                 props: TextProps(
                                   fontSize: 20,
                                   color: Colors.white,
-                                  textAlign: 'center',
-                                  fontWeight: 'bold',
+                                  textAlign: TextAlign.center,
+                                  fontWeight: FontWeight.bold,
                                 )),
                             UI.Text(
                                 content: "Counter Value: ${counter.value}",
                                 props: TextProps(
                                   fontSize: 20,
                                   color: Colors.amber,
-                                  textAlign: 'center',
-                                  fontWeight: 'bold',
+                                  textAlign: TextAlign.center,
+                                  fontWeight: FontWeight.bold,
                                 ))
                           ]),
                     ]),
@@ -162,10 +170,11 @@ class CounterComponent extends StatefulComponent {
                       backgroundColor: Colors.red,
                     ),
                     children: [
+                       ...boxes,
                       UI.Image(
                           props: ImageProps(
                         margin: 20,
-                        resizeMode: 'cover',
+                        resizeMode: ResizeMode.cover,
                         borderRadius: 20,
                         borderWidth: 10,
                         height: '50%',
@@ -177,7 +186,7 @@ class CounterComponent extends StatefulComponent {
                       UI.Image(
                           props: ImageProps(
                         margin: 20,
-                        resizeMode: 'cover',
+                        resizeMode: ResizeMode.cover,
                         borderRadius: 20,
                         borderWidth: 10,
                         height: '50%',
@@ -189,7 +198,7 @@ class CounterComponent extends StatefulComponent {
                       UI.Image(
                           props: ImageProps(
                         margin: 20,
-                        resizeMode: 'cover',
+                        resizeMode: ResizeMode.cover,
                         borderRadius: 20,
                         borderWidth: 10,
                         height: '50%',
@@ -205,7 +214,7 @@ class CounterComponent extends StatefulComponent {
                 width: '100%',
                 backgroundColor: Colors.red,
                 height: 50,
-                flexDirection: 'row',
+                flexDirection: FlexDirection.row,
               ),
               children: [
                 UI.Button(
@@ -219,5 +228,33 @@ class CounterComponent extends StatefulComponent {
                     })
               ])
         ]);
+  }
+
+  VDomNode createBox(int index) {
+    final hue = (index * 30) % 360;
+    final color = HSVColor.fromAHSV(1.0, hue.toDouble(), 0.7, 0.9).toColor();
+
+    return UI.View(
+      key: 'box_$index',
+      props: ViewProps(
+        width: 80, // Smaller fixed width
+        height: 80, // Smaller fixed height
+        backgroundColor: color,
+        borderRadius: 8,
+        margin: 8,
+        alignItems: AlignItems.center,
+        justifyContent: JustifyContent.center,
+      ),
+      children: [
+        UI.Text(
+          content: (index + 1).toString(),
+          props: TextProps(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
   }
 }
