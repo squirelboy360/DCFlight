@@ -1,6 +1,77 @@
 import 'dart:ui' show Color;
 import 'base_props.dart';
 import '../constants/layout_enums.dart';
+import '../constants/layout_properties.dart';
+import '../packages/text/text_measurement_service.dart';
+
+/// Text alignment options
+enum TextAlign {
+  left,
+  right,
+  center,
+  justify,
+  start,
+  end;
+
+  String get value => toString().split('.').last;
+}
+
+/// Font weight options
+enum FontWeight {
+  normal('normal'),
+  bold('bold'),
+  w100('100'),
+  w200('200'),
+  w300('300'),
+  w400('400'),
+  w500('500'),
+  w600('600'),
+  w700('700'),
+  w800('800'),
+  w900('900');
+
+  final String value;
+  const FontWeight(this.value);
+}
+
+/// Font style options
+enum FontStyle {
+  normal,
+  italic;
+
+  String get value => toString().split('.').last;
+}
+
+/// Text decoration options
+enum TextDecorationLine {
+  none,
+  underline,
+  lineThrough,
+  underlineLineThrough;
+
+  String get value {
+    switch (this) {
+      case TextDecorationLine.none:
+        return 'none';
+      case TextDecorationLine.underline:
+        return 'underline';
+      case TextDecorationLine.lineThrough:
+        return 'line-through';
+      case TextDecorationLine.underlineLineThrough:
+        return 'underline line-through';
+    }
+  }
+}
+
+/// Text transform options
+enum TextTransform {
+  none,
+  capitalize,
+  uppercase,
+  lowercase;
+
+  String get value => toString().split('.').last;
+}
 
 /// Text component properties
 class TextProps extends BaseProps {
@@ -35,7 +106,7 @@ class TextProps extends BaseProps {
     this.adjustsFontSizeToFit,
     this.minimumFontSize,
 
-    // BaseProps
+    // Base props
     super.id,
     super.testID,
     super.accessible,
@@ -89,6 +160,7 @@ class TextProps extends BaseProps {
   Map<String, dynamic> toMap() {
     final map = super.toMap();
 
+    // Text-specific properties
     if (fontFamily != null) map['fontFamily'] = fontFamily;
     if (fontSize != null) map['fontSize'] = fontSize;
     if (fontWeight != null) map['fontWeight'] = fontWeight?.value;
@@ -112,5 +184,18 @@ class TextProps extends BaseProps {
     if (minimumFontSize != null) map['minimumFontSize'] = minimumFontSize;
 
     return map;
+  }
+
+  /// Create measurement key from these text props
+  TextMeasurementKey createMeasurementKey(String text, {double? maxWidth}) {
+    return TextMeasurementKey(
+      text: text,
+      fontSize: fontSize ?? 14.0,
+      fontFamily: fontFamily,
+      fontWeight: fontWeight?.value,
+      letterSpacing: letterSpacing,
+      textAlign: textAlign?.value,
+      maxWidth: maxWidth,
+    );
   }
 }

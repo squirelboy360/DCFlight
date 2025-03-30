@@ -1,27 +1,61 @@
-import 'base_props.dart';
+import 'view_props.dart';
+import '../constants/layout_properties.dart';
 
-/// ScrollView component properties
-class ScrollViewProps extends BaseProps {
-  final bool? showsVerticalScrollIndicator;
+/// Scroll view component properties
+class ScrollViewProps extends ViewProps {
+  final bool? horizontal;
   final bool? showsHorizontalScrollIndicator;
-  final bool? bounces;
+  final bool? showsVerticalScrollIndicator;
   final bool? pagingEnabled;
+  final bool? bounces;
+  final double? contentInsetTop;
+  final double? contentInsetBottom;
+  final double? contentInsetLeft;
+  final double? contentInsetRight;
+  final bool? scrollEnabled;
   final double? scrollEventThrottle;
   final bool? directionalLockEnabled;
-  final bool? alwaysBounceVertical;
-  final bool? alwaysBounceHorizontal;
-  final bool? horizontal;
+  final double? snapToInterval;
+  final bool? snapToAlignment;
 
   const ScrollViewProps({
-    this.showsVerticalScrollIndicator,
+    this.horizontal,
     this.showsHorizontalScrollIndicator,
-    this.bounces,
+    this.showsVerticalScrollIndicator,
     this.pagingEnabled,
+    this.bounces,
+    this.contentInsetTop,
+    this.contentInsetBottom,
+    this.contentInsetLeft,
+    this.contentInsetRight,
+    this.scrollEnabled,
     this.scrollEventThrottle,
     this.directionalLockEnabled,
-    this.alwaysBounceVertical,
-    this.alwaysBounceHorizontal,
-    this.horizontal,
+    this.snapToInterval,
+    this.snapToAlignment,
+
+    // View props
+    super.overflow,
+    super.pointerEvents,
+    super.borderRadius,
+    super.borderTopLeftRadius,
+    super.borderTopRightRadius,
+    super.borderBottomLeftRadius,
+    super.borderBottomRightRadius,
+    super.borderColor,
+    super.borderWidth,
+    super.backgroundColor,
+    super.opacity,
+    super.shadowColor,
+    super.shadowOpacity,
+    super.shadowRadius,
+    super.shadowOffsetX,
+    super.shadowOffsetY,
+    super.elevation,
+    super.hitSlop,
+    super.transform,
+
+    // Base props
     super.id,
     super.testID,
     super.accessible,
@@ -47,79 +81,57 @@ class ScrollViewProps extends BaseProps {
     super.paddingVertical,
 
     // Flexbox properties
-    super.flex,
     super.flexDirection,
     super.flexWrap,
-    super.flexGrow,
-    super.flexShrink,
-    super.flexBasis,
     super.justifyContent,
     super.alignItems,
     super.alignContent,
     super.alignSelf,
+    super.flex,
+    super.flexGrow,
+    super.flexShrink,
+    super.flexBasis,
 
-    // Additional layout properties
-    super.aspectRatio,
-    super.minWidth,
-    super.maxWidth,
-    super.minHeight,
-    super.maxHeight,
-
-    // Styling properties
-    super.backgroundColor,
-    super.opacity,
-    super.borderRadius,
-    super.borderTopLeftRadius,
-    super.borderTopRightRadius,
-    super.borderBottomLeftRadius,
-    super.borderBottomRightRadius,
-    super.borderColor,
-    super.borderWidth,
-    super.transform,
-    super.shadowColor,
-    super.shadowOpacity,
-    super.shadowRadius,
-    super.shadowOffset,
-
-    // Positioning properties
-    super.overflow,
-    super.zIndex,
+    // Position properties
     super.position,
+    super.zIndex,
     super.top,
     super.right,
     super.bottom,
     super.left,
-    super.start,
-    super.end,
   });
 
   @override
   Map<String, dynamic> toMap() {
     final map = super.toMap();
 
-    if (showsVerticalScrollIndicator != null) {
-      map['showsVerticalScrollIndicator'] = showsVerticalScrollIndicator;
-    }
+    // Add ScrollView-specific properties
+    if (horizontal != null) map['horizontal'] = horizontal;
     if (showsHorizontalScrollIndicator != null) {
       map['showsHorizontalScrollIndicator'] = showsHorizontalScrollIndicator;
     }
-    if (bounces != null) map['bounces'] = bounces;
+    if (showsVerticalScrollIndicator != null) {
+      map['showsVerticalScrollIndicator'] = showsVerticalScrollIndicator;
+    }
     if (pagingEnabled != null) map['pagingEnabled'] = pagingEnabled;
+    if (bounces != null) map['bounces'] = bounces;
+    if (contentInsetTop != null) map['contentInsetTop'] = contentInsetTop;
+    if (contentInsetBottom != null) {
+      map['contentInsetBottom'] = contentInsetBottom;
+    }
+    if (contentInsetLeft != null) map['contentInsetLeft'] = contentInsetLeft;
+    if (contentInsetRight != null) {
+      map['contentInsetRight'] = contentInsetRight;
+    }
+    if (scrollEnabled != null) map['scrollEnabled'] = scrollEnabled;
     if (scrollEventThrottle != null) {
       map['scrollEventThrottle'] = scrollEventThrottle;
     }
     if (directionalLockEnabled != null) {
       map['directionalLockEnabled'] = directionalLockEnabled;
     }
-    if (alwaysBounceVertical != null) {
-      map['alwaysBounceVertical'] = alwaysBounceVertical;
-    }
-    if (alwaysBounceHorizontal != null) {
-      map['alwaysBounceHorizontal'] = alwaysBounceHorizontal;
-    }
-    if (horizontal != null) {
-      map['horizontal'] = horizontal;
-    }
+    if (snapToInterval != null) map['snapToInterval'] = snapToInterval;
+    if (snapToAlignment != null) map['snapToAlignment'] = snapToAlignment;
 
     return map;
   }

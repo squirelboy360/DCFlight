@@ -1,5 +1,7 @@
 import 'dart:developer' as developer;
+import 'package:dc_test/framework/constants/layout_properties.dart';
 
+import '../yoga/dart_layout_manager.dart';
 import 'vdom_node.dart';
 import 'vdom_element.dart';
 import 'component_node.dart';
@@ -9,6 +11,9 @@ import 'vdom.dart';
 class Reconciler {
   /// Reference to the VDOM
   final VDom vdom;
+
+  /// Layout manager reference
+  final DartLayoutManager _layoutManager = DartLayoutManager.instance;
 
   /// Constructor
   Reconciler(this.vdom);
@@ -31,7 +36,7 @@ class Reconciler {
         // Same key or both null?
         if (oldNode.key == newNode.key) {
           // Update the element
-          await _updateElement(oldNode, newElement: newNode);
+          await _updateElement(oldElement: oldNode, newElement: newNode);
           return;
         }
       }
@@ -64,36 +69,68 @@ class Reconciler {
       // Other node types - replace
       await _replaceNode(oldNode, newNode);
     }
+
+    // Calculate and apply layout after reconciliation if this is a root element
+    if (newNode == vdom.rootComponentNode?.renderedNode) {
+      await vdom.calculateAndApplyLayout();
+    }
   }
 
   /// Update an element with new props and children
-  Future<void> _updateElement(VDomElement oldElement,
-      {required VDomElement newElement}) async {
+  Future<void> _updateElement(
+      {required VDomElement oldElement,
+      required VDomElement newElement}) async {
     // Update props if node already has a native view
     if (oldElement.nativeViewId != null) {
       newElement.nativeViewId = oldElement.nativeViewId;
 
-      // Find changed props with generic diffing
+      // Find changed props with generic diffing - excluding layout props
       final changedProps = <String, dynamic>{};
+      final layoutProps = <String, dynamic>{};
 
-      // Add all new or changed props
-      newElement.props.forEach((key, value) {
-        // Simple equality check without special cases
-        if (!oldElement.props.containsKey(key) ||
-            oldElement.props[key] != value) {
-          changedProps[key] = value;
+      // Separate layout props from other props
+      for (final entry in newElement.props.entries) {
+        final key = entry.key;
+        final value = entry.value;
+
+        if (isLayoutProp(key)) {
+          // If it's a layout prop and changed, add to layout props
+          if (!oldElement.props.containsKey(key) ||
+              oldElement.props[key] != value) {
+            layoutProps[key] = value;
+          }
+        } else {
+          // If it's a non-layout prop and changed, add to changed props
+          if (!oldElement.props.containsKey(key) ||
+              oldElement.props[key] != value) {
+            changedProps[key] = value;
+          }
         }
-      });
+      }
 
       // Check for removed props
       for (final key in oldElement.props.keys) {
         if (!newElement.props.containsKey(key)) {
-          // Set to null to indicate removal (handled by native bridge)
-          changedProps[key] = null;
+          // Layout props don't need to be explicitly removed since we'll recalculate
+          if (!isLayoutProp(key)) {
+            // Set to null to indicate removal (handled by native bridge)
+            changedProps[key] = null;
+          }
         }
       }
 
-      // Update if there are changes
+      // If we have layout prop changes, update the Yoga node
+      if (layoutProps.isNotEmpty) {
+        final viewId = newElement.nativeViewId!;
+
+        // Apply layout props to the Yoga node in Dart
+        _layoutManager.applyFlexboxProps(viewId, layoutProps);
+
+        // Mark that we need to recalculate layout
+        vdom.markLayoutDirty();
+      }
+
+      // Update non-layout props directly if there are changes
       if (changedProps.isNotEmpty) {
         // Preserve event handlers
         oldElement.props.forEach((key, value) {
@@ -110,6 +147,11 @@ class Reconciler {
       // Now reconcile children
       await _reconcileChildren(oldElement, newElement);
     }
+  }
+
+  /// Check if a property is a layout-related property
+  bool isLayoutProp(String propName) {
+    return LayoutProperties.all.contains(propName);
   }
 
   /// Reconcile children between old and new elements

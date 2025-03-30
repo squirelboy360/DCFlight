@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/services.dart';
+import '../../constants/layout_properties.dart';
 import 'native_bridge.dart';
 import 'dart:developer' as developer;
 
@@ -20,6 +21,12 @@ class FFINativeBridge implements NativeBridge {
   late final int Function(Pointer<Utf8>) _deleteView;
   late final int Function(Pointer<Utf8>, Pointer<Utf8>, int) _attachView;
   late final int Function(Pointer<Utf8>, Pointer<Utf8>) _setChildren;
+
+  // New function pointers for layout updates and text measurement
+  late final int Function(Pointer<Utf8>, double, double, double, double)
+      _updateViewLayout;
+  late final Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>)
+      _measureText;
 
   // Event functions are removed from FFI completely
 
@@ -62,6 +69,17 @@ class FFINativeBridge implements NativeBridge {
     _setChildren = _nativeLib.lookupFunction<
         Int8 Function(Pointer<Utf8>, Pointer<Utf8>),
         int Function(Pointer<Utf8>, Pointer<Utf8>)>('dcmaui_set_children');
+
+    // Get function pointers for new layout methods
+    _updateViewLayout = _nativeLib.lookupFunction<
+        Int8 Function(Pointer<Utf8>, Float, Float, Float, Float),
+        int Function(Pointer<Utf8>, double, double, double,
+            double)>('dcmaui_update_view_layout');
+
+    _measureText = _nativeLib.lookupFunction<
+        Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>),
+        Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>,
+            Pointer<Utf8>)>('dcmaui_measure_text');
 
     // Event listener functions completely removed from FFI
 
@@ -242,6 +260,50 @@ class FFINativeBridge implements NativeBridge {
     _eventHandler = handler;
   }
 
+  @override
+  Future<bool> updateViewLayout(String viewId, double left, double top,
+      double width, double height) async {
+    developer.log(
+        'FFI updateViewLayout: viewId=$viewId, left=$left, top=$top, width=$width, height=$height',
+        name: 'FFI');
+
+    return using((arena) {
+      final viewIdPointer = viewId.toNativeUtf8(allocator: arena);
+
+      final result = _updateViewLayout(viewIdPointer, left, top, width, height);
+      developer.log('FFI updateViewLayout result: $result', name: 'FFI');
+      return result != 0;
+    });
+  }
+
+  @override
+  Future<Map<String, double>> measureText(
+      String viewId, String text, Map<String, dynamic> textAttributes) async {
+    developer.log('FFI measureText: viewId=$viewId, text=$text', name: 'FFI');
+
+    return using((arena) {
+      final viewIdPointer = viewId.toNativeUtf8(allocator: arena);
+      final textPointer = text.toNativeUtf8(allocator: arena);
+      final attributesJson = jsonEncode(textAttributes);
+      final attributesPointer = attributesJson.toNativeUtf8(allocator: arena);
+
+      final resultPointer =
+          _measureText(viewIdPointer, textPointer, attributesPointer);
+
+      if (resultPointer.address == 0) {
+        return {'width': 0.0, 'height': 0.0};
+      }
+
+      final resultString = resultPointer.toDartString();
+      final Map<String, dynamic> resultMap = jsonDecode(resultString);
+
+      return {
+        'width': resultMap['width']?.toDouble() ?? 0.0,
+        'height': resultMap['height']?.toDouble() ?? 0.0
+      };
+    });
+  }
+
   // Helper method to preprocess props for JSON serialization
   Map<String, dynamic> _preprocessProps(Map<String, dynamic> props) {
     final processedProps = <String, dynamic>{};
@@ -282,12 +344,12 @@ class FFINativeBridge implements NativeBridge {
 
         processedProps[key] = processedTransform;
       } else if (value != null) {
-        // Ensure numeric values like marginTop are properly processed
+        // Ensure numeric values like margin are properly processed
         if (value is num &&
-            (key == 'marginTop' ||
-                key == 'marginBottom' ||
-                key == 'marginLeft' ||
-                key == 'marginRight')) {
+            (key == LayoutProperties.marginTop ||
+                key == LayoutProperties.marginBottom ||
+                key == LayoutProperties.marginLeft ||
+                key == LayoutProperties.marginRight)) {
           processedProps[key] = value.toDouble();
           developer.log('Processing margin $key: $value', name: 'FFI');
         } else {

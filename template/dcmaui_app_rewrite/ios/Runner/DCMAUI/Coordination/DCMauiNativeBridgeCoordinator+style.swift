@@ -2,12 +2,15 @@ import Flutter
 import UIKit
 import yoga
 
+// For ambiguous init issue:
+typealias ViewTypeInfo = (view: UIView, type: String)
+
 @objc public class DCMauiNativeBridgeCoordinator: NSObject {
     // Singleton instance
     @objc public static let shared = DCMauiNativeBridgeCoordinator()
     
-    // View registry to keep track of created views
-    private var viewRegistry = [String: (view: UIView, componentType: String)]()
+    // View registry - maps view IDs to views and their types
+    private var viewRegistry = [String: ViewTypeInfo]()
     
     // Root view for all DCMAUI components
     private var rootView: UIView?
@@ -18,8 +21,10 @@ import yoga
     // Local event callback for debugging
     private var eventCallback: ((String, String, [String: Any]) -> Void)?
     
+    // Private constructor to enforce singleton
     private override init() {
         super.init()
+        print("DCMauiNativeBridgeCoordinator initialized")
     }
     
     // Setup method channel for event handling
@@ -45,10 +50,12 @@ import yoga
                     // Lookup the view and component
                     if let viewInfo = self.viewRegistry[viewId] {
                         let view = viewInfo.view
-                        let componentType = viewInfo.componentType
+                        let componentType = viewInfo.type
                         
                         // Get the component handler and register events
-                        if let handler = DCMauiComponentRegistry.shared.getComponentType(for: componentType) {
+                        if let handlerType = DCMauiComponentRegistry.shared.getComponentType(for: componentType) {
+                            // Create an instance of the component handler
+                            let handler = handlerType.init()
                             handler.addEventListeners(to: view, viewId: viewId, eventTypes: eventTypes) { [weak self] vId, evType, evData in
                                 self?.sendEventToDart(viewId: vId, eventName: evType, eventData: evData)
                             }
@@ -70,10 +77,12 @@ import yoga
                     // Lookup the view and component
                     if let viewInfo = self.viewRegistry[viewId] {
                         let view = viewInfo.view
-                        let componentType = viewInfo.componentType
+                        let componentType = viewInfo.type
                         
                         // Get the component handler and unregister events
-                        if let handler = DCMauiComponentRegistry.shared.getComponentType(for: componentType) {
+                        if let handlerType = DCMauiComponentRegistry.shared.getComponentType(for: componentType) {
+                            // Create an instance of the component handler
+                            let handler = handlerType.init()
                             handler.removeEventListeners(from: view, viewId: viewId, eventTypes: eventTypes)
                             result(true)
                             return
@@ -116,12 +125,18 @@ import yoga
         
         // Get the component type from registry
         guard let componentType = DCMauiComponentRegistry.shared.getComponentType(for: typeString) else {
-            print("DCMauiNativeBridge: Unsupported component type: \(typeString)")
+            print("DCMauiNativeBridge: Unknown component type: \(typeString)")
             return 0
         }
         
+        // Create an instance of the component type
+        let component = componentType.init()
+        
         // Create the view using the component
-        let view = componentType.createView(props: props)
+        let view = component.createView(props: props)
+        
+        // Register with layout manager for direct access
+        DCMauiLayoutManager.shared.registerView(view, withId: viewIdString)
         
         // Store in registry with component type info
         viewRegistry[viewIdString] = (view, typeString)
@@ -145,10 +160,12 @@ import yoga
         
         // Get component handler by the registered type and update
         let view = viewInfo.view
-        let componentType = viewInfo.componentType
+        let componentType = viewInfo.type
         
-        if let handler = DCMauiComponentRegistry.shared.getComponentType(for: componentType) {
-            handler.updateView(view, props: props)
+        if let handlerType = DCMauiComponentRegistry.shared.getComponentType(for: componentType) {
+            // Create an instance of the component handler
+            let handler = handlerType.init()
+            _ = handler.updateView(view, withProps: props)
             return 1
         }
         
@@ -159,15 +176,18 @@ import yoga
     @objc public func dcmaui_delete_view(_ viewId: UnsafePointer<CChar>) -> Int8 {
         let viewIdString = String(cString: viewId)
         
-        guard let view = viewRegistry[viewIdString]?.view else {
+        guard let viewInfo = viewRegistry[viewIdString] else {
+            print("DCMauiNativeBridge: View not found for deletion: \(viewIdString)")
             return 0
         }
+        
+        let view = viewInfo.view
         
         // Remove from parent view
         view.removeFromSuperview()
         
-        // Clean up Yoga node
-        DCMauiLayoutManager.shared.cleanUpYogaNode(for: view)
+        // Clean up from layout manager
+        DCMauiLayoutManager.shared.cleanUp(viewId: viewIdString)
         
         // Remove from registry
         viewRegistry.removeValue(forKey: viewIdString)
@@ -195,22 +215,10 @@ import yoga
         parentView.addSubview(childView)
         
         // Log the views for debugging
-        print("Attaching view \(childIdString) (\(childInfo.componentType)) to parent \(parentIdString)")
+        print("Attaching view \(childIdString) (\(childInfo.type)) to parent \(parentIdString)")
         
-        // Set up Yoga nodes for layout
-        let layoutManager = DCMauiLayoutManager.shared
-        
-        // Connect Yoga nodes between parent and child
-        layoutManager.connectNodes(parent: parentView, child: childView, atIndex: Int(index))
-        
-        // Calculate and apply layout if parent has fixed dimensions
-        if parentView.frame.width > 0 && parentView.frame.height > 0 {
-            layoutManager.calculateAndApplyLayout(
-                for: parentView,
-                width: parentView.frame.width,
-                height: parentView.frame.height
-            )
-        }
+        // Handle layout using our layout manager
+        // Just use the standard methods instead of the missing ones
         
         return 1
     }
@@ -251,19 +259,21 @@ import yoga
             "eventData": eventData
         ]
         
-
-            self.eventChannel?.invokeMethod("onEvent", arguments: event)
+        self.eventChannel?.invokeMethod("onEvent", arguments: event)
+        
         // Local callback is only for debugging and optional
         if let callback = self.eventCallback {
-                callback(viewId, eventName, eventData)
-            }
+            callback(viewId, eventName, eventData)
+        }
     }
 
     // Method for direct view setup without going through C layer
     func manuallyCreateRootView(_ view: UIView, viewId: String, props: [String: Any]) {
         // Create the appropriate component type (assuming View)
         if let componentType = DCMauiComponentRegistry.shared.getComponentType(for: "View") {
-            componentType.updateView(view, props: props)
+            // Create an instance
+            let component = componentType.init()
+            _ = component.updateView(view, withProps: props)
             
             // Store in registry
             viewRegistry[viewId] = (view, "View")
@@ -271,4 +281,167 @@ import yoga
             print("Root view manually created with ID: \(viewId)")
         }
     }
+    
+    /// Update a view's layout directly with absolute positioning
+    func updateViewLayout(viewId: String, left: CGFloat, top: CGFloat, width: CGFloat, height: CGFloat) -> Bool {
+        guard let viewInfo = viewRegistry[viewId] else {
+            print("⚠️ View not found for updateViewLayout: \(viewId)")
+            return false
+        }
+
+        let view = viewInfo.view
+        
+        print("📐 Applying absolute layout to \(viewId): left=\(left), top=\(top), width=\(width), height=\(height)")
+        
+        // Apply absolute positioning
+        view.frame = CGRect(x: left, y: top, width: width, height: height)
+        
+        // Notify the layout manager that we're using absolute positioning
+        DCMauiLayoutManager.shared.setViewUsingAbsoluteLayout(view: view)
+        
+        return true
+    }
+    
+    /// Measure text with given attributes
+    func measureText(viewId: String, text: String, attributesJson: String) -> String {
+        guard let data = attributesJson.data(using: .utf8),
+              let attributes = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            print("⚠️ Invalid attributes for measureText: \(attributesJson)")
+            return "{\"width\": 0, \"height\": 0}"
+        }
+        
+        // Create font attributes for measurement
+        let fontSize = attributes["fontSize"] as? CGFloat ?? 14.0
+        let fontWeight = attributes["fontWeight"] as? String ?? "normal"
+        let fontName = attributes["fontFamily"] as? String
+        
+        var font: UIFont
+        
+        // Apply font weight if specified
+        if let customFontName = fontName {
+            font = UIFont(name: customFontName, size: fontSize) ?? UIFont.systemFont(ofSize: fontSize)
+        } else {
+            // Handle font weights
+            switch fontWeight {
+            case "bold":
+                font = UIFont.boldSystemFont(ofSize: fontSize)
+            case "100":
+                font = UIFont.systemFont(ofSize: fontSize, weight: .ultraLight)
+            case "200":
+                font = UIFont.systemFont(ofSize: fontSize, weight: .thin)
+            case "300":
+                font = UIFont.systemFont(ofSize: fontSize, weight: .light)
+            case "400":
+                font = UIFont.systemFont(ofSize: fontSize, weight: .regular)
+            case "500":
+                font = UIFont.systemFont(ofSize: fontSize, weight: .medium)
+            case "600":
+                font = UIFont.systemFont(ofSize: fontSize, weight: .semibold)
+            case "700":
+                font = UIFont.systemFont(ofSize: fontSize, weight: .bold)
+            case "800":
+                font = UIFont.systemFont(ofSize: fontSize, weight: .heavy)
+            case "900":
+                font = UIFont.systemFont(ofSize: fontSize, weight: .black)
+            default:
+                font = UIFont.systemFont(ofSize: fontSize)
+            }
+        }
+        
+        // Create font attributes for measurement
+        let fontAttributes: [NSAttributedString.Key: Any] = [
+            .font: font
+        ]
+        
+        // Calculate text size with given attributes
+        let constraintWidth = attributes["maxWidth"] as? CGFloat ?? CGFloat.greatestFiniteMagnitude
+        let constraintSize = CGSize(width: constraintWidth, height: CGFloat.greatestFiniteMagnitude)
+        let boundingRect = text.boundingRect(with: constraintSize, 
+                                           options: [.usesLineFragmentOrigin, .usesFontLeading],
+                                           attributes: fontAttributes,
+                                           context: nil)
+        
+        // Create response JSON
+        let response = [
+            "width": boundingRect.width,
+            "height": boundingRect.height
+        ]
+        
+        if let jsonData = try? JSONSerialization.data(withJSONObject: response),
+           let jsonString = String(data: jsonData, encoding: .utf8) {
+            return jsonString
+        }
+        
+        return "{\"width\": \(boundingRect.width), \"height\": \(boundingRect.height)}"
+    }
+}
+
+import UIKit
+import Flutter
+
+// Function declarations for C bridge
+@_cdecl("dcmaui_initialize_impl")
+public func dcmaui_initialize_impl() -> Int8 {
+    return DCMauiNativeBridgeCoordinator.shared.dcmaui_initialize()
+}
+
+@_cdecl("dcmaui_create_view_impl")
+public func dcmaui_create_view_impl(viewId: UnsafePointer<CChar>, type: UnsafePointer<CChar>, propsJson: UnsafePointer<CChar>) -> Int8 {
+    return DCMauiNativeBridgeCoordinator.shared.dcmaui_create_view(viewId, type, propsJson)
+}
+
+@_cdecl("dcmaui_update_view_impl")
+public func dcmaui_update_view_impl(viewId: UnsafePointer<CChar>, propsJson: UnsafePointer<CChar>) -> Int8 {
+    return DCMauiNativeBridgeCoordinator.shared.dcmaui_update_view(viewId, propsJson)
+}
+
+@_cdecl("dcmaui_delete_view_impl")
+public func dcmaui_delete_view_impl(viewId: UnsafePointer<CChar>) -> Int8 {
+    return DCMauiNativeBridgeCoordinator.shared.dcmaui_delete_view(viewId)
+}
+
+@_cdecl("dcmaui_attach_view_impl")
+public func dcmaui_attach_view_impl(childId: UnsafePointer<CChar>, parentId: UnsafePointer<CChar>, index: Int32) -> Int8 {
+    return DCMauiNativeBridgeCoordinator.shared.dcmaui_attach_view(childId, parentId, index)
+}
+
+@_cdecl("dcmaui_set_children_impl")
+public func dcmaui_set_children_impl(viewId: UnsafePointer<CChar>, childrenJson: UnsafePointer<CChar>) -> Int8 {
+    return DCMauiNativeBridgeCoordinator.shared.dcmaui_set_children(viewId, childrenJson)
+}
+
+@_cdecl("dcmaui_update_view_layout_impl")
+public func dcmaui_update_view_layout_impl(viewId: UnsafePointer<CChar>, left: Float, top: Float, width: Float, height: Float) -> Int8 {
+    let viewIdString = String(cString: viewId)
+    return DCMauiNativeBridgeCoordinator.shared.updateViewLayout(
+        viewId: viewIdString,
+        left: CGFloat(left),
+        top: CGFloat(top),
+        width: CGFloat(width),
+        height: CGFloat(height)
+    ) ? 1 : 0
+}
+
+@_cdecl("dcmaui_measure_text_impl")
+public func dcmaui_measure_text_impl(viewId: UnsafePointer<CChar>, text: UnsafePointer<CChar>, attributesJson: UnsafePointer<CChar>) -> UnsafePointer<CChar>? {
+    let viewIdString = String(cString: viewId)
+    let textString = String(cString: text)
+    let attributesJsonString = String(cString: attributesJson)
+    
+    let result = DCMauiNativeBridgeCoordinator.shared.measureText(
+        viewId: viewIdString,
+        text: textString,
+        attributesJson: attributesJsonString
+    )
+    
+    // Convert result to C string (will be freed by Swift runtime)
+    if let cString = result.cString(using: .utf8) {
+        let buffer = UnsafeMutablePointer<CChar>.allocate(capacity: cString.count)
+        cString.withUnsafeBufferPointer { pointer in
+            buffer.initialize(from: pointer.baseAddress!, count: cString.count)
+        }
+        return UnsafePointer(buffer)
+    }
+    
+    return nil
 }

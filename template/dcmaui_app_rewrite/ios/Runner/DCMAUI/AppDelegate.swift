@@ -1,53 +1,6 @@
 import UIKit
 import Flutter
 
-// Global C-compatible bridge functions with proper nullability
-@_cdecl("swift_initialize")
-func swift_initialize() -> Int8 {
-    return DCMauiNativeBridgeCoordinator.shared.dcmaui_initialize()
-}
-
-@_cdecl("swift_create_view")
-func swift_create_view(_ viewId: UnsafePointer<CChar>?, _ type: UnsafePointer<CChar>?, _ props: UnsafePointer<CChar>?) -> Int8 {
-    guard let viewId = viewId, let type = type, let props = props else {
-        return 0 // Fail if any parameter is nil
-    }
-    return DCMauiNativeBridgeCoordinator.shared.dcmaui_create_view(viewId, type, props)
-}
-
-@_cdecl("swift_update_view")
-func swift_update_view(_ viewId: UnsafePointer<CChar>?, _ props: UnsafePointer<CChar>?) -> Int8 {
-    guard let viewId = viewId, let props = props else {
-        return 0
-    }
-    return DCMauiNativeBridgeCoordinator.shared.dcmaui_update_view(viewId, props)
-}
-
-@_cdecl("swift_delete_view")
-func swift_delete_view(_ viewId: UnsafePointer<CChar>?) -> Int8 {
-    guard let viewId = viewId else {
-        return 0
-    }
-    return DCMauiNativeBridgeCoordinator.shared.dcmaui_delete_view(viewId)
-}
-
-@_cdecl("swift_attach_view")
-func swift_attach_view(_ childId: UnsafePointer<CChar>?, _ parentId: UnsafePointer<CChar>?, _ index: Int32) -> Int8 {
-    guard let childId = childId, let parentId = parentId else {
-        return 0
-    }
-    return DCMauiNativeBridgeCoordinator.shared.dcmaui_attach_view(childId, parentId, index)
-}
-
-@_cdecl("swift_set_children")
-func swift_set_children(_ viewId: UnsafePointer<CChar>?, _ children: UnsafePointer<CChar>?) -> Int8 {
-    guard let viewId = viewId, let children = children else {
-        return 0
-    }
-    return DCMauiNativeBridgeCoordinator.shared.dcmaui_set_children(viewId, children)
-}
-
-@available(iOS 13.0, *)
 @UIApplicationMain
 class AppDelegate: FlutterAppDelegate {
     lazy var flutterEngine = FlutterEngine(name: "main engine")
@@ -78,6 +31,7 @@ class AppDelegate: FlutterAppDelegate {
         self.window.rootViewController = nativeRootVC
         self.window.makeKeyAndVisible()
 
+        // Keep a reference to the Flutter view controller
         let flutterViewController = FlutterViewController(engine: flutterEngine, nibName: nil, bundle: nil)
         flutterEngine.viewController = flutterViewController
         
@@ -86,51 +40,42 @@ class AppDelegate: FlutterAppDelegate {
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
     
-    // Setup the DCMauiNativeBridge and register Swift implementations with the C layer
+    // Setup the DCMauiNativeBridge
     private func setupDCMauiNativeBridge(rootView: UIView) {
-        // Register Swift functions with C bridge - using function pointers to global C-compatible functions
-        dcmaui_register_swift_functions(
-            swift_initialize,
-            swift_create_view,
-            swift_update_view,
-            swift_delete_view,
-            swift_attach_view,
-            swift_set_children
-        )
+        // Set up the root container view - FULL SIZE
+        let rootContainer = UIView(frame: rootView.bounds)
+        rootContainer.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        rootContainer.backgroundColor = .white
+        rootContainer.translatesAutoresizingMaskIntoConstraints = false
+        rootView.addSubview(rootContainer)
         
-        // Set up the root container view
-        if let rootView = rootView as UIView? {
-            let rootContainer = UIView(frame: rootView.bounds)
-            rootContainer.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-            rootContainer.backgroundColor = .clear
-            rootContainer.tag = 1001
-            rootView.addSubview(rootContainer)
-            
-            // Ensure the rootContainer has a proper size before we do any layout
-            rootContainer.layoutIfNeeded()
-            
-            // Create Root view with initial props - explicitly use numeric values
-            let rootProps: [String: Any] = [
-                "backgroundColor": "#FFFFFF",
-                "width": rootContainer.bounds.width,
-                "height": rootContainer.bounds.height,
-                "flexDirection": "column",
-                "alignItems": "center",
-                "justifyContent": "flexStart"
-            ]
-            
-            // Set up the root with our props
-            DCMauiNativeBridgeCoordinator.shared.manuallyCreateRootView(rootContainer, viewId: "root", props: rootProps)
-            
-            // Force layout calculation on the root view
-            let layoutManager = DCMauiLayoutManager.shared
-            layoutManager.calculateAndApplyLayout(
-                for: rootContainer, 
-                width: rootContainer.bounds.width, 
-                height: rootContainer.bounds.height
-            )
-            
-            print("DC MAUI: Root view registered with ID: root")
-        }
+        // Add constraints to ensure full size
+        NSLayoutConstraint.activate([
+            rootContainer.leadingAnchor.constraint(equalTo: rootView.leadingAnchor),
+            rootContainer.trailingAnchor.constraint(equalTo: rootView.trailingAnchor),
+            rootContainer.topAnchor.constraint(equalTo: rootView.topAnchor),
+            rootContainer.bottomAnchor.constraint(equalTo: rootView.bottomAnchor)
+        ])
+        
+        // Get actual screen dimensions
+        let screenWidth = UIScreen.main.bounds.width
+        let screenHeight = UIScreen.main.bounds.height
+        
+        print("🔍 Screen dimensions: \(screenWidth) x \(screenHeight)")
+        
+        // Create Root view with initial props - using screen dimensions
+        let rootProps: [String: Any] = [
+            "backgroundColor": "#FFFFFF",
+            "width": screenWidth,
+            "height": screenHeight,
+            "flexDirection": "column",
+            "alignItems": "stretch",
+            "justifyContent": "flexStart"
+        ]
+        
+        // Set up the root with our props
+        DCMauiNativeBridgeCoordinator.shared.manuallyCreateRootView(rootContainer, viewId: "root", props: rootProps)
+        
+        print("DC MAUI: Root view registered with ID: root - size: \(rootContainer.bounds)")
     }
 }

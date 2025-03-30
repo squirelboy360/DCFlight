@@ -34,6 +34,14 @@ abstract class NativeBridge {
   void setEventHandler(
       Function(String viewId, String eventType, Map<String, dynamic> eventData)
           handler);
+
+  /// Update a view's layout (position and size) directly
+  Future<bool> updateViewLayout(
+      String viewId, double left, double top, double width, double height);
+
+  /// Request native text measurement
+  Future<Map<String, double>> measureText(
+      String viewId, String text, Map<String, dynamic> textAttributes);
 }
 
 /// Factory for creating platform-specific native bridges

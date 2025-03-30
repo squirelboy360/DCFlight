@@ -2,28 +2,35 @@ import UIKit
 import yoga
 
 /// Protocol that all DCMAUI components must implement
-protocol DCMauiComponentProtocol {
-    /// Create a view from properties
-    static func createView(props: [String: Any]) -> UIView
+protocol DCMauiComponent {
+    /// Initialize the component
+    init()
     
-    /// Update an existing view with new properties
-    static func updateView(_ view: UIView, props: [String: Any])
+    /// Create a view with the given props
+    func createView(props: [String: Any]) -> UIView
     
-    /// Register event listeners for this view
-    static func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], eventCallback: @escaping (String, String, [String: Any]) -> Void)
+    /// Update a view with new props
+    func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool
     
-    /// Remove event listeners from this view
-    static func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String])
+    /// Add event listeners to a view
+    func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], 
+                         eventCallback: @escaping (String, String, [String: Any]) -> Void)
     
-    /// Apply layout properties to this view (optional)
-    static func applyLayoutProps(_ view: UIView, props: [String: Any])
+    /// Remove event listeners from a view
+    func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String])
 }
 
-// Default implementation
-extension DCMauiComponentProtocol {
-    // Default layout implementation using DCMauiLayoutManager
-    static func applyLayoutProps(_ view: UIView, props: [String: Any]) {
-        DCMauiLayoutManager.shared.applyLayout(to: view, withProps: props)
+// To resolve initializer requirement issues, make the extension provide a default implementation
+extension DCMauiComponent {
+    // Default implementation for addEventListeners - do nothing by default
+    func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], 
+                          eventCallback: @escaping (String, String, [String: Any]) -> Void) {
+        // Default implementation does nothing
+    }
+    
+    // Default implementation for removeEventListeners - do nothing by default
+    func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String]) {
+        // Default implementation does nothing
     }
 }
 
@@ -31,7 +38,7 @@ extension DCMauiComponentProtocol {
 class DCMauiComponentRegistry {
     static let shared = DCMauiComponentRegistry()
     
-    private var componentTypes: [String: DCMauiComponentProtocol.Type] = [:]
+    private var componentTypes: [String: DCMauiComponent.Type] = [:]
     
     private init() {
         // Register all built-in components
@@ -48,13 +55,13 @@ class DCMauiComponentRegistry {
     }
     
     /// Register a component type handler
-    func registerComponent(_ type: String, componentClass: DCMauiComponentProtocol.Type) {
+    func registerComponent(_ type: String, componentClass: DCMauiComponent.Type) {
         componentTypes[type] = componentClass
         print("Registered component type: \(type)")
     }
     
     /// Get the component handler for a specific type
-    func getComponentType(for type: String) -> DCMauiComponentProtocol.Type? {
+    func getComponentType(for type: String) -> DCMauiComponent.Type? {
         return componentTypes[type]
     }
     

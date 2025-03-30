@@ -1,37 +1,36 @@
 import UIKit
-import yoga
+// Remove or conditionally import Kingfisher, since it might not be available
+// import Kingfisher
 
-class DCMauiImageComponent: NSObject, DCMauiComponentProtocol {
-    static func createView(props: [String: Any]) -> UIView {
+class DCMauiImageComponent: NSObject, DCMauiComponent {
+    // Required initializer to conform to DCMauiComponent
+    required override init() {
+        super.init()
+    }
+    
+    func createView(props: [String: Any]) -> UIView {
+        // Create an image view
         let imageView = UIImageView()
         
-        // Set content mode to scale properly
+        // Default configuration
         imageView.contentMode = .scaleAspectFit
+        imageView.clipsToBounds = true
         
-        // Create Yoga node for this view for layout
-        let _ = DCMauiLayoutManager.shared.createYogaNode(for: imageView)
+        // Apply provided props
+        updateView(imageView, withProps: props)
         
-        // Apply all props
-        updateView(imageView, props: props)
         return imageView
     }
     
-    static func updateView(_ view: UIView, props: [String: Any]) {
-        guard let imageView = view as? UIImageView else { return }
+    func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
+        guard let imageView = view as? UIImageView else { return false }
         
-        // Basic image source handling - load from bundle by default
+        // Apply image source
         if let source = props["source"] as? String {
-            // Handle different source types (bundle, URL, etc)
-            if source.hasPrefix("http") {
-                // Remote image URL
-                loadImageFromURL(source, into: imageView)
-            } else {
-                // Local bundle image
-                imageView.image = UIImage(named: source)
-            }
+            loadImage(from: source, into: imageView)
         }
         
-        // Handle resize mode (content mode in iOS)
+        // Apply resize mode / content mode
         if let resizeMode = props["resizeMode"] as? String {
             switch resizeMode {
             case "cover":
@@ -42,174 +41,80 @@ class DCMauiImageComponent: NSObject, DCMauiComponentProtocol {
                 imageView.contentMode = .scaleToFill
             case "center":
                 imageView.contentMode = .center
-            case "repeat":
-                // UIKit doesn't support repeat directly, would need custom implementation
-                imageView.contentMode = .scaleToFill
             default:
                 imageView.contentMode = .scaleAspectFit
             }
         }
         
-        // Handle aspect ratio
-        if let aspectRatio = props["aspectRatio"] as? CGFloat {
-            // Using constraints to maintain aspect ratio
-            imageView.translatesAutoresizingMaskIntoConstraints = false
-            
-            // Remove any existing aspect ratio constraint
-            for constraint in imageView.constraints {
-                if constraint.firstAttribute == .width && constraint.secondAttribute == .height {
-                    imageView.removeConstraint(constraint)
-                }
-            }
-            
-            // Add aspect ratio constraint
-            let aspectConstraint = NSLayoutConstraint(
-                item: imageView,
-                attribute: .width,
-                relatedBy: .equal,
-                toItem: imageView,
-                attribute: .height,
-                multiplier: aspectRatio,
-                constant: 0
-            )
-            imageView.addConstraint(aspectConstraint)
-        }
+        // Apply non-layout styling (border radius, etc.)
+        DCMauiLayoutManager.shared.applyStyles(to: imageView, props: props)
         
-        // Handle fade duration for image loading
-        if let fadeDuration = props["fadeDuration"] as? Double {
-            // Store the fade duration as an associated object
-            objc_setAssociatedObject(
-                imageView,
-                UnsafeRawPointer(bitPattern: "fadeDuration".hashValue)!,
-                fadeDuration,
-                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-            )
-        }
-        
-        // Handle default source (placeholder)
-        if let defaultSource = props["defaultSource"] as? String {
-            if imageView.image == nil { // Only set if main image not loaded
-                imageView.image = UIImage(named: defaultSource)
-            }
-        }
-        
-        // Apply standard visual styling
-        applyCommonStyling(to: imageView, with: props)
-        
-        // Apply layout properties for positioning and sizing
-        applyLayoutProps(imageView, props: props)
+        return true
     }
     
-    // Helper to apply common visual styling
-    private static func applyCommonStyling(to view: UIView, with props: [String: Any]) {
-        // Background color
-        if let bgColorStr = props["backgroundColor"] as? String {
-            view.backgroundColor = UIColorFromHex(bgColorStr)
-        }
-        
-        // Opacity
-        if let opacity = props["opacity"] as? CGFloat {
-            view.alpha = opacity
-        }
-        
-        // Border radius (clip to bounds)
-        if let borderRadius = props["borderRadius"] as? CGFloat {
-            view.layer.cornerRadius = borderRadius
-            view.clipsToBounds = true
-        }
-        
-        // Directional border radii for individual corners
-        let corners: [(String, CACornerMask)] = [
-            ("borderTopLeftRadius", .layerMinXMinYCorner),
-            ("borderTopRightRadius", .layerMaxXMinYCorner),
-            ("borderBottomLeftRadius", .layerMinXMaxYCorner),
-            ("borderBottomRightRadius", .layerMaxXMaxYCorner)
-        ]
-        
-        var hasCustomCornerRadius = false
-        
-        for (propName, cornerMask) in corners {
-            if let radius = props[propName] as? CGFloat {
-                hasCustomCornerRadius = true
-                view.layer.cornerRadius = radius // This will be overridden if multiple corners have different values
-                view.layer.maskedCorners.insert(cornerMask)
+    private func loadImage(from source: String, into imageView: UIImageView) {
+        if source.hasPrefix("http://") || source.hasPrefix("https://") {
+            // Remote image - load asynchronously
+            if let url = URL(string: source) {
+                // Create a URLSession task to load the image
+                URLSession.shared.dataTask(with: url) { (data, response, error) in
+                    if let error = error {
+                        print("Error loading image: \(error)")
+                        return
+                    }
+                    
+                    if let data = data, let image = UIImage(data: data) {
+                        // Update UI on main thread
+                        DispatchQueue.main.async {
+                            imageView.image = image
+                        }
+                    }
+                }.resume()
             }
-        }
-        
-        if hasCustomCornerRadius {
-            view.clipsToBounds = true
-        }
-        
-        // Border properties
-        if let borderWidth = props["borderWidth"] as? CGFloat {
-            view.layer.borderWidth = borderWidth
-        }
-        
-        if let borderColor = props["borderColor"] as? String {
-            view.layer.borderColor = UIColorFromHex(borderColor).cgColor
+        } else if source.hasPrefix("data:image/") {
+            // Base64 encoded image
+            if let imageData = parseBase64Image(source) {
+                imageView.image = UIImage(data: imageData)
+            }
+        } else {
+            // Local image
+            imageView.image = UIImage(named: source)
         }
     }
     
-    // Helper to load remote images with caching
-    static func loadImageFromURL(_ urlString: String, into imageView: UIImageView) {
-        guard let url = URL(string: urlString) else {
-            print("Invalid image URL: \(urlString)")
-            return
+    private func parseBase64Image(_ source: String) -> Data? {
+        // Extract base64 data
+        if let commaIndex = source.range(of: ",")?.upperBound {
+            let base64String = String(source[commaIndex...])
+            return Data(base64Encoded: String(base64String))
         }
-        
-        // Check for fade duration - use 0.0 if not specified
-        let fadeDuration = objc_getAssociatedObject(
-            imageView,
-            UnsafeRawPointer(bitPattern: "fadeDuration".hashValue)!
-        ) as? Double ?? 0.0
-        
-        // Check if image is already cached
-        if let cachedImage = ImageCache.shared.getImage(for: urlString) {
-            if fadeDuration > 0 {
-                UIView.transition(with: imageView,
-                                 duration: fadeDuration,
-                                 options: .transitionCrossDissolve,
-                                 animations: {
-                                     imageView.image = cachedImage
-                                 })
-            } else {
-                imageView.image = cachedImage
-            }
-            return
-        }
-        
-        // Create data task to download image
-        let task = URLSession.shared.dataTask(with: url) { data, response, error in
-            guard let data = data, error == nil, let image = UIImage(data: data) else {
-                print("Error loading image from URL: \(urlString) - \(error?.localizedDescription ?? "Unknown error")")
-                return
-            }
-            
-            // Cache the image
-            ImageCache.shared.setImage(image, for: urlString)
-            
-            // Update UI on main thread
-            DispatchQueue.main.async {
-                if fadeDuration > 0 {
-                    UIView.transition(with: imageView,
-                                     duration: fadeDuration,
-                                     options: .transitionCrossDissolve,
-                                     animations: {
-                                         imageView.image = image
-                                     })
-                } else {
-                    imageView.image = image
-                }
-            }
-        }
-        
-        task.resume()
+        return nil
     }
     
-    // No standard events for image components in this basic implementation
-    static func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], eventCallback: @escaping (String, String, [String: Any]) -> Void) {}
+    func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], 
+                          eventCallback: @escaping (String, String, [String: Any]) -> Void) {
+        guard let imageView = view as? UIImageView else { return }
+        
+        for eventType in eventTypes {
+            switch eventType {
+            case "load":
+                // Add load event listener - requires a custom implementation
+                // We can use Kingfisher's completion handler in the updateView method
+                break
+                
+            case "error":
+                // Add error event listener
+                break
+                
+            default:
+                break
+            }
+        }
+    }
     
-    static func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String]) {}
+    func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String]) {
+        // Clean up any event listeners that were added
+    }
 }
 
 // Simple image cache

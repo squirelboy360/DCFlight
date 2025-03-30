@@ -14,6 +14,8 @@ import 'reconciler.dart';
 import 'context.dart';
 import 'fragment.dart';
 import 'error_boundary.dart';
+import '../yoga/layout_calculator.dart';
+import '../text/text_measurement_service.dart';
 
 /// Virtual DOM implementation that bridges to native UI
 class VDom {
@@ -59,6 +61,19 @@ class VDom {
   /// Map of component nodes by component instance ID for quick lookup
   final Map<String, ComponentNode> _componentNodes = {};
 
+  /// Layout calculator for computing layouts in Dart
+  final LayoutCalculator _layoutCalculator = LayoutCalculator.instance;
+
+  /// Root component node for layout calculations
+  ComponentNode? rootComponentNode;
+
+  /// Current screen dimensions for layout calculation
+  double _screenWidth = 375.0; // Default fallback width
+  double _screenHeight = 812.0; // Default fallback height
+
+  /// Flag to indicate if layout needs to be recalculated
+  bool _layoutDirty = false;
+
   /// Constructor
   VDom({NativeBridge? nativeBridge})
       : _nativeBridge = nativeBridge ?? FFINativeBridge() {
@@ -82,6 +97,9 @@ class VDom {
 
     // Set up event handler
     _nativeBridge.setEventHandler(_handleNativeEvent);
+
+    // Initialize text measurement service
+    TextMeasurementService.instance.initialize(_nativeBridge);
 
     // Create reconciler
     _reconciler = Reconciler(this);
@@ -153,6 +171,11 @@ class VDom {
 
     _performanceMonitor.startTimer('render_to_native');
     try {
+      // Store root component node if this is the first render
+      if (rootComponentNode == null && node is ComponentNode) {
+        rootComponentNode = node;
+      }
+
       // Handle Fragment nodes
       if (node is Fragment) {
         // Just render children directly to parent
@@ -336,6 +359,11 @@ class VDom {
           _performanceMonitor.startTimer('set_children');
           await _nativeBridge.setChildren(viewId, childIds);
           _performanceMonitor.endTimer('set_children');
+        }
+
+        // If this is the root of a component tree, calculate layout
+        if (node == rootComponentNode?.renderedNode) {
+          await _calculateAndApplyLayout();
         }
 
         // Call lifecycle methods after full rendering
@@ -601,6 +629,94 @@ class VDom {
       current = current.parent;
     }
     return "root"; // Fallback to root if no parent found
+  }
+
+  /// Calculate layout using Yoga and apply positions to native views
+  Future<void> _calculateAndApplyLayout() async {
+    if (rootComponentNode?.renderedNode == null) return;
+
+    _performanceMonitor.startTimer('calculate_layout');
+
+    // Calculate layout using Yoga
+    final layoutResults = _layoutCalculator.calculateLayout(
+      rootComponentNode!.renderedNode!,
+      _screenWidth,
+      _screenHeight,
+    );
+
+    _performanceMonitor.endTimer('calculate_layout');
+
+    // Apply layout results to native views
+    _performanceMonitor.startTimer('apply_layout');
+
+    for (final entry in layoutResults.entries) {
+      final viewId = entry.key;
+      final layout = entry.value;
+
+      await _nativeBridge.updateViewLayout(
+        viewId,
+        layout.left,
+        layout.top,
+        layout.width,
+        layout.height,
+      );
+    }
+
+    _performanceMonitor.endTimer('apply_layout');
+  }
+
+  /// Mark that layout needs recalculation
+  void markLayoutDirty() {
+    _layoutDirty = true;
+  }
+
+  /// Calculate layout using Yoga and apply positions to native views
+  Future<void> calculateAndApplyLayout() async {
+    if (rootComponentNode?.renderedNode == null) return;
+
+    _performanceMonitor.startTimer('calculate_layout');
+
+    // Calculate layout using Yoga
+    final layoutResults = _layoutCalculator.calculateLayout(
+      rootComponentNode!.renderedNode!,
+      _screenWidth,
+      _screenHeight,
+    );
+
+    _performanceMonitor.endTimer('calculate_layout');
+
+    // Apply layout results to native views
+    _performanceMonitor.startTimer('apply_layout');
+
+    for (final entry in layoutResults.entries) {
+      final viewId = entry.key;
+      final layout = entry.value;
+
+      await _nativeBridge.updateViewLayout(
+        viewId,
+        layout.left,
+        layout.top,
+        layout.width,
+        layout.height,
+      );
+    }
+
+    _layoutDirty = false;
+    _performanceMonitor.endTimer('apply_layout');
+  }
+
+  /// Update screen dimensions
+  void updateScreenDimensions(double width, double height) {
+    _screenWidth = width;
+    _screenHeight = height;
+
+    // Mark layout as dirty
+    markLayoutDirty();
+
+    // Recalculate layout if we have a root component
+    if (rootComponentNode != null && _layoutDirty) {
+      calculateAndApplyLayout();
+    }
   }
 }
 
