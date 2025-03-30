@@ -4,7 +4,7 @@ import Flutter
 // Global C-compatible bridge functions with proper nullability
 @_cdecl("swift_initialize")
 func swift_initialize() -> Int8 {
-    return DCMauiNativeBridge.shared.dcmaui_initialize()
+    return DCMauiNativeBridgeCoordinator.shared.dcmaui_initialize()
 }
 
 @_cdecl("swift_create_view")
@@ -12,7 +12,7 @@ func swift_create_view(_ viewId: UnsafePointer<CChar>?, _ type: UnsafePointer<CC
     guard let viewId = viewId, let type = type, let props = props else {
         return 0 // Fail if any parameter is nil
     }
-    return DCMauiNativeBridge.shared.dcmaui_create_view(viewId, type, props)
+    return DCMauiNativeBridgeCoordinator.shared.dcmaui_create_view(viewId, type, props)
 }
 
 @_cdecl("swift_update_view")
@@ -20,7 +20,7 @@ func swift_update_view(_ viewId: UnsafePointer<CChar>?, _ props: UnsafePointer<C
     guard let viewId = viewId, let props = props else {
         return 0
     }
-    return DCMauiNativeBridge.shared.dcmaui_update_view(viewId, props)
+    return DCMauiNativeBridgeCoordinator.shared.dcmaui_update_view(viewId, props)
 }
 
 @_cdecl("swift_delete_view")
@@ -28,7 +28,7 @@ func swift_delete_view(_ viewId: UnsafePointer<CChar>?) -> Int8 {
     guard let viewId = viewId else {
         return 0
     }
-    return DCMauiNativeBridge.shared.dcmaui_delete_view(viewId)
+    return DCMauiNativeBridgeCoordinator.shared.dcmaui_delete_view(viewId)
 }
 
 @_cdecl("swift_attach_view")
@@ -36,7 +36,7 @@ func swift_attach_view(_ childId: UnsafePointer<CChar>?, _ parentId: UnsafePoint
     guard let childId = childId, let parentId = parentId else {
         return 0
     }
-    return DCMauiNativeBridge.shared.dcmaui_attach_view(childId, parentId, index)
+    return DCMauiNativeBridgeCoordinator.shared.dcmaui_attach_view(childId, parentId, index)
 }
 
 @_cdecl("swift_set_children")
@@ -44,7 +44,7 @@ func swift_set_children(_ viewId: UnsafePointer<CChar>?, _ children: UnsafePoint
     guard let viewId = viewId, let children = children else {
         return 0
     }
-    return DCMauiNativeBridge.shared.dcmaui_set_children(viewId, children)
+    return DCMauiNativeBridgeCoordinator.shared.dcmaui_set_children(viewId, children)
 }
 
 @available(iOS 13.0, *)
@@ -61,7 +61,7 @@ class AppDelegate: FlutterAppDelegate {
         GeneratedPluginRegistrant.register(with: flutterEngine)
         
         // Set up the method channel for events
-        DCMauiNativeBridge.shared.setupEventChannel(binaryMessenger: flutterEngine.binaryMessenger)
+        DCMauiNativeBridgeCoordinator.shared.setupEventChannel(binaryMessenger: flutterEngine.binaryMessenger)
         
         // Create window with proper frame
         self.window = UIWindow(frame: UIScreen.main.bounds)
@@ -120,7 +120,7 @@ class AppDelegate: FlutterAppDelegate {
             ]
             
             // Set up the root with our props
-            DCMauiNativeBridge.shared.manuallyCreateRootView(rootContainer, viewId: "root", props: rootProps)
+            DCMauiNativeBridgeCoordinator.shared.manuallyCreateRootView(rootContainer, viewId: "root", props: rootProps)
             
             // Force layout calculation on the root view
             let layoutManager = DCMauiLayoutManager.shared

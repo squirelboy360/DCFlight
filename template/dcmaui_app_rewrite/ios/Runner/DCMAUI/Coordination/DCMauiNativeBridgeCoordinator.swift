@@ -2,9 +2,9 @@ import Flutter
 import UIKit
 import yoga
 
-@objc public class DCMauiNativeBridge: NSObject {
+@objc public class DCMauiNativeBridgeCoordinator: NSObject {
     // Singleton instance
-    @objc public static let shared = DCMauiNativeBridge()
+    @objc public static let shared = DCMauiNativeBridgeCoordinator()
     
     // View registry to keep track of created views
     private var viewRegistry = [String: (view: UIView, componentType: String)]()
