@@ -350,16 +350,23 @@ class DartLayoutManager {
       return value.toDouble();
     } else if (value is String && value.endsWith('%')) {
       try {
-        // Convert percentage to a fraction of 100
+        // Convert percentage properly - don't divide by 100 here
+        // Yoga expects percentages as point values (0-100) not as fractions (0-1)
         final percentValue = double.parse(value.substring(0, value.length - 1));
-        return percentValue / 100.0;
+        developer.log('Processing percentage value: $value -> $percentValue',
+            name: 'DartLayout');
+        return percentValue; // Don't divide by 100 anymore
       } catch (e) {
+        developer.log('Failed to parse percentage: $value, error: $e',
+            name: 'DartLayout');
         return null;
       }
     } else if (value is String) {
       try {
         return double.parse(value);
       } catch (e) {
+        developer.log('Failed to parse numeric string: $value, error: $e',
+            name: 'DartLayout');
         return null;
       }
     }
