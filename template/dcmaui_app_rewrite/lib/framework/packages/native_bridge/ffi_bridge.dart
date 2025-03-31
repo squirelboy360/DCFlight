@@ -324,37 +324,23 @@ class FFINativeBridge implements NativeBridge {
       } else if (value == double.infinity) {
         // Convert infinity to 100% string for percentage sizing
         processedProps[key] = '100%';
-      } else if (value == double.negativeInfinity) {
-        // Just in case someone tries to use negative infinity
-        processedProps[key] = '0%';
-      } else if (key == 'transform' && value is Map<String, dynamic>) {
-        // Special handling for transform to ensure all values are processed correctly
-        final processedTransform = <String, dynamic>{};
-
-        value.forEach((transformKey, transformValue) {
-          // Make sure numeric values are properly converted
-          if (transformValue is num) {
-            processedTransform[transformKey] = transformValue.toDouble();
-            developer.log('Processing transform $transformKey: $transformValue',
-                name: 'FFI');
-          } else {
-            processedTransform[transformKey] = transformValue;
-          }
-        });
-
-        processedProps[key] = processedTransform;
-      } else if (value != null) {
-        // Ensure numeric values like margin are properly processed
-        if (value is num &&
-            (key == LayoutProperties.marginTop ||
-                key == LayoutProperties.marginBottom ||
-                key == LayoutProperties.marginLeft ||
-                key == LayoutProperties.marginRight)) {
+      } else if (key == 'width' ||
+          key == 'height' ||
+          key.startsWith('margin') ||
+          key.startsWith('padding')) {
+        // Make sure percentage strings go through untouched for layout props
+        if (value is String && value.endsWith('%')) {
+          processedProps[key] = value;
+          developer.log('Preserving percentage value: $key=$value',
+              name: 'FFI');
+        } else if (value is num) {
           processedProps[key] = value.toDouble();
-          developer.log('Processing margin $key: $value', name: 'FFI');
+          developer.log('Processing numeric $key: $value', name: 'FFI');
         } else {
           processedProps[key] = value;
         }
+      } else if (value != null) {
+        processedProps[key] = value;
       }
     });
 

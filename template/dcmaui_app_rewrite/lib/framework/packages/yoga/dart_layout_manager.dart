@@ -46,7 +46,7 @@ class DartLayoutManager {
     return node;
   }
 
-  /// Apply flexbox properties to a node
+  /// Apply flexbox properties to a node - exact React Native approach
   void applyFlexboxProps(String viewId, Map<String, dynamic> props) {
     final node = _nodeMapping[viewId];
     if (node == null) {
@@ -58,17 +58,11 @@ class DartLayoutManager {
     if (_propsCache.containsKey(viewId)) {
       final oldProps = _propsCache[viewId]!;
       bool hasChanges = !const DeepCollectionEquality().equals(props, oldProps);
-
-      if (!hasChanges) {
-        // No changes, skip update
-        return;
-      }
+      if (!hasChanges) return; // No changes, skip update
     }
 
     // Cache the props
     _propsCache[viewId] = Map<String, dynamic>.from(props);
-
-    // Mark this node and ancestors as dirty
     _markNodeDirty(viewId);
 
     // Apply flex direction
@@ -212,84 +206,15 @@ class DartLayoutManager {
       }
     }
 
-    // Width and height - strictly follow user values
+    // Width and height - with proper percentage handling
     if (props.containsKey(LayoutProperties.width)) {
-      if (props[LayoutProperties.width] is String &&
-          props[LayoutProperties.width] == 'auto') {
-        node.setWidthAuto();
-      } else {
-        final width = _parseNumberProp(props[LayoutProperties.width]);
-        if (width != null) {
-          // Just set the width directly
-          node.setWidth(width);
-        }
-      }
+      final width = _parseNumberProp(props[LayoutProperties.width]);
+      _applyDimensionProp(node, width, true);
     }
 
     if (props.containsKey(LayoutProperties.height)) {
-      if (props[LayoutProperties.height] is String &&
-          props[LayoutProperties.height] == 'auto') {
-        node.setHeightAuto();
-      } else {
-        final height = _parseNumberProp(props[LayoutProperties.height]);
-        if (height != null) {
-          // Just set the height directly
-          node.setHeight(height);
-        }
-      }
-    }
-
-    // Special handling for containers with percentage heights
-    if (props.containsKey(LayoutProperties.height) &&
-        props[LayoutProperties.height] is String &&
-        props[LayoutProperties.height].toString().endsWith('%')) {
-      final percentStr = props[LayoutProperties.height] as String;
-      final percent =
-          double.tryParse(percentStr.substring(0, percentStr.length - 1));
-
-      if (percent != null) {
-        developer.log(
-            'Special handling for percentage height: $percentStr on $viewId',
-            name: 'DartLayout');
-
-        // For ScrollView and other containers, we want to ensure they take up proper space
-        if (percent >= 95) {
-          // Close to 100%
-          // Set flex to 1 to fill available space
-          node.setFlexGrow(1);
-          node.setFlexShrink(1);
-          developer.log(
-              'Auto-setting flexGrow=1 for view with height=$percentStr',
-              name: 'DartLayout');
-        }
-      }
-    }
-
-    // Similar for width
-    if (props.containsKey(LayoutProperties.width) &&
-        props[LayoutProperties.width] is String &&
-        props[LayoutProperties.width].toString().endsWith('%')) {
-      final percentStr = props[LayoutProperties.width] as String;
-      final percent =
-          double.tryParse(percentStr.substring(0, percentStr.length - 1));
-
-      if (percent != null && percent >= 95) {
-        // Ensure the width can grow to fill the container
-        node.setFlexGrow(1);
-        developer.log('Auto-setting flexGrow=1 for view with width=$percentStr',
-            name: 'DartLayout');
-      }
-    }
-
-    // Fix dimensions on high-level containers
-    if (_getParentCount(viewId) <= 2) {
-      // Apply special handling for top-level containers
-      if (props.containsKey(LayoutProperties.width) &&
-          _isPercentageValue(props[LayoutProperties.width])) {
-        node.setFlexGrow(1);
-        developer.log('Setting flexGrow=1 for top-level view $viewId',
-            name: 'DartLayout');
-      }
+      final height = _parseNumberProp(props[LayoutProperties.height]);
+      _applyDimensionProp(node, height, false);
     }
 
     // Min/max dimensions
@@ -398,21 +323,27 @@ class DartLayoutManager {
   }
 
   /// Parse number property that could be a number or a percent string
-  double? _parseNumberProp(dynamic value) {
+  dynamic _parseNumberProp(dynamic value) {
     if (value == null) return null;
 
     if (value is num) {
       return value.toDouble();
     } else if (value is String && value.endsWith('%')) {
       try {
-        // For percentage values - keep it simple
-        // Just convert the percentage to a value
+        // For percentage values, keep the raw percentage without converting to a fractional value
+        // This is crucial for correct rendering on different screen sizes
         final percentValue = double.parse(value.substring(0, value.length - 1));
-        developer.log('Processing percentage value: $value -> $percentValue%', 
+        developer.log('Processing percentage value: $value as $percentValue%',
             name: 'DartLayout');
-        return percentValue;
+
+        // Simply return the raw percentage value - Yoga expects percentages as-is
+        return {
+          'isPercent': true,
+          'value':
+              percentValue // Don't divide by 100 - Yoga expects the actual percentage
+        };
       } catch (e) {
-        developer.log('Failed to parse percentage: $value, error: $e', 
+        developer.log('Failed to parse percentage: $value, error: $e',
             name: 'DartLayout');
         return null;
       }
@@ -420,13 +351,45 @@ class DartLayoutManager {
       try {
         return double.parse(value);
       } catch (e) {
-        developer.log('Failed to parse numeric string: $value, error: $e', 
+        developer.log('Failed to parse numeric string: $value, error: $e',
             name: 'DartLayout');
         return null;
       }
     }
-
     return null;
+  }
+
+  /// Apply width/height properties handling percentages properly
+  void _applyDimensionProp(YogaNode node, dynamic value, bool isWidth) {
+    if (value == null) return;
+
+    if (value is Map && value['isPercent'] == true) {
+      // Handle percentage value - pass the raw percentage to Yoga
+      final percentValue = value['value'] as double;
+      if (isWidth) {
+        developer.log('Setting width as percentage: $percentValue%',
+            name: 'DartLayout');
+        node.setWidthPercent(percentValue);
+      } else {
+        developer.log('Setting height as percentage: $percentValue%',
+            name: 'DartLayout');
+        node.setHeightPercent(percentValue);
+      }
+    } else if (value is String && value == 'auto') {
+      // Handle auto value
+      if (isWidth) {
+        node.setWidthAuto();
+      } else {
+        node.setHeightAuto();
+      }
+    } else if (value is double) {
+      // Handle point value
+      if (isWidth) {
+        node.setWidth(value);
+      } else {
+        node.setHeight(value);
+      }
+    }
   }
 
   /// Mark a node as dirty, requiring layout recalculation
@@ -482,90 +445,33 @@ class DartLayoutManager {
     // First build the node hierarchy to match the view hierarchy
     _buildNodeHierarchyFor(rootId);
 
-    // Set root dimensions
+    // Set root dimensions - this is necessary for the root only
+    // For proper percentage calculation, the container must have explicit dimensions
     rootNode.setWidth(width);
     rootNode.setHeight(height);
+
+    // Reset any padding and margin at the root, but keep all other props
+    rootNode.setPadding(YogaEdge.all, 0);
+    rootNode.setMargin(YogaEdge.all, 0);
+
+    // Set position to relative to ensure proper positioning
+    rootNode.setPositionType(YogaPositionType.relative);
 
     developer.log(
         'Starting layout calculation with container size: ${width}x${height}',
         name: 'DartLayout');
 
-    // Calculate layout exactly as specified
+    // Calculate layout
     rootNode.calculateLayout(width: width, height: height);
 
-    // Extract and cache layout results
+    // Extract layout results
     final results = <String, _LayoutResult>{};
-    _extractLayoutResults(rootId, results);
+    _extractLayoutResults(rootId, results, isRoot: true);
 
     // Clear dirty nodes
     _dirtyNodes.clear();
 
     return results;
-  }
-
-  // Helper to determine the parent count (how deep in the hierarchy)
-  int _getParentCount(String viewId) {
-    int count = 0;
-    String? current = viewId;
-
-    while (current != null) {
-      current = _findParentId(current);
-      if (current != null) count++;
-    }
-
-    return count;
-  }
-
-  // Helper to determine view type (if available)
-  String _getViewType(String viewId) {
-    // This is just a simple heuristic - if your app has
-    // a way to retrieve the actual view type, use that instead
-    if (viewId.contains('scroll') || viewId.contains('Scroll')) {
-      return 'ScrollView';
-    }
-    return 'View';
-  }
-
-  // Helper to check if a value is percentage
-  bool _isPercentageValue(dynamic value) {
-    return value is String && value.endsWith('%');
-  }
-
-  // Apply fixes for direct children of the root view
-  void _applyFixesForDirectChildren(
-      String rootId, double width, double height) {
-    final children = _nodeChildren[rootId] ?? [];
-
-    for (final childId in children) {
-      final node = _nodeMapping[childId];
-      if (node == null) continue;
-
-      // Ensure children don't exceed container dimensions
-      node.setMaxWidth(width);
-      node.setMaxHeight(height);
-
-      developer.log('Applied size constraints to direct root child: $childId',
-          name: 'DartLayout');
-    }
-  }
-
-  // Post-process results to fix any remaining issues
-  void _postProcessResults(Map<String, _LayoutResult> results) {
-    // If any ScrollView has zero height, give it at least 100px
-    results.forEach((viewId, result) {
-      if (viewId.contains('scroll') || viewId.contains('Scroll')) {
-        if (result.height <= 0) {
-          results[viewId] = _LayoutResult(
-            left: result.left,
-            top: result.top,
-            width: result.width > 0 ? result.width : 100,
-            height: 100, // Minimum height
-          );
-          developer.log('Fixed zero-height ScrollView: $viewId',
-              name: 'DartLayout');
-        }
-      }
-    });
   }
 
   /// Build Yoga node hierarchy to match view hierarchy
@@ -599,22 +505,29 @@ class DartLayoutManager {
   }
 
   /// Extract layout results from calculated Yoga nodes
-  void _extractLayoutResults(
-      String viewId, Map<String, _LayoutResult> results) {
+  void _extractLayoutResults(String viewId, Map<String, _LayoutResult> results,
+      {bool isRoot = false}) {
     final node = _nodeMapping[viewId];
     if (node == null) return;
 
-    // Extract layout values
-    final left = node.getLayoutLeft();
-    final top = node.getLayoutTop();
+    // Extract layout values directly from the yoga node
+    double left = node.getLayoutLeft();
+    double top = node.getLayoutTop();
     final width = node.getLayoutWidth();
     final height = node.getLayoutHeight();
 
-    // Log the layout results for debugging
+    // If this is the root node, ensure it starts at 0,0 with no padding
+    // This helps eliminate the edge spacing
+    if (isRoot) {
+      left = 0;
+      top = 0;
+    }
+
     developer.log(
         'Layout for $viewId: left=$left, top=$top, width=$width, height=$height',
         name: 'DartLayout');
 
+    // Store results without any modification
     final layout = _LayoutResult(
       left: left,
       top: top,
@@ -622,7 +535,6 @@ class DartLayoutManager {
       height: height,
     );
 
-    // Store in results and cache
     results[viewId] = layout;
     _layoutCache[viewId] = layout;
 

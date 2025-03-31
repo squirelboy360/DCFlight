@@ -707,15 +707,22 @@ class VDom {
 
   /// Update screen dimensions
   void updateScreenDimensions(double width, double height) {
-    _screenWidth = width;
-    _screenHeight = height;
+    // Only recalculate if dimensions actually changed
+    if (_screenWidth != width || _screenHeight != height) {
+      developer.log(
+          'Screen dimensions changed from ${_screenWidth}x${_screenHeight} to ${width}x${height}',
+          name: 'VDom');
 
-    // Mark layout as dirty
-    markLayoutDirty();
+      _screenWidth = width;
+      _screenHeight = height;
 
-    // Recalculate layout if we have a root component
-    if (rootComponentNode != null && _layoutDirty) {
-      calculateAndApplyLayout();
+      // Always mark layout as dirty when screen size changes
+      markLayoutDirty();
+
+      // Recalculate layout if we have a root component
+      if (rootComponentNode != null && _layoutDirty) {
+        calculateAndApplyLayout();
+      }
     }
   }
 }

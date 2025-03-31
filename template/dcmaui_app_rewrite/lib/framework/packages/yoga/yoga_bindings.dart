@@ -50,6 +50,19 @@ class YogaBindings {
   late final void Function(Pointer<Void>, int, double) _YGNodeStyleSetMargin;
   late final void Function(Pointer<Void>, int, double) _YGNodeStyleSetPadding;
 
+  // New function pointers for percentage-based properties
+  late final void Function(Pointer<Void>, double) _YGNodeStyleSetWidthPercent;
+  late final void Function(Pointer<Void>, double) _YGNodeStyleSetHeightPercent;
+  late final void Function(Pointer<Void>, int, double)
+      _YGNodeStyleSetPositionPercent;
+  late final void Function(Pointer<Void>, int, double)
+      _YGNodeStyleSetMarginPercent;
+  late final void Function(Pointer<Void>, int, double)
+      _YGNodeStyleSetPaddingPercent;
+
+  late final void Function(Pointer<Void>, int) _YGNodeStyleSetPositionType;
+  late final void Function(Pointer<Void>, int, double) _YGNodeStyleSetBorder;
+
   // Private constructor
   YogaBindings._() {
     _initializeBindings();
@@ -239,6 +252,43 @@ class YogaBindings {
               'YGNodeStyleSetPadding')
           .asFunction();
 
+      // Load the new percentage function pointers
+      _YGNodeStyleSetWidthPercent = _yogaLib
+          .lookup<NativeFunction<Void Function(Pointer<Void>, Float)>>(
+              'YGNodeStyleSetWidthPercent')
+          .asFunction();
+
+      _YGNodeStyleSetHeightPercent = _yogaLib
+          .lookup<NativeFunction<Void Function(Pointer<Void>, Float)>>(
+              'YGNodeStyleSetHeightPercent')
+          .asFunction();
+
+      _YGNodeStyleSetPositionPercent = _yogaLib
+          .lookup<NativeFunction<Void Function(Pointer<Void>, Int32, Float)>>(
+              'YGNodeStyleSetPositionPercent')
+          .asFunction();
+
+      _YGNodeStyleSetMarginPercent = _yogaLib
+          .lookup<NativeFunction<Void Function(Pointer<Void>, Int32, Float)>>(
+              'YGNodeStyleSetMarginPercent')
+          .asFunction();
+
+      _YGNodeStyleSetPaddingPercent = _yogaLib
+          .lookup<NativeFunction<Void Function(Pointer<Void>, Int32, Float)>>(
+              'YGNodeStyleSetPaddingPercent')
+          .asFunction();
+
+      // Additional bindings for position type and border
+      _YGNodeStyleSetPositionType = _yogaLib
+          .lookup<NativeFunction<Void Function(Pointer<Void>, Int32)>>(
+              'YGNodeStyleSetPositionType')
+          .asFunction();
+
+      _YGNodeStyleSetBorder = _yogaLib
+          .lookup<NativeFunction<Void Function(Pointer<Void>, Int32, Float)>>(
+              'YGNodeStyleSetBorder')
+          .asFunction();
+
       _isInitialized = true;
       developer.log('Yoga bindings initialized successfully',
           name: 'YogaBindings');
@@ -412,5 +462,45 @@ class YogaBindings {
   /// Set padding for edge
   void nodeStyleSetPadding(Pointer<Void> node, YogaEdge edge, double padding) {
     _YGNodeStyleSetPadding(node, edge.index, padding);
+  }
+
+  /// Set width as a percentage
+  void nodeStyleSetWidthPercent(Pointer<Void> node, double percent) {
+    _YGNodeStyleSetWidthPercent(node, percent);
+  }
+
+  /// Set height as a percentage
+  void nodeStyleSetHeightPercent(Pointer<Void> node, double percent) {
+    _YGNodeStyleSetHeightPercent(node, percent);
+  }
+
+  /// Set position as a percentage for a specific edge
+  void nodeStyleSetPositionPercent(
+      Pointer<Void> node, YogaEdge edge, double percent) {
+    _YGNodeStyleSetPositionPercent(node, edge.index, percent);
+  }
+
+  /// Set margin as a percentage for a specific edge
+  void nodeStyleSetMarginPercent(
+      Pointer<Void> node, YogaEdge edge, double percent) {
+    _YGNodeStyleSetMarginPercent(node, edge.index, percent);
+  }
+
+  /// Set padding as a percentage for a specific edge
+  void nodeStyleSetPaddingPercent(
+      Pointer<Void> node, YogaEdge edge, double percent) {
+    _YGNodeStyleSetPaddingPercent(node, edge.index, percent);
+  }
+
+  /// Set position type
+  void nodeStyleSetPositionType(
+      Pointer<Void> node, YogaPositionType positionType) {
+    _YGNodeStyleSetPositionType(node, positionType.index);
+  }
+
+  /// Set border width
+  void nodeStyleSetBorder(
+      Pointer<Void> node, YogaEdge edge, double borderWidth) {
+    _YGNodeStyleSetBorder(node, edge.index, borderWidth);
   }
 }

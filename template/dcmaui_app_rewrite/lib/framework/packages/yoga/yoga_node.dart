@@ -262,4 +262,48 @@ class YogaNode {
     if (!_isValid) return;
     _yoga.nodeStyleSetPadding(_node, edge, padding);
   }
+
+  /// Set width as a percentage
+  void setWidthPercent(double percent) {
+    if (!_isValid) return;
+    // We need to tell Yoga this is a percentage value
+    // First we need to add this method to the YogaBindings class
+    _yoga.nodeStyleSetWidthPercent(_node, percent);
+  }
+
+  /// Set height as a percentage
+  void setHeightPercent(double percent) {
+    if (!_isValid) return;
+    _yoga.nodeStyleSetHeightPercent(_node, percent);
+  }
+
+  /// Set position as a percentage for a specific edge
+  void setPositionPercent(YogaEdge edge, double percent) {
+    if (!_isValid) return;
+    _yoga.nodeStyleSetPositionPercent(_node, edge, percent);
+  }
+
+  /// Set margin as a percentage for a specific edge
+  void setMarginPercent(YogaEdge edge, double percent) {
+    if (!_isValid) return;
+    _yoga.nodeStyleSetMarginPercent(_node, edge, percent);
+  }
+
+  /// Set padding as a percentage for a specific edge
+  void setPaddingPercent(YogaEdge edge, double percent) {
+    if (!_isValid) return;
+    _yoga.nodeStyleSetPaddingPercent(_node, edge, percent);
+  }
+
+  /// Set position type (relative or absolute)
+  void setPositionType(YogaPositionType positionType) {
+    if (!_isValid) return;
+    _yoga.nodeStyleSetPositionType(_node, positionType);
+  }
+
+  /// Set border width for edge
+  void setBorder(YogaEdge edge, double borderWidth) {
+    if (!_isValid) return;
+    _yoga.nodeStyleSetBorder(_node, edge, borderWidth);
+  }
 }
