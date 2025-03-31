@@ -27,6 +27,7 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent {
         scrollView.showsVerticalScrollIndicator = true
         scrollView.alwaysBounceVertical = false // Changed to false by default
         scrollView.backgroundColor = .clear // Make scroll view transparent by default
+        scrollView.clipsToBounds = true
         
         // Set up content view constraints - much simpler approach
         contentView.translatesAutoresizingMaskIntoConstraints = false
@@ -35,8 +36,8 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent {
             contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
             contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
             
-            // These are critical for proper sizing
-            contentView.widthAnchor.constraint(greaterThanOrEqualTo: scrollView.widthAnchor),
+            // These are critical for proper sizing - will be modified based on scroll direction
+            contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
         ])
         
         // Apply provided props
@@ -48,19 +49,54 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let scrollView = view as? UIScrollView else { return false }
         
-        // Configure scroll behavior
+        // Get content view
+        let contentView = scrollView.viewWithTag(1001)
+        
+        // Configure scroll direction
         if let horizontal = props["horizontal"] as? Bool {
             scrollView.alwaysBounceHorizontal = horizontal
             scrollView.alwaysBounceVertical = !horizontal
             
-            let contentView = scrollView.viewWithTag(1001)
+            // Update constraints based on orientation
+            if let contentView = contentView {
+                // Remove all existing contentView constraints first
+                contentView.constraints.forEach { constraint in
+                    if constraint.firstItem === contentView && 
+                       (constraint.firstAttribute == .width || constraint.firstAttribute == .height) {
+                        contentView.removeConstraint(constraint)
+                    }
+                }
+                
+                if horizontal {
+                    // For horizontal scrolling, make content view height match scroll view
+                    contentView.heightAnchor.constraint(equalTo: scrollView.heightAnchor).isActive = true
+                } else {
+                    // For vertical scrolling, make content view width match scroll view
+                    contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor).isActive = true
+                }
+            }
+        }
+        
+        // Apply content size if provided
+        if let contentWidth = props["contentWidth"] as? CGFloat,
+           let contentHeight = props["contentHeight"] as? CGFloat {
+            // Don't use zero or negative values
+            let width = max(contentWidth, 1)
+            let height = max(contentHeight, 1)
             
-            if horizontal {
-                // For horizontal scrolling, make content view height match scroll view
-                contentView?.heightAnchor.constraint(equalTo: scrollView.heightAnchor).isActive = true
-            } else {
-                // For vertical scrolling, make content view width match scroll view
-                contentView?.widthAnchor.constraint(equalTo: scrollView.widthAnchor).isActive = true
+            print("📜 Setting explicit scroll content size: \(width) x \(height)")
+            scrollView.contentSize = CGSize(width: width, height: height)
+            
+            // Ensure content view matches content size
+            if let contentView = contentView {
+                // Update content view size constraints
+                if props["horizontal"] as? Bool == true {
+                    // For horizontal, set width to content width
+                    contentView.widthAnchor.constraint(equalToConstant: width).isActive = true
+                } else {
+                    // For vertical, set height to content height
+                    contentView.heightAnchor.constraint(equalToConstant: height).isActive = true
+                }
             }
         }
         
@@ -115,12 +151,17 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent {
         
         scrollView.contentInset = contentInset
         
+        // Configure scroll enabled state
+        if let scrollEnabled = props["scrollEnabled"] as? Bool {
+            scrollView.isScrollEnabled = scrollEnabled
+        }
+        
         // Apply non-layout styling
         DCMauiLayoutManager.shared.applyStyles(to: scrollView, props: props)
         
-        // Ensure the content view receives background color if specified
+        // Ensure the content view receives background color if specified for ScrollView
         if let backgroundColor = props["backgroundColor"] as? String,
-           let contentView = scrollView.viewWithTag(1001),
+           let contentView = contentView,
            scrollView.backgroundColor == nil || scrollView.backgroundColor == .clear {
             contentView.backgroundColor = ColorUtilities.color(fromHexString: backgroundColor)
             scrollView.backgroundColor = .clear  // Ensure scroll view is transparent
@@ -129,18 +170,9 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent {
         return true
     }
     
-    // Apply content size from Dart layout calculations
-    func updateContentSize(_ scrollView: UIScrollView, width: CGFloat, height: CGFloat) {
-        // Make sure we're not setting a zero content size
-        let finalWidth = max(width, scrollView.frame.width)
-        let finalHeight = max(height, scrollView.frame.height)
-        
-        print("📜 Setting scroll content size: \(finalWidth) x \(finalHeight)")
-        scrollView.contentSize = CGSize(width: finalWidth, height: finalHeight)
-    }
-    
+    // Add event listeners to the scroll view
     func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], 
-                          eventCallback: @escaping (String, String, [String: Any]) -> Void) {
+                         eventCallback: @escaping (String, String, [String: Any]) -> Void) {
         guard let scrollView = view as? UIScrollView else { return }
         
         if eventTypes.contains("scroll") {
@@ -155,7 +187,7 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent {
                 delegate.throttleInterval = throttleInterval / 1000.0
             }
             
-            // Set up callback with explicit UIScrollView type
+            // Set up callback
             delegate.onScroll = { (scrollView: UIScrollView) in
                 let eventData: [String: Any] = [
                     "contentOffset": [
@@ -208,5 +240,18 @@ class DCMauiScrollDelegate: NSObject, UIScrollViewDelegate {
             onScroll?(scrollView)
             lastScrollTime = currentTime
         }
+    }
+    
+    // Also handle scroll end events - useful for many scroll interactions
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        if !decelerate {
+            // If not decelerating, this is the final position
+            onScroll?(scrollView)
+        }
+    }
+    
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        // Final position after scrolling and decelerating
+        onScroll?(scrollView)
     }
 }

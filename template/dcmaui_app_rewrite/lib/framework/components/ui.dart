@@ -47,6 +47,10 @@ class UI {
     // Get the text content
     final text = props['content'] as String? ?? '';
 
+    // Initialize measurements with reasonable defaults to avoid zero-size elements
+    double width = 10.0; // Minimum default width
+    double height = 20.0; // Minimum default height
+
     // Perform text measurement if we have enough info
     if (props.containsKey('fontSize')) {
       final fontSize = props['fontSize'] as double? ?? 14.0;
@@ -59,40 +63,48 @@ class UI {
         fontWeight: props['fontWeight'] as String?,
         letterSpacing: props['letterSpacing'] as double?,
         textAlign: props['textAlign'] as String?,
-        maxWidth: null, // Could get from parent container in future
+        maxWidth:
+            props['width'] as double?, // Pass width constraint if available
       );
 
       // Try to get cached measurement
       final cachedMeasurement =
           TextMeasurementService.instance.getCachedMeasurement(measurementKey);
 
-      // If we have a cached measurement, use it to set initial dimensions
+      // If we have a cached measurement, use it to set dimensions
       if (cachedMeasurement != null) {
-        if (!props.containsKey('width')) {
-          props['width'] = cachedMeasurement.width;
-        }
-
-        if (!props.containsKey('height')) {
-          props['height'] = cachedMeasurement.height;
-        }
+        width = cachedMeasurement.width;
+        height = cachedMeasurement.height;
       } else {
-        // Schedule measurement for later - this is a non-blocking operation
-        TextMeasurementService.instance
-            .measureText(
+        // Schedule measurement for later, but use estimated size now
+        final estimate =
+            TextMeasurementService.instance.estimateTextSize(text, fontSize);
+        width = estimate.width;
+        height = estimate.height;
+
+        // Request actual measurement asynchronously
+        TextMeasurementService.instance.measureText(
           text,
           fontSize: fontSize,
           fontFamily: props['fontFamily'] as String?,
           fontWeight: props['fontWeight'] as String?,
           letterSpacing: props['letterSpacing'] as double?,
           textAlign: props['textAlign'] as String?,
-        )
-            .then((measurement) {
-          // The measurement result will be used next time
-        });
+          maxWidth: props['width'] as double?,
+        );
       }
     }
 
-    // Create a new VDomElement with the given key instead of modifying the textNode
+    // Always set width and height to ensure the element has dimensions
+    if (!props.containsKey('width') || props['width'] == 0.0) {
+      props['width'] = width;
+    }
+
+    if (!props.containsKey('height') || props['height'] == 0.0) {
+      props['height'] = height;
+    }
+
+    // Create a new VDomElement with the given key
     return VDomElement(
       type: textNode.type,
       key: key,

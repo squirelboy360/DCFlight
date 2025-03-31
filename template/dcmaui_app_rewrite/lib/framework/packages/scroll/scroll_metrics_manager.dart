@@ -25,12 +25,20 @@ class ScrollMetricsManager {
   /// Update content metrics for a scroll view
   Future<void> updateContentMetrics(
       String scrollViewId, double contentWidth, double contentHeight) async {
+    // Ensure positive content dimensions with minimums
+    contentWidth = contentWidth > 0 ? contentWidth : 100.0;
+    contentHeight = contentHeight > 0 ? contentHeight : 100.0;
+
     // If no change in content size, skip update
     if (_contentSizes.containsKey(scrollViewId) &&
         _contentSizes[scrollViewId]!.contentWidth == contentWidth &&
         _contentSizes[scrollViewId]!.contentHeight == contentHeight) {
       return;
     }
+
+    developer.log(
+        'Updating scroll metrics for $scrollViewId: $contentWidth x $contentHeight',
+        name: 'ScrollMetrics');
 
     // Store metrics
     _contentSizes[scrollViewId] = ScrollMetrics(
@@ -52,6 +60,10 @@ class ScrollMetricsManager {
       String scrollViewId,
       Map<String, LayoutResult> layoutResults,
       List<String> childViewIds) async {
+    if (childViewIds.isEmpty) {
+      return;
+    }
+
     // Find the max right and bottom edges of children
     double maxRight = 0;
     double maxBottom = 0;
@@ -59,6 +71,7 @@ class ScrollMetricsManager {
     for (final childId in childViewIds) {
       if (layoutResults.containsKey(childId)) {
         final layout = layoutResults[childId]!;
+        // Calculate the right and bottom edges
         final right = layout.left + layout.width;
         final bottom = layout.top + layout.height;
 
@@ -66,6 +79,14 @@ class ScrollMetricsManager {
         maxBottom = maxBottom > bottom ? maxBottom : bottom;
       }
     }
+
+    // Add padding to ensure content is fully visible
+    maxRight += 16; // Add some padding on the right
+    maxBottom += 16; // Add some padding at the bottom
+
+    developer.log(
+        'Calculated scroll content bounds for $scrollViewId: $maxRight x $maxBottom',
+        name: 'ScrollMetrics');
 
     // Update the content size
     await updateContentMetrics(scrollViewId, maxRight, maxBottom);
@@ -79,6 +100,10 @@ class ScrollMetricsManager {
       'contentWidth': width,
       'contentHeight': height,
     };
+
+    developer.log(
+        'Sending content size to native for $scrollViewId: $width x $height',
+        name: 'ScrollMetrics');
 
     await _nativeBridge.updateView(scrollViewId, contentSizeProps);
   }

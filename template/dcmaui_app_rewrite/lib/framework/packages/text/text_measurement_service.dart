@@ -116,6 +116,30 @@ class TextMeasurementService {
     );
   }
 
+  /// Public method to estimate text size without going through native bridge
+  /// This ensures we always have some dimensions for text elements
+  TextMeasurement estimateTextSize(
+    String text,
+    double fontSize, {
+    String? fontFamily,
+    String? fontWeight,
+    double? letterSpacing,
+    String? textAlign,
+    double? maxWidth,
+  }) {
+    final key = TextMeasurementKey(
+      text: text,
+      fontSize: fontSize,
+      fontFamily: fontFamily,
+      fontWeight: fontWeight,
+      letterSpacing: letterSpacing,
+      textAlign: textAlign,
+      maxWidth: maxWidth,
+    );
+
+    return _estimateTextSize(text, key);
+  }
+
   /// Measure text dimensions with caching and native fallback
   Future<TextMeasurement> measureText(
     String text, {
@@ -208,10 +232,18 @@ class TextMeasurementService {
         textAttributes,
       );
 
+      // Ensure we have non-zero dimensions
+      double width = result['width'] ?? 0.0;
+      double height = result['height'] ?? 0.0;
+
+      // Use minimum values if results are invalid or zero
+      if (width <= 0) width = estimate.width;
+      if (height <= 0) height = estimate.height;
+
       // Create measurement result
       final measurement = TextMeasurement(
-        width: result['width'] ?? 0.0,
-        height: result['height'] ?? 0.0,
+        width: width,
+        height: height,
         isEstimate: false,
       );
 
@@ -223,6 +255,8 @@ class TextMeasurementService {
         completer.complete(measurement);
       }
 
+      developer.log('Text measured: "$text" -> $width x $height',
+          name: 'TextMeasurement');
       return measurement;
     } catch (e) {
       developer.log('Error measuring text: $e', name: 'TextMeasurement');
