@@ -92,51 +92,52 @@ class CounterComponent extends StatefulComponent {
     final borderBgs =
         useState(Color(Colors.indigoAccent.toARGB32()), 'scrollViewBGColor');
     // Use an effect to update the ScrollView background color every second
-    useEffect(() {
-      final rnd = math.Random();
-      Color color() => Color(rnd.nextInt(0xffffffff));
-      // Set up a timer to update the color every second
-      final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        // Update the background color
-        bg.setValue(color());
+    // useEffect(() {
+    //   final rnd = math.Random();
+    //   Color color() => Color(rnd.nextInt(0xffffffff));
+    //   // Set up a timer to update the color every second
+    //   final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    //     // Update the background color
+    //     bg.setValue(color());
 
-        developer.log('Updated ScrollView background color to: $color',
-            name: 'ColorAnimation');
-      });
+    //     developer.log('Updated ScrollView background color to: $color',
+    //         name: 'ColorAnimation');
+    //   });
 
-      // Clean up the timer when the component is unmounted
-      return () {
-        timer.cancel();
-        developer.log('Canceled background color animation timer',
-            name: 'ColorAnimation');
-      };
-    }, dependencies: []);
+    //   // Clean up the timer when the component is unmounted
+    //   return () {
+    //     timer.cancel();
+    //     developer.log('Canceled background color animation timer',
+    //         name: 'ColorAnimation');
+    //   };
+    // }, dependencies: []);
 
-    useEffect(() {
-      final rnd = math.Random();
-      Color color() => Color(rnd.nextInt(0xffffffff));
-      // Set up a timer to update the color every second
-      final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        // Update the background color
-        borderBgs.setValue(color());
-        counter.setValue(counter.value + 1);
-        developer.log('Updated border color to: $color',
-            name: 'ColorAnimation');
-      });
+    // useEffect(() {
+    //   final rnd = math.Random();
+    //   Color color() => Color(rnd.nextInt(0xffffffff));
+    //   // Set up a timer to update the color every second
+    //   final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    //     // Update the background color
+    //     borderBgs.setValue(color());
+    //     counter.setValue(counter.value + 1);
+    //     developer.log('Updated border color to: $color',
+    //         name: 'ColorAnimation');
+    //   });
 
-      // Clean up the timer when the component is unmounted
-      return () {
-        timer.cancel();
-        developer.log('Canceled background color animation timer',
-            name: 'ColorAnimation');
-      };
-    }, dependencies: []);
+    //   // Clean up the timer when the component is unmounted
+    //   return () {
+    //     timer.cancel();
+    //     developer.log('Canceled background color animation timer',
+    //         name: 'ColorAnimation');
+    //   };
+    // }, dependencies: []);
 
     return UI.View(
         props: ViewProps(
           height: '100%',
+          // flex: 1,
           width: '100%',
-          backgroundColor: Colors.yellow,
+          backgroundColor: Colors.orange,
         ),
         children: [
           UI.View(
