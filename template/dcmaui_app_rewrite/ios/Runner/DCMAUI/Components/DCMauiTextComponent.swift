@@ -1,7 +1,6 @@
 import UIKit
 
 class DCMauiTextComponent: NSObject, DCMauiComponent {
-    // Required initializer to conform to DCMauiComponent
     required override init() {
         super.init()
     }
@@ -14,7 +13,7 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
         label.numberOfLines = 0
         label.lineBreakMode = .byWordWrapping
         label.backgroundColor = .clear
-        label.textColor = .black // Default text color for visibility
+        label.textColor = .black
         
         // Apply initial props
         updateView(label, withProps: props)
@@ -25,37 +24,21 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let label = view as? UILabel else { return false }
         
-        // Apply text content
-        if let textContent = props["content"] as? String {
-            label.text = textContent
-        }
+        // Store original properties that might get wiped out
+        let existingFontSize = label.font?.pointSize ?? 17
+        let existingFontName = label.font?.fontName
+        let existingColor = label.textColor
+        let existingAlignment = label.textAlignment
+        let existingNumberOfLines = label.numberOfLines
         
-        // Apply text styling
-        applyTextStyling(label, props: props)
+        // Get text content - this is the critical part
+        let textContent = props["content"] as? String ?? ""
         
-        // Apply non-layout styling using shared layout manager
-        DCMauiLayoutManager.shared.applyStyles(to: label, props: props)
+        // Create an attributed string for the text
+        let attributedString = NSMutableAttributedString(string: textContent)
         
-        // Handle specific text properties not covered by the general style applier
-        if let numberOfLines = props["numberOfLines"] as? Int {
-            label.numberOfLines = numberOfLines
-        }
-        
-        // Don't position the view here - layout is handled by Dart side
-        
-        return true
-    }
-    
-    // MARK: - Helper Methods
-    
-    private func applyTextStyling(_ label: UILabel, props: [String: Any]) {
-        // Text color
-        if let color = props["color"] as? String {
-            label.textColor = ColorUtilities.color(fromHexString: color) ?? .black
-        }
-        
-        // Font size
-        var fontSize: CGFloat = 17.0
+        // Get or preserve font properties
+        var fontSize: CGFloat = existingFontSize
         if let size = props["fontSize"] as? CGFloat {
             fontSize = size
         } else if let size = props["fontSize"] as? Double {
@@ -80,43 +63,103 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
             case "900": fontWeight = .black
             default: fontWeight = .regular
             }
-        }
-        
-        // Custom font family
-        if let fontFamily = props["fontFamily"] as? String {
-            if let customFont = UIFont(name: fontFamily, size: fontSize) {
-                label.font = customFont
-            } else {
-                label.font = UIFont.systemFont(ofSize: fontSize, weight: fontWeight)
+        } else if let attributedText = label.attributedText, attributedText.length > 0 {
+            // Try to preserve existing font weight
+            if let existingFont = attributedText.attribute(.font, at: 0, effectiveRange: nil) as? UIFont {
+                for trait in [
+                    UIFont.Weight.ultraLight, .thin, .light, .regular,
+                    .medium, .semibold, .bold, .heavy, .black
+                ] {
+                    let testFont = UIFont.systemFont(ofSize: existingFontSize, weight: trait)
+                    if testFont.fontName == existingFontName {
+                        fontWeight = trait
+                        break
+                    }
+                }
             }
-        } else {
-            label.font = UIFont.systemFont(ofSize: fontSize, weight: fontWeight)
         }
         
-        // Text alignment
+        // Create font
+        var font: UIFont?
+        if let fontFamily = props["fontFamily"] as? String {
+            font = UIFont(name: fontFamily, size: fontSize) ?? UIFont.systemFont(ofSize: fontSize, weight: fontWeight)
+        } else {
+            font = UIFont.systemFont(ofSize: fontSize, weight: fontWeight)
+        }
+        
+        // Get or preserve text color
+        var textColor = existingColor
+        if let color = props["color"] as? String {
+            textColor = ColorUtilities.color(fromHexString: color) ?? existingColor
+        }
+        
+        // Create paragraph style
+        let paragraphStyle = NSMutableParagraphStyle()
+        
+        // Get or preserve text alignment
+        var textAlignment = existingAlignment
         if let textAlign = props["textAlign"] as? String {
             switch textAlign {
-            case "left": label.textAlignment = .left
-            case "center": label.textAlignment = .center
-            case "right": label.textAlignment = .right
-            case "justify": label.textAlignment = .justified
-            default: label.textAlignment = .natural
+            case "left": textAlignment = .left
+            case "center": textAlignment = .center
+            case "right": textAlignment = .right
+            case "justify": textAlignment = .justified
+            default: break
             }
+        }
+        paragraphStyle.alignment = textAlignment
+        
+        // Get letter spacing
+        var letterSpacing: CGFloat? = nil
+        if let spacing = props["letterSpacing"] as? CGFloat {
+            letterSpacing = spacing
         }
         
-        // Letter spacing
-        if let letterSpacing = props["letterSpacing"] as? CGFloat {
-            if letterSpacing != 0 {
-                label.attributedText = NSAttributedString(
-                    string: label.text ?? "",
-                    attributes: [.kern: letterSpacing]
-                )
-            }
+        // Line height
+        if let lineHeight = props["lineHeight"] as? CGFloat {
+            paragraphStyle.lineSpacing = lineHeight - (font?.lineHeight ?? fontSize)
         }
+        
+        // Build attribute dictionary
+        var attributes: [NSAttributedString.Key: Any] = [:]
+        if let font = font {
+            attributes[.font] = font
+        }
+        attributes[.foregroundColor] = textColor
+        attributes[.paragraphStyle] = paragraphStyle
+        
+        if let letterSpacing = letterSpacing {
+            attributes[.kern] = letterSpacing
+        }
+        
+        // Apply all attributes to the entire string
+        let range = NSRange(location: 0, length: textContent.count)
+        attributedString.addAttributes(attributes, range: range)
+        
+        // Set the attributed text
+        label.attributedText = attributedString
+        
+        // Handle specific text properties
+        if let numberOfLines = props["numberOfLines"] as? Int {
+            label.numberOfLines = numberOfLines
+        } else {
+            // Keep existing setting
+            label.numberOfLines = existingNumberOfLines
+        }
+        
+        // Apply general styles like background, border, etc.
+        DCMauiLayoutManager.shared.applyStyles(to: label, props: props)
+        
+        // Apply layout if specified
+        if let width = props["width"] as? CGFloat, let height = props["height"] as? CGFloat {
+            label.frame = CGRect(x: label.frame.origin.x, y: label.frame.origin.y, width: width, height: height)
+        }
+        
+        return true
     }
     
     func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], eventCallback: @escaping (String, String, [String: Any]) -> Void) {
-        // Most texts don't have events, but could add tap gesture if needed
+        // Text elements typically don't have events
     }
     
     func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String]) {
