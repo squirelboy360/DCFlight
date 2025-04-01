@@ -6,6 +6,7 @@ import 'view_props.dart';
 import 'button_props.dart';
 import 'image_props.dart';
 import 'scroll_view_props.dart';
+import 'text_props.dart';
 import 'modifiers/text_content.dart';
 
 /// Factory for creating UI components
@@ -25,46 +26,38 @@ class UI {
   }
 
   /// Create a Text component with automatic measurement
+  /// New simplified version that takes a direct string and TextProps
   static VDomElement Text({
-    required TextContent content,
+    required String content,
+    TextProps? props,
     String? key,
   }) {
-    // Extract the text props from the content
-    final textNodes = content.generateTextNodes(null);
+    // Convert props to map or use empty map if null
+    final propsMap = props?.toMap() ?? <String, dynamic>{};
 
-    // For now, just return the first text node
-    if (textNodes.isEmpty) {
-      return VDomElement(
-        type: 'Text',
-        key: key,
-        props: {'content': ''},
-      );
-    }
-
-    final textNode = textNodes.first;
-    final props = Map<String, dynamic>.from(textNode.props);
+    // Add content to props
+    propsMap['content'] = content;
 
     // Get the text content
-    final text = props['content'] as String? ?? '';
+    final text = content;
 
-    // Initialize measurements with reasonable defaults to avoid zero-size elements
-    double width = 10.0; // Minimum default width
-    double height = 20.0; // Minimum default height
+    // Initialize measurements with reasonable defaults
+    double width = 10.0;
+    double height = 20.0;
 
     // Perform text measurement if we have enough info
-    if (props.containsKey('fontSize')) {
-      final fontSize = props['fontSize'] as double? ?? 14.0;
+    if (propsMap.containsKey('fontSize')) {
+      final fontSize = propsMap['fontSize'] as double? ?? 14.0;
 
       // Create measurement key
       final measurementKey = TextMeasurementKey(
         text: text,
         fontSize: fontSize,
-        fontFamily: props['fontFamily'] as String?,
-        fontWeight: props['fontWeight'] as String?,
-        letterSpacing: props['letterSpacing'] as double?,
-        textAlign: props['textAlign'] as String?,
-        maxWidth:
-            props['width'] as double?, // Pass width constraint if available
+        fontFamily: propsMap['fontFamily'] as String?,
+        fontWeight: propsMap['fontWeight'] as String?,
+        letterSpacing: propsMap['letterSpacing'] as double?,
+        textAlign: propsMap['textAlign'] as String?,
+        maxWidth: propsMap['width'] as double?,
       );
 
       // Try to get cached measurement
@@ -86,30 +79,29 @@ class UI {
         TextMeasurementService.instance.measureText(
           text,
           fontSize: fontSize,
-          fontFamily: props['fontFamily'] as String?,
-          fontWeight: props['fontWeight'] as String?,
-          letterSpacing: props['letterSpacing'] as double?,
-          textAlign: props['textAlign'] as String?,
-          maxWidth: props['width'] as double?,
+          fontFamily: propsMap['fontFamily'] as String?,
+          fontWeight: propsMap['fontWeight'] as String?,
+          letterSpacing: propsMap['letterSpacing'] as double?,
+          textAlign: propsMap['textAlign'] as String?,
+          maxWidth: propsMap['width'] as double?,
         );
       }
     }
 
     // Always set width and height to ensure the element has dimensions
-    if (!props.containsKey('width') || props['width'] == 0.0) {
-      props['width'] = width;
+    if (!propsMap.containsKey('width') || propsMap['width'] == 0.0) {
+      propsMap['width'] = width;
     }
 
-    if (!props.containsKey('height') || props['height'] == 0.0) {
-      props['height'] = height;
+    if (!propsMap.containsKey('height') || propsMap['height'] == 0.0) {
+      propsMap['height'] = height;
     }
 
-    // Create a new VDomElement with the given key
+    // Create the text element
     return VDomElement(
-      type: textNode.type,
+      type: 'Text',
       key: key,
-      props: props,
-      children: textNode.children,
+      props: propsMap,
     );
   }
 

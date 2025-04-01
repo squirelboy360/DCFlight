@@ -2,13 +2,12 @@ import '../packages/vdom/vdom_node.dart';
 import '../packages/vdom/component.dart';
 import '../packages/text/text_measurement_service.dart';
 import 'text_props.dart';
-import 'modifiers/text_content.dart';
 import 'ui.dart';
 
 /// A text component that automatically measures itself
 class MeasuredText extends StatefulComponent {
   /// The text content to display
-  final TextContent content;
+  final String content;
 
   /// Props for the text
   final TextProps props;
@@ -26,7 +25,7 @@ class MeasuredText extends StatefulComponent {
 
   @override
   VDomNode render() {
-    final text = content.toString();
+    final text = content;
     final fontSize = props.fontSize ?? 14.0;
     final fontFamily = props.fontFamily;
     final fontWeight = props.fontWeight;
@@ -79,6 +78,6 @@ class MeasuredText extends StatefulComponent {
     }, dependencies: [text, fontSize, fontFamily, fontWeight, constraintWidth]);
 
     // Return the text element with appropriate dimensions
-    return UI.Text(content: content);
+    return UI.Text(content: text, props: props);
   }
 }

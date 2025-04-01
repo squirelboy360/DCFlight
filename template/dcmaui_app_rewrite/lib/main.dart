@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:dc_test/framework/components/image_props.dart' as image_props;
-import 'package:dc_test/framework/components/modifiers/text_content.dart';
+
 import 'package:dc_test/framework/components/scroll_view_props.dart';
-import 'package:dc_test/framework/components/text_props.dart' as text_props;
+import 'package:dc_test/framework/components/text_props.dart';
 import 'package:dc_test/framework/constants/layout_enums.dart';
 
 import 'framework/packages/vdom/vdom.dart';
@@ -66,13 +66,12 @@ class CounterComponent extends StatefulComponent {
       ),
       children: [
         UI.Text(
-          content: TextContent((index + 1).toString(),
-              props: text_props.TextProps(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: text_props.FontWeight.bold,
-              )),
-        ),
+            content: (index + 1).toString(),
+            props: TextProps(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            )),
       ],
     );
   }
@@ -155,18 +154,6 @@ class CounterComponent extends StatefulComponent {
                 backgroundColor: Colors.indigoAccent,
               ),
               children: [
-                UI.Image(
-                    props: image_props.ImageProps(
-                  margin: 20,
-                  resizeMode: image_props.ResizeMode.cover,
-                  borderRadius: 20,
-                  borderWidth: 10,
-                  height: '50%',
-                  width: '90%',
-                  borderColor: borderBgs.value,
-                  source:
-                      'https://avatars.githubusercontent.com/u/205313423?s=400&u=2abecc79555be8a9b63ddd607489676ab93b2373&v=4',
-                )),
                 UI.View(
                     props: ViewProps(
                         padding: 2,
@@ -189,35 +176,26 @@ class CounterComponent extends StatefulComponent {
                             height: '80%',
                             width: '100%',
                             shadowRadius: 2,
-                            backgroundColor: Colors.green,
+                            backgroundColor: Colors.tealAccent,
                           ),
                           children: [
                             UI.Text(
-                              content: TextContent("Test App",
-                                  props: text_props.TextProps(
-                                    fontSize: 20,
-                                    color: Colors.white,
-                                    textAlign: text_props.TextAlign.center,
-                                    fontWeight: text_props.FontWeight.bold,
-                                  )),
+                              content: "Test App",
+                              props: TextProps(
+                                fontSize: 20,
+                                color: Colors.white,
+                                textAlign: TextAlign.center,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             UI.Text(
-                              content: TextContent("Counter Value: ",
-                                      props: text_props.TextProps(
-                                        fontSize: 20,
-                                        color: Colors.amber,
-                                        textAlign: text_props.TextAlign.center,
-                                        fontWeight: text_props.FontWeight.bold,
-                                      ))
-                                  .interpolate(counter.value,
-                                      props: text_props.TextProps(
-                                        fontSize: 20,
-                                        color: Colors.red,
-                                        textAlign: text_props.TextAlign.center,
-                                        fontWeight: text_props.FontWeight.bold,
-                                      ))
-                                  .interpolate("  value"),
-                            )
+                                content: "Counter Value: ${counter.value} ",
+                                props: TextProps(
+                                  fontSize: 20,
+                                  color: Colors.amber,
+                                  textAlign: TextAlign.center,
+                                  fontWeight: FontWeight.bold,
+                                ))
                           ]),
                     ]),
                 UI.View(
@@ -229,7 +207,7 @@ class CounterComponent extends StatefulComponent {
                         width: '90%',
                         alignItems: AlignItems.center,
                         justifyContent: JustifyContent.center,
-                        height: '20%',
+                        height: '60%',
                         backgroundColor: bg.value),
                     children: [
                       UI.View(
@@ -241,18 +219,17 @@ class CounterComponent extends StatefulComponent {
                             borderWidth: 10,
                             height: '80%',
                             width: '100%',
-                            backgroundColor: Colors.green,
+                            backgroundColor: Colors.pink,
                           ),
                           children: [
                             UI.Text(
-                              content: TextContent("Color Change  ${counter.value}",
-                                  props: text_props.TextProps(
-                                    fontSize: 20,
-                                    color: Colors.orange,
-                                    textAlign: text_props.TextAlign.center,
-                                    fontWeight: text_props.FontWeight.bold,
-                                  )).interpolate(borderBgs.value),
-                            ),
+                                content: "Color Change  ${counter.value}",
+                                props: TextProps(
+                                  fontSize: 20,
+                                  color: Colors.orange,
+                                  textAlign: TextAlign.center,
+                                  fontWeight: FontWeight.bold,
+                                )),
                             UI.View(
                                 props: ViewProps(
                                   flexDirection: FlexDirection.row,
@@ -260,47 +237,42 @@ class CounterComponent extends StatefulComponent {
                                 ),
                                 children: [
                                   UI.Text(
-                                    content: TextContent("Counter Value: ${counter.value}",
-                                        props: text_props.TextProps(
-                                          fontSize: 20,
-                                          color: Colors.white,
-                                          fontWeight:
-                                              text_props.FontWeight.bold,
-                                        )),
-                                  ),
+                                      content:
+                                          "Counter Value: ${counter.value}",
+                                      props: TextProps(
+                                        fontSize: 20,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      )),
                                   UI.Text(
-                                    content: TextContent("",
-                                        props: text_props.TextProps(
-                                          fontSize: 20,
-                                          color: Color(0xFFFFBF00),
-                                          fontWeight:
-                                              text_props.FontWeight.bold,
-                                        )).interpolate(counter.value),
-                                  )
-                                ])
+                                      content: "",
+                                      props: TextProps(
+                                        fontSize: 20,
+                                        color: Color(0xFFFFBF00),
+                                        fontWeight: FontWeight.bold,
+                                      ))
+                                ]),
+                          ]),
+                      UI.ScrollView(
+                          props: ScrollViewProps(
+                              height: '70%',
+                              width: '100%',
+                              showsHorizontalScrollIndicator: true,
+                              backgroundColor: borderBgs.value,
+                              flexDirection: FlexDirection.row,
+                              flexWrap: FlexWrap.wrap),
+                          children: [
+                            ...boxes,
                           ]),
                     ]),
-                UI.ScrollView(
-                    props: ScrollViewProps(
-                        height: '70%',
-                        width: '100%',
-                        showsHorizontalScrollIndicator: true,
-                        backgroundColor: borderBgs.value,
-                        // Add flexDirection row to make flex wrap work horizontally
-                        flexDirection: FlexDirection.row,
-                        flexWrap: FlexWrap.wrap),
-                    children: [
-                      ...boxes,
-                    ]),
-              ]),
-          UI.Text(
-            content: TextContent("",
-                props: text_props.TextProps(
-                  fontSize: 20,
-                  color: Color(0xFFFFBF00),
-                  fontWeight: text_props.FontWeight.bold,
-                )).interpolate(counter.value),
-          )
+                UI.Text(
+                    content: "Test Testoses",
+                    props: TextProps(
+                      fontSize: 20,
+                      color: Color(0xFFFFBF00),
+                      fontWeight: FontWeight.bold,
+                    ))
+              ])
         ]);
   }
 }
