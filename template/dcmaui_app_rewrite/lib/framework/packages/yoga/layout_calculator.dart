@@ -1,5 +1,5 @@
 import 'dart:developer' as developer;
-import 'package:dc_test/framework/constants/layout_properties.dart';
+import 'package:dc_test/framework/constants/layout_properties.dart'; // Updated import
 import 'package:dc_test/framework/packages/vdom/vdom_node.dart';
 import 'package:dc_test/framework/packages/vdom/vdom_element.dart';
 import 'dart_layout_manager.dart';
@@ -136,8 +136,8 @@ class LayoutCalculator {
   Map<String, dynamic> _extractLayoutProps(Map<String, dynamic> props) {
     final layoutProps = <String, dynamic>{};
 
-    // Use the central source of truth for layout property names
-    for (final propName in LayoutProperties.all) {
+    // Use LayoutProps for layout property names
+    for (final propName in LayoutProps.all) {
       if (props.containsKey(propName)) {
         layoutProps[propName] = props[propName];
       }

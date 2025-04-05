@@ -66,8 +66,8 @@ class DartLayoutManager {
     _markNodeDirty(viewId);
 
     // Apply flex direction
-    if (props.containsKey(LayoutProperties.flexDirection)) {
-      final direction = props[LayoutProperties.flexDirection] as String;
+    if (props.containsKey(LayoutProps.flexDirection)) {
+      final direction = props[LayoutProps.flexDirection] as String;
       switch (direction) {
         case 'row':
           node.setFlexDirection(YogaFlexDirection.row);
@@ -85,8 +85,8 @@ class DartLayoutManager {
     }
 
     // Justify content
-    if (props.containsKey(LayoutProperties.justifyContent)) {
-      final justifyContent = props[LayoutProperties.justifyContent] as String;
+    if (props.containsKey(LayoutProps.justifyContent)) {
+      final justifyContent = props[LayoutProps.justifyContent] as String;
       switch (justifyContent) {
         case 'flexStart':
           node.setJustifyContent(YogaJustifyContent.flexStart);
@@ -110,8 +110,8 @@ class DartLayoutManager {
     }
 
     // Align items
-    if (props.containsKey(LayoutProperties.alignItems)) {
-      final alignItems = props[LayoutProperties.alignItems] as String;
+    if (props.containsKey(LayoutProps.alignItems)) {
+      final alignItems = props[LayoutProps.alignItems] as String;
       switch (alignItems) {
         case 'flexStart':
           node.setAlignItems(YogaAlign.flexStart);
@@ -132,8 +132,8 @@ class DartLayoutManager {
     }
 
     // Align self
-    if (props.containsKey(LayoutProperties.alignSelf)) {
-      final alignSelf = props[LayoutProperties.alignSelf] as String;
+    if (props.containsKey(LayoutProps.alignSelf)) {
+      final alignSelf = props[LayoutProps.alignSelf] as String;
       switch (alignSelf) {
         case 'auto':
           node.setAlignSelf(YogaAlign.auto);
@@ -157,8 +157,8 @@ class DartLayoutManager {
     }
 
     // Flex wrap
-    if (props.containsKey(LayoutProperties.flexWrap)) {
-      final flexWrap = props[LayoutProperties.flexWrap] as String;
+    if (props.containsKey(LayoutProps.flexWrap)) {
+      final flexWrap = props[LayoutProps.flexWrap] as String;
       switch (flexWrap) {
         case 'nowrap':
           node.setFlexWrap(YogaWrap.nowrap);
@@ -173,33 +173,33 @@ class DartLayoutManager {
     }
 
     // Flex properties
-    if (props.containsKey(LayoutProperties.flex)) {
-      final flex = _parseNumberProp(props[LayoutProperties.flex]);
+    if (props.containsKey(LayoutProps.flex)) {
+      final flex = _parseNumberProp(props[LayoutProps.flex]);
       if (flex != null) {
         node.setFlex(flex);
       }
     }
 
-    if (props.containsKey(LayoutProperties.flexGrow)) {
-      final flexGrow = _parseNumberProp(props[LayoutProperties.flexGrow]);
+    if (props.containsKey(LayoutProps.flexGrow)) {
+      final flexGrow = _parseNumberProp(props[LayoutProps.flexGrow]);
       if (flexGrow != null) {
         node.setFlexGrow(flexGrow);
       }
     }
 
-    if (props.containsKey(LayoutProperties.flexShrink)) {
-      final flexShrink = _parseNumberProp(props[LayoutProperties.flexShrink]);
+    if (props.containsKey(LayoutProps.flexShrink)) {
+      final flexShrink = _parseNumberProp(props[LayoutProps.flexShrink]);
       if (flexShrink != null) {
         node.setFlexShrink(flexShrink);
       }
     }
 
-    if (props.containsKey(LayoutProperties.flexBasis)) {
-      if (props[LayoutProperties.flexBasis] is String &&
-          props[LayoutProperties.flexBasis] == 'auto') {
+    if (props.containsKey(LayoutProps.flexBasis)) {
+      if (props[LayoutProps.flexBasis] is String &&
+          props[LayoutProps.flexBasis] == 'auto') {
         node.setFlexBasisAuto();
       } else {
-        final flexBasis = _parseNumberProp(props[LayoutProperties.flexBasis]);
+        final flexBasis = _parseNumberProp(props[LayoutProps.flexBasis]);
         if (flexBasis != null) {
           node.setFlexBasis(flexBasis);
         }
@@ -207,115 +207,112 @@ class DartLayoutManager {
     }
 
     // Width and height - with proper percentage handling
-    if (props.containsKey(LayoutProperties.width)) {
-      final width = _parseNumberProp(props[LayoutProperties.width]);
+    if (props.containsKey(LayoutProps.width)) {
+      final width = _parseNumberProp(props[LayoutProps.width]);
       _applyDimensionProp(node, width, true);
     }
 
-    if (props.containsKey(LayoutProperties.height)) {
-      final height = _parseNumberProp(props[LayoutProperties.height]);
+    if (props.containsKey(LayoutProps.height)) {
+      final height = _parseNumberProp(props[LayoutProps.height]);
       _applyDimensionProp(node, height, false);
     }
 
     // Min/max dimensions
-    if (props.containsKey(LayoutProperties.minWidth)) {
-      final minWidth = _parseNumberProp(props[LayoutProperties.minWidth]);
+    if (props.containsKey(LayoutProps.minWidth)) {
+      final minWidth = _parseNumberProp(props[LayoutProps.minWidth]);
       if (minWidth != null) {
         node.setMinWidth(minWidth);
       }
     }
 
-    if (props.containsKey(LayoutProperties.minHeight)) {
-      final minHeight = _parseNumberProp(props[LayoutProperties.minHeight]);
+    if (props.containsKey(LayoutProps.minHeight)) {
+      final minHeight = _parseNumberProp(props[LayoutProps.minHeight]);
       if (minHeight != null) {
         node.setMinHeight(minHeight);
       }
     }
 
-    if (props.containsKey(LayoutProperties.maxWidth)) {
-      final maxWidth = _parseNumberProp(props[LayoutProperties.maxWidth]);
+    if (props.containsKey(LayoutProps.maxWidth)) {
+      final maxWidth = _parseNumberProp(props[LayoutProps.maxWidth]);
       if (maxWidth != null) {
         node.setMaxWidth(maxWidth);
       }
     }
 
-    if (props.containsKey(LayoutProperties.maxHeight)) {
-      final maxHeight = _parseNumberProp(props[LayoutProperties.maxHeight]);
+    if (props.containsKey(LayoutProps.maxHeight)) {
+      final maxHeight = _parseNumberProp(props[LayoutProps.maxHeight]);
       if (maxHeight != null) {
         node.setMaxHeight(maxHeight);
       }
     }
 
     // Margins
-    if (props.containsKey(LayoutProperties.margin)) {
-      final margin = _parseNumberProp(props[LayoutProperties.margin]);
+    if (props.containsKey(LayoutProps.margin)) {
+      final margin = _parseNumberProp(props[LayoutProps.margin]);
       if (margin != null) {
         node.setMargin(YogaEdge.all, margin);
       }
     }
 
-    if (props.containsKey(LayoutProperties.marginTop)) {
-      final marginTop = _parseNumberProp(props[LayoutProperties.marginTop]);
+    if (props.containsKey(LayoutProps.marginTop)) {
+      final marginTop = _parseNumberProp(props[LayoutProps.marginTop]);
       if (marginTop != null) {
         node.setMargin(YogaEdge.top, marginTop);
       }
     }
 
-    if (props.containsKey(LayoutProperties.marginRight)) {
-      final marginRight = _parseNumberProp(props[LayoutProperties.marginRight]);
+    if (props.containsKey(LayoutProps.marginRight)) {
+      final marginRight = _parseNumberProp(props[LayoutProps.marginRight]);
       if (marginRight != null) {
         node.setMargin(YogaEdge.right, marginRight);
       }
     }
 
-    if (props.containsKey(LayoutProperties.marginBottom)) {
-      final marginBottom =
-          _parseNumberProp(props[LayoutProperties.marginBottom]);
+    if (props.containsKey(LayoutProps.marginBottom)) {
+      final marginBottom = _parseNumberProp(props[LayoutProps.marginBottom]);
       if (marginBottom != null) {
         node.setMargin(YogaEdge.bottom, marginBottom);
       }
     }
 
-    if (props.containsKey(LayoutProperties.marginLeft)) {
-      final marginLeft = _parseNumberProp(props[LayoutProperties.marginLeft]);
+    if (props.containsKey(LayoutProps.marginLeft)) {
+      final marginLeft = _parseNumberProp(props[LayoutProps.marginLeft]);
       if (marginLeft != null) {
         node.setMargin(YogaEdge.left, marginLeft);
       }
     }
 
     // Padding
-    if (props.containsKey(LayoutProperties.padding)) {
-      final padding = _parseNumberProp(props[LayoutProperties.padding]);
+    if (props.containsKey(LayoutProps.padding)) {
+      final padding = _parseNumberProp(props[LayoutProps.padding]);
       if (padding != null) {
         node.setPadding(YogaEdge.all, padding);
       }
     }
 
-    if (props.containsKey(LayoutProperties.paddingTop)) {
-      final paddingTop = _parseNumberProp(props[LayoutProperties.paddingTop]);
+    if (props.containsKey(LayoutProps.paddingTop)) {
+      final paddingTop = _parseNumberProp(props[LayoutProps.paddingTop]);
       if (paddingTop != null) {
         node.setPadding(YogaEdge.top, paddingTop);
       }
     }
 
-    if (props.containsKey(LayoutProperties.paddingRight)) {
-      final paddingRight =
-          _parseNumberProp(props[LayoutProperties.paddingRight]);
+    if (props.containsKey(LayoutProps.paddingRight)) {
+      final paddingRight = _parseNumberProp(props[LayoutProps.paddingRight]);
       if (paddingRight != null) {
         node.setPadding(YogaEdge.right, paddingRight);
       }
     }
 
-    if (props.containsKey(LayoutProperties.paddingBottom)) {
-      final paddingBottom =
-          _parseNumberProp(props[LayoutProperties.paddingBottom]);
+    if (props.containsKey(LayoutProps.paddingBottom)) {
+      final paddingBottom = _parseNumberProp(props[LayoutProps.paddingBottom]);
       if (paddingBottom != null) {
         node.setPadding(YogaEdge.bottom, paddingBottom);
       }
     }
 
-    if (props.containsKey(LayoutProperties.paddingLeft)) {
-      final paddingLeft = _parseNumberProp(props[LayoutProperties.paddingLeft]);
+    if (props.containsKey(LayoutProps.paddingLeft)) {
+      final paddingLeft = _parseNumberProp(props[LayoutProps.paddingLeft]);
       if (paddingLeft != null) {
         node.setPadding(YogaEdge.left, paddingLeft);
       }

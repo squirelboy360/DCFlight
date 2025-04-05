@@ -93,7 +93,7 @@ class Reconciler {
         final key = entry.key;
         final value = entry.value;
 
-        if (isLayoutProp(key)) {
+        if (_isLayoutProp(key)) {
           // If it's a layout prop and changed, add to layout props
           if (!oldElement.props.containsKey(key) ||
               oldElement.props[key] != value) {
@@ -112,7 +112,7 @@ class Reconciler {
       for (final key in oldElement.props.keys) {
         if (!newElement.props.containsKey(key)) {
           // Layout props don't need to be explicitly removed since we'll recalculate
-          if (!isLayoutProp(key)) {
+          if (!_isLayoutProp(key)) {
             // Set to null to indicate removal (handled by native bridge)
             changedProps[key] = null;
           }
@@ -150,8 +150,8 @@ class Reconciler {
   }
 
   /// Check if a property is a layout-related property
-  bool isLayoutProp(String propName) {
-    return LayoutProperties.all.contains(propName);
+  bool _isLayoutProp(String propName) {
+    return LayoutProps.isLayoutProperty(propName);
   }
 
   /// Reconcile children between old and new elements
