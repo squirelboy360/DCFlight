@@ -40,7 +40,10 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent {
             contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
         ])
         
-        // Apply provided props
+        // Apply styling from extension
+        scrollView.applyStyles(props: props)
+        
+        // Apply scroll view specific properties
         updateView(scrollView, withProps: props)
         
         return scrollView

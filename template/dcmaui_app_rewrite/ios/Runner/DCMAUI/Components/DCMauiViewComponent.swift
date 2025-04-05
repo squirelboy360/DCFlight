@@ -11,16 +11,16 @@ class DCMauiViewComponent: NSObject, DCMauiComponent {
         // Create a new UIView
         let view = UIView()
         
-        // Apply non-layout styling
-        DCMauiLayoutManager.shared.applyStyles(to: view, props: props)
+        // Apply styling directly using the UIView extension
+        view.applyStyles(props: props)
         
         // Return the view (layout will be applied directly by layout manager)
         return view
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        // Only apply non-layout styling since layout is handled by Dart
-        DCMauiLayoutManager.shared.applyStyles(to: view, props: props)
+        // Apply styling directly using the UIView extension
+        view.applyStyles(props: props)
         return true
     }
     

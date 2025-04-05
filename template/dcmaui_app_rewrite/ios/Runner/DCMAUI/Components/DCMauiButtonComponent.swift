@@ -11,13 +11,11 @@ class DCMauiButtonComponent: NSObject, DCMauiComponent {
         // Create button
         let button = UIButton(type: .system)
         
-        // Configure default properties
-        button.backgroundColor = .systemBlue
-        button.setTitleColor(.white, for: .normal)
-        button.layer.cornerRadius = 4
+        // Apply all styling props first
+        button.applyStyles(props: props)
         
-        // Apply initial props
-        updateView(button, withProps: props)
+        // Then apply component-specific props
+        applyButtonProps(button, props: props)
         
         return button
     }
@@ -25,63 +23,66 @@ class DCMauiButtonComponent: NSObject, DCMauiComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let button = view as? UIButton else { return false }
         
-        // Apply title
+        // Apply all styling props first
+        button.applyStyles(props: props)
+        
+        // Then apply component-specific props
+        applyButtonProps(button, props: props)
+        
+        return true
+    }
+    
+    private func applyButtonProps(_ button: UIButton, props: [String: Any]) {
+        // Button-specific properties (not styling)
         if let title = props["title"] as? String {
             button.setTitle(title, for: .normal)
         }
         
-        // Title color
         if let titleColor = props["titleColor"] as? String {
             button.setTitleColor(ColorUtilities.color(fromHexString: titleColor), for: .normal)
         }
         
-        // Disabled state
-        if let disabled = props["disabled"] as? Bool {
-            button.isEnabled = !disabled
+        if let fontSize = props["fontSize"] as? CGFloat {
+            button.titleLabel?.font = UIFont.systemFont(ofSize: fontSize)
+        }
+        
+        if let fontWeight = props["fontWeight"] as? String {
+            var font = button.titleLabel?.font ?? UIFont.systemFont(ofSize: button.titleLabel?.font?.pointSize ?? 17)
             
-            if disabled, let disabledColor = props["disabledColor"] as? String {
-                button.setTitleColor(ColorUtilities.color(fromHexString: disabledColor), for: .disabled)
+            switch fontWeight {
+            case "bold", "700":
+                font = UIFont.boldSystemFont(ofSize: font.pointSize)
+            case "600":
+                font = UIFont.systemFont(ofSize: font.pointSize, weight: .semibold)
+            case "500":
+                font = UIFont.systemFont(ofSize: font.pointSize, weight: .medium)
+            case "400", "normal", "regular":
+                font = UIFont.systemFont(ofSize: font.pointSize, weight: .regular)
+            case "300":
+                font = UIFont.systemFont(ofSize: font.pointSize, weight: .light)
+            case "200":
+                font = UIFont.systemFont(ofSize: font.pointSize, weight: .thin)
+            case "100":
+                font = UIFont.systemFont(ofSize: font.pointSize, weight: .ultraLight)
+            default:
+                break
             }
-        }
-        
-        // Font properties
-        var fontSize: CGFloat = 16.0
-        if let size = props["fontSize"] as? CGFloat {
-            fontSize = size
-        } else if let size = props["fontSize"] as? Double {
-            fontSize = CGFloat(size)
-        }
-        
-        var fontWeight = UIFont.Weight.regular
-        if let weight = props["fontWeight"] as? String {
-            switch weight {
-            case "bold": fontWeight = .bold
-            case "100": fontWeight = .ultraLight
-            case "200": fontWeight = .thin
-            case "300": fontWeight = .light
-            case "400": fontWeight = .regular
-            case "500": fontWeight = .medium
-            case "600": fontWeight = .semibold
-            case "700": fontWeight = .bold
-            case "800": fontWeight = .heavy
-            case "900": fontWeight = .black
-            default: fontWeight = .regular
-            }
+            
+            button.titleLabel?.font = font
         }
         
         if let fontFamily = props["fontFamily"] as? String {
-            if let customFont = UIFont(name: fontFamily, size: fontSize) {
-                button.titleLabel?.font = customFont
-            } else {
-                button.titleLabel?.font = UIFont.systemFont(ofSize: fontSize, weight: fontWeight)
+            if let font = UIFont(name: fontFamily, size: button.titleLabel?.font?.pointSize ?? 17) {
+                button.titleLabel?.font = font
             }
-        } else {
-            button.titleLabel?.font = UIFont.systemFont(ofSize: fontSize, weight: fontWeight)
         }
         
-        // Active opacity for touch feedback
+        if let disabled = props["disabled"] as? Bool {
+            button.isEnabled = !disabled
+        }
+        
+        // Store active opacity for press animation
         if let activeOpacity = props["activeOpacity"] as? CGFloat {
-            // Store for use in touch handlers
             objc_setAssociatedObject(
                 button,
                 UnsafeRawPointer(bitPattern: "activeOpacity".hashValue)!,
@@ -89,11 +90,6 @@ class DCMauiButtonComponent: NSObject, DCMauiComponent {
                 .OBJC_ASSOCIATION_RETAIN_NONATOMIC
             )
         }
-        
-        // Apply shared non-layout styling
-        DCMauiLayoutManager.shared.applyStyles(to: button, props: props)
-        
-        return true
     }
     
     func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], 

@@ -1,113 +1,85 @@
-/// Flex direction enum
+/// Flutter-friendly layout enums that map to Yoga enums
+
+/// Direction of layout
+enum Direction {
+  ltr,
+  rtl,
+}
+
+/// Flex direction
 enum FlexDirection {
-  row('row'),
-  rowReverse('rowReverse'),
-  column('column'),
-  columnReverse('columnReverse');
-
-  final String value;
-  const FlexDirection(this.value);
+  column,
+  columnReverse,
+  row,
+  rowReverse,
 }
 
-/// Flex wrap enum
-enum FlexWrap {
-  nowrap('nowrap'),
-  wrap('wrap'),
-  wrapReverse('wrapReverse');
-
-  final String value;
-  const FlexWrap(this.value);
-}
-
-/// Justify content enum
+/// Justify content
 enum JustifyContent {
-  flexStart('flexStart'),
-  center('center'),
-  flexEnd('flexEnd'),
-  spaceBetween('spaceBetween'),
-  spaceAround('spaceAround'),
-  spaceEvenly('spaceEvenly');
-
-  final String value;
-  const JustifyContent(this.value);
+  flexStart,
+  center,
+  flexEnd,
+  spaceBetween,
+  spaceAround,
+  spaceEvenly,
 }
 
-/// Align items enum
+/// Align items
 enum AlignItems {
-  flexStart('flexStart'),
-  center('center'),
-  flexEnd('flexEnd'),
-  stretch('stretch'),
-  baseline('baseline');
-
-  final String value;
-  const AlignItems(this.value);
+  auto,
+  flexStart,
+  center,
+  flexEnd,
+  stretch,
+  baseline,
+  spaceBetween,
+  spaceAround,
 }
 
-/// Align content enum
-enum AlignContent {
-  flexStart('flexStart'),
-  center('center'),
-  flexEnd('flexEnd'),
-  stretch('stretch'),
-  spaceBetween('spaceBetween'),
-  spaceAround('spaceAround');
-
-  final String value;
-  const AlignContent(this.value);
-}
-
-/// Align self enum
+/// Align self
 enum AlignSelf {
-  auto('auto'),
-  flexStart('flexStart'),
-  center('center'),
-  flexEnd('flexEnd'),
-  stretch('stretch'),
-  baseline('baseline');
-
-  final String value;
-  const AlignSelf(this.value);
+  auto,
+  flexStart,
+  center,
+  flexEnd,
+  stretch,
+  baseline,
+  spaceBetween,
+  spaceAround,
 }
 
-/// Position type enum
-enum Position {
-  relative('relative'),
-  absolute('absolute');
-
-  final String value;
-  const Position(this.value);
+/// Align content
+enum AlignContent {
+  flexStart,
+  center,
+  flexEnd,
+  stretch,
+  spaceBetween,
+  spaceAround,
 }
 
-/// Resize mode for images
-enum ResizeMode {
-  cover('cover'),
-  contain('contain'),
-  stretch('stretch'),
-  center('center');
-
-  final String value;
-  const ResizeMode(this.value);
+/// Flex wrap
+enum FlexWrap {
+  nowrap,
+  wrap,
+  wrapReverse,
 }
 
-/// Overflow enum
-enum Overflow {
-  visible('visible'),
-  hidden('hidden'),
-  scroll('scroll');
-
-  final String value;
-  const Overflow(this.value);
+/// Position type
+enum PositionType {
+  relative,
+  absolute,
 }
 
-/// Display enum
+/// Display type
 enum Display {
-  flex('flex'),
-  none('none');
-
-  final String value;
-  const Display(this.value);
+  flex,
+  none,
 }
 
-// Removing duplicate enums to avoid conflicts
-// Text-related enums have been moved solely to text_props.dart
+/// Overflow behavior
+enum Overflow {
+  visible,
+  hidden,
+  scroll,
+}

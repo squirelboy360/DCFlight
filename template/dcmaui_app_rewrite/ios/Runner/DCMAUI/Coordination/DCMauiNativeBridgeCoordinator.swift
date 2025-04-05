@@ -5,12 +5,57 @@ import yoga
 // For ambiguous init issue:
 typealias ViewTypeInfo = (view: UIView, type: String)
 
+/// Registry for storing and managing view references
+class ViewRegistry {
+    // Singleton instance
+    static let shared = ViewRegistry()
+    
+    // Maps view IDs to views and their types
+    private var registry = [String: ViewTypeInfo]()
+    
+    private init() {}
+    
+    // Register a view with ID and type
+    func registerView(_ view: UIView, id: String, type: String) {
+        registry[id] = (view, type)
+        
+        // Also register with layout manager for direct access
+        DCMauiLayoutManager.shared.registerView(view, withId: id)
+    }
+    
+    // Get view info by ID
+    func getViewInfo(id: String) -> ViewTypeInfo? {
+        return registry[id]
+    }
+    
+    // Get view by ID
+    func getView(id: String) -> UIView? {
+        return registry[id]?.view
+    }
+    
+    // Remove a view by ID
+    func removeView(id: String) {
+        registry.removeValue(forKey: id)
+        DCMauiLayoutManager.shared.unregisterView(withId: id)
+    }
+    
+    // Get all view IDs
+    var allViewIds: [String] {
+        return Array(registry.keys)
+    }
+    
+    // Clean up views
+    func cleanup() {
+        for id in registry.keys {
+            DCMauiLayoutManager.shared.cleanUp(viewId: id)
+        }
+        registry.removeAll()
+    }
+}
+
 @objc public class DCMauiNativeBridgeCoordinator: NSObject {
     // Singleton instance
     @objc public static let shared = DCMauiNativeBridgeCoordinator()
-    
-    // View registry - maps view IDs to views and their types
-    private var viewRegistry = [String: ViewTypeInfo]()
     
     // Root view for all DCMAUI components
     private var rootView: UIView?
@@ -48,7 +93,7 @@ typealias ViewTypeInfo = (view: UIView, type: String)
                     print("🚀 DIRECT EVENT REGISTRATION: \(viewId) for events: \(eventTypes)")
                     
                     // Lookup the view and component
-                    if let viewInfo = self.viewRegistry[viewId] {
+                    if let viewInfo = ViewRegistry.shared.getViewInfo(id: viewId) {
                         let view = viewInfo.view
                         let componentType = viewInfo.type
                         
@@ -75,7 +120,7 @@ typealias ViewTypeInfo = (view: UIView, type: String)
                     print("🚀 DIRECT EVENT UNREGISTRATION: \(viewId) for events: \(eventTypes)")
                     
                     // Lookup the view and component
-                    if let viewInfo = self.viewRegistry[viewId] {
+                    if let viewInfo = ViewRegistry.shared.getViewInfo(id: viewId) {
                         let view = viewInfo.view
                         let componentType = viewInfo.type
                         
@@ -135,11 +180,8 @@ typealias ViewTypeInfo = (view: UIView, type: String)
         // Create the view using the component
         let view = component.createView(props: props)
         
-        // Register with layout manager for direct access
-        DCMauiLayoutManager.shared.registerView(view, withId: viewIdString)
-        
-        // Store in registry with component type info
-        viewRegistry[viewIdString] = (view, typeString)
+        // Register the view
+        ViewRegistry.shared.registerView(view, id: viewIdString, type: typeString)
         
         print("DCMauiNativeBridge: View created successfully: \(viewIdString)")
         return 1
@@ -154,7 +196,7 @@ typealias ViewTypeInfo = (view: UIView, type: String)
         // Parse props JSON
         guard let propsData = propsString.data(using: .utf8),
               let props = try? JSONSerialization.jsonObject(with: propsData) as? [String: Any],
-              let viewInfo = viewRegistry[viewIdString] else {
+              let viewInfo = ViewRegistry.shared.getViewInfo(id: viewIdString) else {
             return 0
         }
         
@@ -176,7 +218,7 @@ typealias ViewTypeInfo = (view: UIView, type: String)
     @objc public func dcmaui_delete_view(_ viewId: UnsafePointer<CChar>) -> Int8 {
         let viewIdString = String(cString: viewId)
         
-        guard let viewInfo = viewRegistry[viewIdString] else {
+        guard let viewInfo = ViewRegistry.shared.getViewInfo(id: viewIdString) else {
             print("DCMauiNativeBridge: View not found for deletion: \(viewIdString)")
             return 0
         }
@@ -186,11 +228,8 @@ typealias ViewTypeInfo = (view: UIView, type: String)
         // Remove from parent view
         view.removeFromSuperview()
         
-        // Clean up from layout manager
-        DCMauiLayoutManager.shared.cleanUp(viewId: viewIdString)
-        
-        // Remove from registry
-        viewRegistry.removeValue(forKey: viewIdString)
+        // Clean up from registry
+        ViewRegistry.shared.removeView(id: viewIdString)
         
         return 1
     }
@@ -202,23 +241,17 @@ typealias ViewTypeInfo = (view: UIView, type: String)
         let childIdString = String(cString: childId)
         let parentIdString = String(cString: parentId)
         
-        guard let childInfo = viewRegistry[childIdString],
-              let parentInfo = viewRegistry[parentIdString] else {
+        guard let childView = ViewRegistry.shared.getView(id: childIdString),
+              let parentView = ViewRegistry.shared.getView(id: parentIdString) else {
             print("Failed to find child or parent view: \(childIdString) -> \(parentIdString)")
             return 0
         }
-        
-        let childView = childInfo.view
-        let parentView = parentInfo.view
         
         // Add child to parent
         parentView.addSubview(childView)
         
         // Log the views for debugging
-        print("Attaching view \(childIdString) (\(childInfo.type)) to parent \(parentIdString)")
-        
-        // Handle layout using our layout manager
-        // Just use the standard methods instead of the missing ones
+        print("Attaching view \(childIdString) to parent \(parentIdString)")
         
         return 1
     }
@@ -231,13 +264,13 @@ typealias ViewTypeInfo = (view: UIView, type: String)
         
         guard let childrenData = childrenString.data(using: .utf8),
               let childrenIds = try? JSONSerialization.jsonObject(with: childrenData) as? [String],
-              let parentView = viewRegistry[viewIdString]?.view else {
+              let parentView = ViewRegistry.shared.getView(id: viewIdString) else {
             return 0
         }
         
         // Set z-order of children based on array order
         for (index, childId) in childrenIds.enumerated() {
-            if let childView = viewRegistry[childId]?.view {
+            if let childView = ViewRegistry.shared.getView(id: childId) {
                 parentView.insertSubview(childView, at: index)
             }
         }
@@ -276,7 +309,7 @@ typealias ViewTypeInfo = (view: UIView, type: String)
             _ = component.updateView(view, withProps: props)
             
             // Store in registry
-            viewRegistry[viewId] = (view, "View")
+            ViewRegistry.shared.registerView(view, id: viewId, type: "View")
             
             print("Root view manually created with ID: \(viewId)")
         }
@@ -284,22 +317,7 @@ typealias ViewTypeInfo = (view: UIView, type: String)
     
     /// Update a view's layout directly with absolute positioning
     func updateViewLayout(viewId: String, left: CGFloat, top: CGFloat, width: CGFloat, height: CGFloat) -> Bool {
-        guard let viewInfo = viewRegistry[viewId] else {
-            print("⚠️ View not found for updateViewLayout: \(viewId)")
-            return false
-        }
-
-        let view = viewInfo.view
-        
-        print("📐 Applying absolute layout to \(viewId): left=\(left), top=\(top), width=\(width), height=\(height)")
-        
-        // Apply absolute positioning
-        view.frame = CGRect(x: left, y: top, width: width, height: height)
-        
-        // Notify the layout manager that we're using absolute positioning
-        DCMauiLayoutManager.shared.setViewUsingAbsoluteLayout(view: view)
-        
-        return true
+        return DCMauiLayoutManager.shared.applyLayout(to: viewId, left: left, top: top, width: width, height: height)
     }
     
     /// Measure text with given attributes
@@ -376,10 +394,7 @@ typealias ViewTypeInfo = (view: UIView, type: String)
     }
 }
 
-import UIKit
-import Flutter
-
-// Function declarations for C bridge
+// Function declarations for C bridge (these remain unchanged)
 @_cdecl("dcmaui_initialize_impl")
 public func dcmaui_initialize_impl() -> Int8 {
     return DCMauiNativeBridgeCoordinator.shared.dcmaui_initialize()

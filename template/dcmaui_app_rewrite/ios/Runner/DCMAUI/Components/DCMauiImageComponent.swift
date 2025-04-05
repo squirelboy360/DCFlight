@@ -1,23 +1,21 @@
 import UIKit
-// Remove or conditionally import Kingfisher, since it might not be available
-// import Kingfisher
+import yoga
 
 class DCMauiImageComponent: NSObject, DCMauiComponent {
-    // Required initializer to conform to DCMauiComponent
     required override init() {
         super.init()
     }
     
     func createView(props: [String: Any]) -> UIView {
-        // Create an image view
+        // Create image view
         let imageView = UIImageView()
-        
-        // Default configuration
         imageView.contentMode = .scaleAspectFit
-        imageView.clipsToBounds = true
         
-        // Apply provided props
-        updateView(imageView, withProps: props)
+        // Apply common styling first
+        imageView.applyStyles(props: props)
+        
+        // Apply image-specific properties
+        applyImageProps(imageView, props: props)
         
         return imageView
     }
@@ -25,12 +23,22 @@ class DCMauiImageComponent: NSObject, DCMauiComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let imageView = view as? UIImageView else { return false }
         
-        // Apply image source
+        // Apply common styling first
+        imageView.applyStyles(props: props)
+        
+        // Apply image-specific properties
+        applyImageProps(imageView, props: props)
+        
+        return true
+    }
+    
+    private func applyImageProps(_ imageView: UIImageView, props: [String: Any]) {
+        // Handle image source
         if let source = props["source"] as? String {
             loadImage(from: source, into: imageView)
         }
         
-        // Apply resize mode / content mode
+        // Handle resize mode
         if let resizeMode = props["resizeMode"] as? String {
             switch resizeMode {
             case "cover":
@@ -46,74 +54,204 @@ class DCMauiImageComponent: NSObject, DCMauiComponent {
             }
         }
         
-        // Apply non-layout styling (border radius, etc.)
-        DCMauiLayoutManager.shared.applyStyles(to: imageView, props: props)
+        // Handle tint color
+        if let tintColor = props["tintColor"] as? String {
+            imageView.tintColor = ColorUtilities.color(fromHexString: tintColor)
+        }
         
-        return true
+        // Handle loading state
+        if let isLoading = props["loading"] as? Bool, isLoading {
+            // Add loading indicator if needed
+            showLoadingIndicator(in: imageView)
+        } else {
+            // Remove loading indicator if present
+            removeLoadingIndicator(from: imageView)
+        }
     }
     
     private func loadImage(from source: String, into imageView: UIImageView) {
-        if source.hasPrefix("http://") || source.hasPrefix("https://") {
-            // Remote image - load asynchronously
-            if let url = URL(string: source) {
-                // Create a URLSession task to load the image
-                URLSession.shared.dataTask(with: url) { (data, response, error) in
+        // Reset current image
+        imageView.image = nil
+        
+        // Local image resource
+        if source.starts(with: "asset://") {
+            let imageName = source.replacingOccurrences(of: "asset://", with: "")
+            imageView.image = UIImage(named: imageName)
+            return
+        }
+        
+        // System icon
+        if source.starts(with: "system://") {
+            let iconName = source.replacingOccurrences(of: "system://", with: "")
+            imageView.image = UIImage(systemName: iconName)
+            return
+        }
+        
+        // Remote URL
+        if source.starts(with: "http://") || source.starts(with: "https://") {
+            // Show loading indicator
+            showLoadingIndicator(in: imageView)
+            
+            // Create URL
+            guard let url = URL(string: source) else {
+                print("Invalid image URL: \(source)")
+                removeLoadingIndicator(from: imageView)
+                return
+            }
+            
+            // Use URLSession to fetch image
+            URLSession.shared.dataTask(with: url) { data, response, error in
+                DispatchQueue.main.async {
+                    // Remove loading indicator
+                    self.removeLoadingIndicator(from: imageView)
+                    
                     if let error = error {
-                        print("Error loading image: \(error)")
+                        print("Error loading image: \(error.localizedDescription)")
                         return
                     }
                     
-                    if let data = data, let image = UIImage(data: data) {
-                        // Update UI on main thread
-                        DispatchQueue.main.async {
-                            imageView.image = image
-                        }
+                    guard let data = data, let image = UIImage(data: data) else {
+                        print("Invalid image data from URL: \(url.absoluteString)")
+                        return
                     }
-                }.resume()
-            }
-        } else if source.hasPrefix("data:image/") {
-            // Base64 encoded image
-            if let imageData = parseBase64Image(source) {
-                imageView.image = UIImage(data: imageData)
-            }
-        } else {
-            // Local image
-            imageView.image = UIImage(named: source)
+                    
+                    // Set image
+                    imageView.image = image
+                }
+            }.resume()
         }
     }
     
-    private func parseBase64Image(_ source: String) -> Data? {
-        // Extract base64 data
-        if let commaIndex = source.range(of: ",")?.upperBound {
-            let base64String = String(source[commaIndex...])
-            return Data(base64Encoded: String(base64String))
+    private func showLoadingIndicator(in imageView: UIImageView) {
+        // Check if already has a loading indicator
+        if imageView.viewWithTag(999) != nil {
+            return
         }
-        return nil
+        
+        // Create and add activity indicator
+        let activityIndicator = UIActivityIndicatorView(style: .medium)
+        activityIndicator.tag = 999
+        activityIndicator.center = CGPoint(x: imageView.bounds.midX, y: imageView.bounds.midY)
+        activityIndicator.startAnimating()
+        
+        // Add to image view
+        imageView.addSubview(activityIndicator)
+        
+        // Center the activity indicator
+        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            activityIndicator.centerXAnchor.constraint(equalTo: imageView.centerXAnchor),
+            activityIndicator.centerYAnchor.constraint(equalTo: imageView.centerYAnchor)
+        ])
+    }
+    
+    private func removeLoadingIndicator(from imageView: UIImageView) {
+        // Find and remove any existing activity indicator
+        if let activityIndicator = imageView.viewWithTag(999) as? UIActivityIndicatorView {
+            activityIndicator.stopAnimating()
+            activityIndicator.removeFromSuperview()
+        }
     }
     
     func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], 
-                          eventCallback: @escaping (String, String, [String: Any]) -> Void) {
+                         eventCallback: @escaping (String, String, [String: Any]) -> Void) {
         guard let imageView = view as? UIImageView else { return }
         
-        for eventType in eventTypes {
-            switch eventType {
-            case "load":
-                // Add load event listener - requires a custom implementation
-                // We can use Kingfisher's completion handler in the updateView method
-                break
-                
-            case "error":
-                // Add error event listener
-                break
-                
-            default:
-                break
-            }
+        if eventTypes.contains("load") {
+            // Set up image load completion handler
+            objc_setAssociatedObject(
+                imageView,
+                UnsafeRawPointer(bitPattern: "onLoadCallback".hashValue)!,
+                eventCallback,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+            
+            objc_setAssociatedObject(
+                imageView,
+                UnsafeRawPointer(bitPattern: "viewId".hashValue)!,
+                viewId,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+        }
+        
+        if eventTypes.contains("press") {
+            // Enable user interaction
+            imageView.isUserInteractionEnabled = true
+            
+            // Create tap gesture
+            let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleImageTap(_:)))
+            imageView.addGestureRecognizer(tapGesture)
+            
+            // Store callback and viewId
+            objc_setAssociatedObject(
+                imageView,
+                UnsafeRawPointer(bitPattern: "onPressCallback".hashValue)!,
+                eventCallback,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+            
+            // ViewId should already be set from above
         }
     }
     
     func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String]) {
-        // Clean up any event listeners that were added
+        guard let imageView = view as? UIImageView else { return }
+        
+        if eventTypes.contains("load") {
+            objc_setAssociatedObject(
+                imageView,
+                UnsafeRawPointer(bitPattern: "onLoadCallback".hashValue)!,
+                nil,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+        }
+        
+        if eventTypes.contains("press") {
+            // Remove tap gestures
+            imageView.gestureRecognizers?.forEach { recognizer in
+                if let tapRecognizer = recognizer as? UITapGestureRecognizer {
+                    imageView.removeGestureRecognizer(tapRecognizer)
+                }
+            }
+            
+            objc_setAssociatedObject(
+                imageView,
+                UnsafeRawPointer(bitPattern: "onPressCallback".hashValue)!,
+                nil,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+            
+            // Reset user interaction if no other gestures are present
+            if imageView.gestureRecognizers?.isEmpty ?? true {
+                imageView.isUserInteractionEnabled = false
+            }
+        }
+        
+        // Clean up viewId if no other callbacks
+        if !eventTypes.contains("load") && !eventTypes.contains("press") {
+            objc_setAssociatedObject(
+                imageView,
+                UnsafeRawPointer(bitPattern: "viewId".hashValue)!,
+                nil,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+        }
+    }
+    
+    @objc private func handleImageTap(_ sender: UITapGestureRecognizer) {
+        guard let imageView = sender.view as? UIImageView,
+              let callback = objc_getAssociatedObject(
+                imageView,
+                UnsafeRawPointer(bitPattern: "onPressCallback".hashValue)!
+              ) as? (String, String, [String: Any]) -> Void,
+              let viewId = objc_getAssociatedObject(
+                imageView,
+                UnsafeRawPointer(bitPattern: "viewId".hashValue)!
+              ) as? String else {
+            return
+        }
+        
+        callback(viewId, "press", [:])
     }
 }
 

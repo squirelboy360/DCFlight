@@ -1,101 +1,362 @@
-/// This class serves as a single source of truth for layout property names
-/// across the framework. This prevents hardcoding property names in multiple places
-/// and ensures consistency.
-class LayoutProperties {
-  // Dimension properties
-  static const String width = 'width';
-  static const String height = 'height';
-  static const String minWidth = 'minWidth';
-  static const String minHeight = 'minHeight';
-  static const String maxWidth = 'maxWidth';
-  static const String maxHeight = 'maxHeight';
-  static const String aspectRatio = 'aspectRatio';
+import 'dart:ui' show Color;
 
-  // Margin properties
-  static const String margin = 'margin';
-  static const String marginTop = 'marginTop';
-  static const String marginRight = 'marginRight';
-  static const String marginBottom = 'marginBottom';
-  static const String marginLeft = 'marginLeft';
-  static const String marginHorizontal = 'marginHorizontal';
-  static const String marginVertical = 'marginVertical';
+import 'package:dc_test/framework/packages/yoga/yoga_enums.dart';
 
-  // Padding properties
-  static const String padding = 'padding';
-  static const String paddingTop = 'paddingTop';
-  static const String paddingRight = 'paddingRight';
-  static const String paddingBottom = 'paddingBottom';
-  static const String paddingLeft = 'paddingLeft';
-  static const String paddingHorizontal = 'paddingHorizontal';
-  static const String paddingVertical = 'paddingVertical';
+/// Layout properties for components
+class LayoutProps {
+  // Width and height
+  final dynamic width;
+  final dynamic height;
+  final dynamic minWidth;
+  final dynamic maxWidth;
+  final dynamic minHeight;
+  final dynamic maxHeight;
 
-  // Flexbox properties
-  static const String flex = 'flex';
-  static const String flexGrow = 'flexGrow';
-  static const String flexShrink = 'flexShrink';
-  static const String flexBasis = 'flexBasis';
-  static const String alignSelf = 'alignSelf';
-  static const String flexDirection = 'flexDirection';
-  static const String flexWrap = 'flexWrap';
-  static const String justifyContent = 'justifyContent';
-  static const String alignItems = 'alignItems';
-  static const String alignContent = 'alignContent';
+  // Margin
+  final dynamic margin;
+  final dynamic marginTop;
+  final dynamic marginRight;
+  final dynamic marginBottom;
+  final dynamic marginLeft;
+  final dynamic marginHorizontal;
+  final dynamic marginVertical;
 
-  // Position properties
-  static const String position = 'position';
-  static const String top = 'top';
-  static const String right = 'right';
-  static const String bottom = 'bottom';
-  static const String left = 'left';
-  static const String zIndex = 'zIndex';
+  // Padding
+  final dynamic padding;
+  final dynamic paddingTop;
+  final dynamic paddingRight;
+  final dynamic paddingBottom;
+  final dynamic paddingLeft;
+  final dynamic paddingHorizontal;
+  final dynamic paddingVertical;
 
-  /// Get all layout properties as a set
-  static Set<String> get all => {
-        // Dimensions
-        width,
-        height,
-        minWidth,
-        minHeight,
-        maxWidth,
-        maxHeight,
-        aspectRatio,
+  // Position
+  final dynamic left;
+  final dynamic top;
+  final dynamic right;
+  final dynamic bottom;
+  final YogaPositionType? position;
 
-        // Margins
-        margin,
-        marginTop,
-        marginRight,
-        marginBottom,
-        marginLeft,
-        marginHorizontal,
-        marginVertical,
+  // Flex properties
+  final YogaFlexDirection? flexDirection;
+  final YogaJustifyContent? justifyContent;
+  final YogaAlign? alignItems;
+  final YogaAlign? alignSelf;
+  final YogaAlign? alignContent;
+  final YogaWrap? flexWrap;
+  final double? flex;
+  final double? flexGrow;
+  final double? flexShrink;
+  final dynamic flexBasis;
 
-        // Paddings
-        padding,
-        paddingTop,
-        paddingRight,
-        paddingBottom,
-        paddingLeft,
-        paddingHorizontal,
-        paddingVertical,
+  // Display and overflow
+  final YogaDisplay? display;
+  final YogaOverflow? overflow;
 
-        // Flexbox
-        flex,
-        flexGrow,
-        flexShrink,
-        flexBasis,
-        alignSelf,
-        flexDirection,
-        flexWrap,
-        justifyContent,
-        alignItems,
-        alignContent,
+  // Direction
+  final YogaDirection? direction;
 
-        // Position
-        position,
-        top,
-        right,
-        bottom,
-        left,
-        zIndex,
-      };
+  // Border (although visual, it affects layout)
+  final dynamic borderWidth;
+
+  /// Create layout props with the specified values
+  const LayoutProps({
+    this.width,
+    this.height,
+    this.minWidth,
+    this.maxWidth,
+    this.minHeight,
+    this.maxHeight,
+    this.margin,
+    this.marginTop,
+    this.marginRight,
+    this.marginBottom,
+    this.marginLeft,
+    this.marginHorizontal,
+    this.marginVertical,
+    this.padding,
+    this.paddingTop,
+    this.paddingRight,
+    this.paddingBottom,
+    this.paddingLeft,
+    this.paddingHorizontal,
+    this.paddingVertical,
+    this.left,
+    this.top,
+    this.right,
+    this.bottom,
+    this.position,
+    this.flexDirection,
+    this.justifyContent,
+    this.alignItems,
+    this.alignSelf,
+    this.alignContent,
+    this.flexWrap,
+    this.flex,
+    this.flexGrow,
+    this.flexShrink,
+    this.flexBasis,
+    this.display,
+    this.overflow,
+    this.direction,
+    this.borderWidth,
+  });
+
+  /// Convert layout props to a map for serialization
+  Map<String, dynamic> toMap() {
+    final map = <String, dynamic>{};
+
+    // Add dimension properties
+    if (width != null) map['width'] = width;
+    if (height != null) map['height'] = height;
+    if (minWidth != null) map['minWidth'] = minWidth;
+    if (maxWidth != null) map['maxWidth'] = maxWidth;
+    if (minHeight != null) map['minHeight'] = minHeight;
+    if (maxHeight != null) map['maxHeight'] = maxHeight;
+
+    // Add margin properties
+    if (margin != null) map['margin'] = margin;
+    if (marginTop != null) map['marginTop'] = marginTop;
+    if (marginRight != null) map['marginRight'] = marginRight;
+    if (marginBottom != null) map['marginBottom'] = marginBottom;
+    if (marginLeft != null) map['marginLeft'] = marginLeft;
+    if (marginHorizontal != null) {
+      map['marginLeft'] = marginHorizontal;
+      map['marginRight'] = marginHorizontal;
+    }
+    if (marginVertical != null) {
+      map['marginTop'] = marginVertical;
+      map['marginBottom'] = marginVertical;
+    }
+
+    // Add padding properties
+    if (padding != null) map['padding'] = padding;
+    if (paddingTop != null) map['paddingTop'] = paddingTop;
+    if (paddingRight != null) map['paddingRight'] = paddingRight;
+    if (paddingBottom != null) map['paddingBottom'] = paddingBottom;
+    if (paddingLeft != null) map['paddingLeft'] = paddingLeft;
+    if (paddingHorizontal != null) {
+      map['paddingLeft'] = paddingHorizontal;
+      map['paddingRight'] = paddingHorizontal;
+    }
+    if (paddingVertical != null) {
+      map['paddingTop'] = paddingVertical;
+      map['paddingBottom'] = paddingVertical;
+    }
+
+    // Add position properties
+    if (left != null) map['left'] = left;
+    if (top != null) map['top'] = top;
+    if (right != null) map['right'] = right;
+    if (bottom != null) map['bottom'] = bottom;
+    if (position != null) map['position'] = position.toString().split('.').last;
+
+    // Add flex properties
+    if (flexDirection != null)
+      map['flexDirection'] = flexDirection.toString().split('.').last;
+    if (justifyContent != null)
+      map['justifyContent'] = justifyContent.toString().split('.').last;
+    if (alignItems != null)
+      map['alignItems'] = alignItems.toString().split('.').last;
+    if (alignSelf != null)
+      map['alignSelf'] = alignSelf.toString().split('.').last;
+    if (alignContent != null)
+      map['alignContent'] = alignContent.toString().split('.').last;
+    if (flexWrap != null) map['flexWrap'] = flexWrap.toString().split('.').last;
+    if (flex != null) map['flex'] = flex;
+    if (flexGrow != null) map['flexGrow'] = flexGrow;
+    if (flexShrink != null) map['flexShrink'] = flexShrink;
+    if (flexBasis != null) map['flexBasis'] = flexBasis;
+
+    // Add display and overflow properties
+    if (display != null) map['display'] = display.toString().split('.').last;
+    if (overflow != null) map['overflow'] = overflow.toString().split('.').last;
+
+    // Add direction property
+    if (direction != null)
+      map['direction'] = direction.toString().split('.').last;
+
+    // Add border width (affects layout)
+    if (borderWidth != null) map['borderWidth'] = borderWidth;
+
+    return map;
+  }
+
+  /// Create a new LayoutProps object by merging this one with another
+  LayoutProps merge(LayoutProps other) {
+    return LayoutProps(
+      width: other.width ?? width,
+      height: other.height ?? height,
+      minWidth: other.minWidth ?? minWidth,
+      maxWidth: other.maxWidth ?? maxWidth,
+      minHeight: other.minHeight ?? minHeight,
+      maxHeight: other.maxHeight ?? maxHeight,
+      margin: other.margin ?? margin,
+      marginTop: other.marginTop ?? marginTop,
+      marginRight: other.marginRight ?? marginRight,
+      marginBottom: other.marginBottom ?? marginBottom,
+      marginLeft: other.marginLeft ?? marginLeft,
+      marginHorizontal: other.marginHorizontal ?? marginHorizontal,
+      marginVertical: other.marginVertical ?? marginVertical,
+      padding: other.padding ?? padding,
+      paddingTop: other.paddingTop ?? paddingTop,
+      paddingRight: other.paddingRight ?? paddingRight,
+      paddingBottom: other.paddingBottom ?? paddingBottom,
+      paddingLeft: other.paddingLeft ?? paddingLeft,
+      paddingHorizontal: other.paddingHorizontal ?? paddingHorizontal,
+      paddingVertical: other.paddingVertical ?? paddingVertical,
+      left: other.left ?? left,
+      top: other.top ?? top,
+      right: other.right ?? right,
+      bottom: other.bottom ?? bottom,
+      position: other.position ?? position,
+      flexDirection: other.flexDirection ?? flexDirection,
+      justifyContent: other.justifyContent ?? justifyContent,
+      alignItems: other.alignItems ?? alignItems,
+      alignSelf: other.alignSelf ?? alignSelf,
+      alignContent: other.alignContent ?? alignContent,
+      flexWrap: other.flexWrap ?? flexWrap,
+      flex: other.flex ?? flex,
+      flexGrow: other.flexGrow ?? flexGrow,
+      flexShrink: other.flexShrink ?? flexShrink,
+      flexBasis: other.flexBasis ?? flexBasis,
+      display: other.display ?? display,
+      overflow: other.overflow ?? overflow,
+      direction: other.direction ?? direction,
+      borderWidth: other.borderWidth ?? borderWidth,
+    );
+  }
+
+  /// Create a copy of this LayoutProps with certain properties modified
+  LayoutProps copyWith({
+    dynamic width,
+    dynamic height,
+    dynamic minWidth,
+    dynamic maxWidth,
+    dynamic minHeight,
+    dynamic maxHeight,
+    dynamic margin,
+    dynamic marginTop,
+    dynamic marginRight,
+    dynamic marginBottom,
+    dynamic marginLeft,
+    dynamic marginHorizontal,
+    dynamic marginVertical,
+    dynamic padding,
+    dynamic paddingTop,
+    dynamic paddingRight,
+    dynamic paddingBottom,
+    dynamic paddingLeft,
+    dynamic paddingHorizontal,
+    dynamic paddingVertical,
+    dynamic left,
+    dynamic top,
+    dynamic right,
+    dynamic bottom,
+    YogaPositionType? position,
+    YogaFlexDirection? flexDirection,
+    YogaJustifyContent? justifyContent,
+    YogaAlign? alignItems,
+    YogaAlign? alignSelf,
+    YogaAlign? alignContent,
+    YogaWrap? flexWrap,
+    double? flex,
+    double? flexGrow,
+    double? flexShrink,
+    dynamic flexBasis,
+    YogaDisplay? display,
+    YogaOverflow? overflow,
+    YogaDirection? direction,
+    dynamic borderWidth,
+  }) {
+    return LayoutProps(
+      width: width ?? this.width,
+      height: height ?? this.height,
+      minWidth: minWidth ?? this.minWidth,
+      maxWidth: maxWidth ?? this.maxWidth,
+      minHeight: minHeight ?? this.minHeight,
+      maxHeight: maxHeight ?? this.maxHeight,
+      margin: margin ?? this.margin,
+      marginTop: marginTop ?? this.marginTop,
+      marginRight: marginRight ?? this.marginRight,
+      marginBottom: marginBottom ?? this.marginBottom,
+      marginLeft: marginLeft ?? this.marginLeft,
+      marginHorizontal: marginHorizontal ?? this.marginHorizontal,
+      marginVertical: marginVertical ?? this.marginVertical,
+      padding: padding ?? this.padding,
+      paddingTop: paddingTop ?? this.paddingTop,
+      paddingRight: paddingRight ?? this.paddingRight,
+      paddingBottom: paddingBottom ?? this.paddingBottom,
+      paddingLeft: paddingLeft ?? this.paddingLeft,
+      paddingHorizontal: paddingHorizontal ?? this.paddingHorizontal,
+      paddingVertical: paddingVertical ?? this.paddingVertical,
+      left: left ?? this.left,
+      top: top ?? this.top,
+      right: right ?? this.right,
+      bottom: bottom ?? this.bottom,
+      position: position ?? this.position,
+      flexDirection: flexDirection ?? this.flexDirection,
+      justifyContent: justifyContent ?? this.justifyContent,
+      alignItems: alignItems ?? this.alignItems,
+      alignSelf: alignSelf ?? this.alignSelf,
+      alignContent: alignContent ?? this.alignContent,
+      flexWrap: flexWrap ?? this.flexWrap,
+      flex: flex ?? this.flex,
+      flexGrow: flexGrow ?? this.flexGrow,
+      flexShrink: flexShrink ?? this.flexShrink,
+      flexBasis: flexBasis ?? this.flexBasis,
+      display: display ?? this.display,
+      overflow: overflow ?? this.overflow,
+      direction: direction ?? this.direction,
+      borderWidth: borderWidth ?? this.borderWidth,
+    );
+  }
+
+  /// List of all layout property names for easy identification
+  static const List<String> all = [
+    'width',
+    'height',
+    'minWidth',
+    'maxWidth',
+    'minHeight',
+    'maxHeight',
+    'margin',
+    'marginTop',
+    'marginRight',
+    'marginBottom',
+    'marginLeft',
+    'marginHorizontal',
+    'marginVertical',
+    'padding',
+    'paddingTop',
+    'paddingRight',
+    'paddingBottom',
+    'paddingLeft',
+    'paddingHorizontal',
+    'paddingVertical',
+    'left',
+    'top',
+    'right',
+    'bottom',
+    'position',
+    'flexDirection',
+    'justifyContent',
+    'alignItems',
+    'alignSelf',
+    'alignContent',
+    'flexWrap',
+    'flex',
+    'flexGrow',
+    'flexShrink',
+    'flexBasis',
+    'display',
+    'overflow',
+    'direction',
+    'borderWidth',
+  ];
+
+  /// Helper method to check if a property is a layout property
+  static bool isLayoutProperty(String propName) {
+    return all.contains(propName);
+  }
 }
