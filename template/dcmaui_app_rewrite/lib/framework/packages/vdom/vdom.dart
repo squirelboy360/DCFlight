@@ -364,7 +364,7 @@ class VDom {
 
         // If this is the root of a component tree, calculate layout
         if (node == rootComponentNode?.renderedNode) {
-          await calculateAndApplyLayout();
+          await calculateAndApplyLayout(); // Use public method
         }
 
         // Call lifecycle methods after full rendering
@@ -689,7 +689,7 @@ class VDom {
 
       // Recalculate layout if we have a root component
       if (rootComponentNode != null && _layoutDirty) {
-        calculateAndApplyLayout();
+        calculateAndApplyLayout(); // Use public method
       }
     }
   }
