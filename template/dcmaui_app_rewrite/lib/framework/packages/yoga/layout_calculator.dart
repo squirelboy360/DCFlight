@@ -45,12 +45,7 @@ class LayoutCalculator {
 
   /// Calculate layout for a view hierarchy
   Map<String, LayoutResult> calculateLayout(
-      VDomNode rootNode, double width, double height) {
-    // This method:
-    // 1. Builds the shadow tree from the VDOM
-    // 2. Uses the shadow tree to calculate layout
-    // 3. Returns the resulting layout
-
+      VDomNode rootNode, dynamic width, dynamic height) {
     // Start layout calculation
     final startTime = DateTime.now();
 
@@ -71,8 +66,22 @@ class LayoutCalculator {
       // Set root node ID
       _shadowTree.setRoot(rootNode.nativeViewId!);
 
+      // Don't convert any percentage values - pass them directly to the shadow tree
+      // Handle double.infinity by converting to "100%"
+      dynamic actualWidth = width;
+      dynamic actualHeight = height;
+
+      if (width is double && width.isInfinite) {
+        actualWidth = "100%";
+      }
+
+      if (height is double && height.isInfinite) {
+        actualHeight = "100%";
+      }
+
       // Calculate layout using the shadow tree
-      final shadowResults = _shadowTree.calculateLayout(width, height);
+      final shadowResults =
+          _shadowTree.calculateLayout(actualWidth, actualHeight);
 
       // Convert shadow tree results to layout results
       final layoutResults = <String, LayoutResult>{};
@@ -139,7 +148,12 @@ class LayoutCalculator {
 
     for (final prop in props.entries) {
       if (LayoutProps.isLayoutProperty(prop.key)) {
-        layoutProps[prop.key] = prop.value;
+        // For layout properties that are double.infinity, convert to "100%"
+        var value = prop.value;
+        if (value is double && value.isInfinite) {
+          value = "100%";
+        }
+        layoutProps[prop.key] = value;
       }
     }
 
@@ -159,8 +173,8 @@ class LayoutCalculator {
   /// Calculate and apply layout in one step for convenience
   Future<Map<String, LayoutResult>> calculateAndApplyLayout(
     VDomNode rootNode,
-    double width,
-    double height,
+    dynamic width,
+    dynamic height,
   ) async {
     final layouts = calculateLayout(rootNode, width, height);
     await applyCalculatedLayouts(layouts);
@@ -169,7 +183,17 @@ class LayoutCalculator {
 
   /// Update layout props for a specific node
   void updateNodeLayoutProps(String nodeId, Map<String, dynamic> layoutProps) {
-    _shadowTree.updateLayoutProps(nodeId, layoutProps);
+    // Handle double.infinity in layout props
+    final processedProps = <String, dynamic>{};
+    for (var entry in layoutProps.entries) {
+      var value = entry.value;
+      if (value is double && value.isInfinite) {
+        value = "100%";
+      }
+      processedProps[entry.key] = value;
+    }
+
+    _shadowTree.updateLayoutProps(nodeId, processedProps);
   }
 
   /// Remove a node from the shadow tree

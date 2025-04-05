@@ -3,7 +3,7 @@ import 'dart:collection';
 import 'shadow_node.dart';
 import 'yoga_enums.dart';
 
-/// Result of a layout calculation
+/// Result of layout calculation
 class LayoutResult {
   final double left;
   final double top;
@@ -16,11 +16,6 @@ class LayoutResult {
     required this.width,
     required this.height,
   });
-
-  @override
-  String toString() {
-    return 'LayoutResult(left: $left, top: $top, width: $width, height: $height)';
-  }
 }
 
 /// Manager for the shadow tree that handles layout calculations
@@ -31,88 +26,97 @@ class ShadowTree {
   /// Root node ID
   String? _rootNodeId;
 
-  /// Get a node by ID
-  ShadowNode? getNode(String nodeId) {
-    return _nodes[nodeId];
-  }
-
-  /// Create a new shadow node with the given ID
-  ShadowNode createNode(String nodeId) {
-    // If node already exists, return it
-    if (_nodes.containsKey(nodeId)) {
-      return _nodes[nodeId]!;
+  /// Create a node with a unique ID
+  ShadowNode createNode(String id) {
+    if (_nodes.containsKey(id)) {
+      return _nodes[id]!;
     }
 
-    // Create new node
-    final node = ShadowNode(nodeId);
-    _nodes[nodeId] = node;
-
-    // If this is the first node, set it as root
-    if (_rootNodeId == null) {
-      _rootNodeId = nodeId;
-    }
-
+    final node = ShadowNode(id);
+    _nodes[id] = node;
     return node;
   }
 
-  /// Set a node as the root
-  void setRoot(String nodeId) {
-    if (!_nodes.containsKey(nodeId)) {
-      throw Exception('Cannot set non-existent node as root: $nodeId');
+  /// Set the root node ID
+  void setRoot(String id) {
+    if (!_nodes.containsKey(id)) {
+      developer.log('Root node $id not found in shadow tree',
+          name: 'ShadowTree');
+      return;
     }
-    _rootNodeId = nodeId;
-  }
 
-  /// Apply layout properties to a node
-  void applyLayoutProps(String nodeId, Map<String, dynamic> props) {
-    final node = getNode(nodeId) ?? createNode(nodeId);
-    node.applyLayoutProps(props);
-  }
-
-  /// Update layout properties for a node
-  void updateLayoutProps(String nodeId, Map<String, dynamic> props) {
-    final node = getNode(nodeId);
-    if (node != null) {
-      node.updateLayoutProps(props);
-    }
+    _rootNodeId = id;
   }
 
   /// Add a child to a parent node
   void addChild(String parentId, String childId) {
-    final parentNode = getNode(parentId) ?? createNode(parentId);
-    final childNode = getNode(childId) ?? createNode(childId);
+    final parent = _nodes[parentId];
+    final child = _nodes[childId];
 
-    parentNode.addChild(childNode);
-  }
-
-  /// Insert a child at a specific index
-  void insertChild(String parentId, String childId, int index) {
-    final parentNode = getNode(parentId) ?? createNode(parentId);
-    final childNode = getNode(childId) ?? createNode(childId);
-
-    parentNode.insertChild(childNode, index);
-  }
-
-  /// Remove child from parent
-  bool removeChild(String parentId, String childId) {
-    final parentNode = getNode(parentId);
-    final childNode = getNode(childId);
-
-    if (parentNode == null || childNode == null) {
-      return false;
+    if (parent == null || child == null) {
+      developer.log('Parent $parentId or child $childId not found',
+          name: 'ShadowTree');
+      return;
     }
 
-    return parentNode.removeChild(childNode);
+    parent.addChild(child);
+  }
+
+  /// Remove a node and its children
+  void removeNode(String id) {
+    final node = _nodes[id];
+    if (node == null) return;
+
+    // Find and remove node from its parent
+    for (final potentialParent in _nodes.values) {
+      potentialParent.removeChild(node);
+    }
+
+    // Remove the node and all its children
+    final nodesToRemove = <String>[];
+
+    // Helper to collect all descendants
+    void collectDescendants(ShadowNode currentNode) {
+      nodesToRemove.add(currentNode.id);
+
+      for (final child in currentNode.children) {
+        collectDescendants(child);
+      }
+    }
+
+    collectDescendants(node);
+
+    // Remove all collected nodes
+    for (final id in nodesToRemove) {
+      _nodes.remove(id);
+    }
+
+    // Update root if needed
+    if (_rootNodeId == id) {
+      _rootNodeId = null;
+    }
+  }
+
+  /// Update layout props for a node
+  void updateLayoutProps(String id, Map<String, dynamic> props) {
+    final node = _nodes[id];
+    if (node == null) {
+      developer.log('Node $id not found for prop update', name: 'ShadowTree');
+      return;
+    }
+
+    node.applyLayoutProps(props);
+  }
+
+  /// Clear the entire tree
+  void clear() {
+    _nodes.clear();
+    _rootNodeId = null;
   }
 
   /// Calculate layout with given dimensions
-  Map<String, LayoutResult> calculateLayout(double width, double height) {
-    // This method orchestrates the layout calculation by:
-    // 1. Finding the root node
-    // 2. Setting its dimensions
-    // 3. Running the yoga calculation
-    // 4. Extracting layout results from all nodes
-
+  /// Handle string, number, or null dimensions - pass through as-is to Yoga
+  Map<String, LayoutResult> calculateLayout(dynamic width, dynamic height) {
     if (_rootNodeId == null) {
       return {};
     }
@@ -122,13 +126,32 @@ class ShadowTree {
       return {};
     }
 
-    // Set dimensions on root node
-    rootNode.yogaNode.setWidth(width);
-    rootNode.yogaNode.setHeight(height);
+    // Handle percentage values for root node dimensions
+    // For width and height, pass the strings directly to the native side
+    if (width is String && width.endsWith('%')) {
+      // This is fine - percentage will be handled in yoga_node.dart
+      rootNode.yogaNode
+          .setWidthPercent(double.parse(width.substring(0, width.length - 1)));
+    } else if (width is num) {
+      rootNode.yogaNode.setWidth(width.toDouble());
+    }
+
+    if (height is String && height.endsWith('%')) {
+      // This is fine - percentage will be handled in yoga_node.dart
+      rootNode.yogaNode.setHeightPercent(
+          double.parse(height.substring(0, height.length - 1)));
+    } else if (height is num) {
+      rootNode.yogaNode.setHeight(height.toDouble());
+    }
+
+    // Calculate layout - use numeric dimensions for calculation
+    // but percentages are already applied above
+    double calcWidth = (width is num) ? width.toDouble() : 0;
+    double calcHeight = (height is num) ? height.toDouble() : 0;
 
     // Calculate layout
     rootNode.yogaNode.calculateLayout(
-        width: width, height: height, direction: YogaDirection.ltr);
+        width: calcWidth, height: calcHeight, direction: YogaDirection.ltr);
 
     // Extract layout results
     final results = <String, LayoutResult>{};
@@ -162,47 +185,4 @@ class ShadowTree {
 
     return results;
   }
-
-  /// Remove a node from the tree
-  void removeNode(String nodeId) {
-    final node = _nodes[nodeId];
-    if (node == null) return;
-
-    // Remove from parent if it has one
-    if (node.parent != null) {
-      node.parent!.removeChild(node);
-    }
-
-    // Dispose the node
-    node.dispose();
-
-    // Remove from nodes map
-    _nodes.remove(nodeId);
-
-    // If this was the root, clear root ID
-    if (_rootNodeId == nodeId) {
-      _rootNodeId = null;
-    }
-  }
-
-  /// Clear the entire tree
-  void clear() {
-    // Dispose all nodes
-    for (final node in _nodes.values) {
-      node.dispose();
-    }
-
-    // Clear collections
-    _nodes.clear();
-    _rootNodeId = null;
-  }
-
-  /// Check if tree is empty
-  bool get isEmpty => _nodes.isEmpty;
-
-  /// Check if tree has a root
-  bool get hasRoot => _rootNodeId != null;
-
-  /// Get the root node
-  ShadowNode? get rootNode => _rootNodeId != null ? _nodes[_rootNodeId!] : null;
 }

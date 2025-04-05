@@ -14,6 +14,7 @@ import 'context.dart';
 import 'fragment.dart';
 import 'error_boundary.dart';
 import '../yoga/layout_calculator.dart';
+import 'performance_monitor.dart';
 
 /// Virtual DOM implementation that bridges to native UI
 class VDom {
@@ -66,8 +67,8 @@ class VDom {
   ComponentNode? rootComponentNode;
 
   /// Current screen dimensions for layout calculation
-  double _screenWidth = 375.0; // Default fallback width
-  double _screenHeight = 812.0; // Default fallback height
+  String _screenWidth = "100%"; // Use percentage for dynamic sizing
+  String _screenHeight = "100%"; // Use percentage for dynamic sizing
 
   /// Flag to indicate if layout needs to be recalculated
   bool _layoutDirty = false;
@@ -132,6 +133,11 @@ class VDom {
 
   void addNodeToTree(String viewId, VDomNode node) {
     _nodeTree[viewId] = node;
+  }
+
+  /// Mark that layout needs recalculation
+  void markLayoutDirty() {
+    _layoutDirty = true;
   }
 
   /// Create a component node
@@ -632,11 +638,12 @@ class VDom {
 
     _performanceMonitor.startTimer('calculate_layout');
 
-    // Calculate layout using Yoga
+    // Pass width and height directly - no conversion needed
+    // Let the native side handle the 100% values without conversion
     final layoutResults = _layoutCalculator.calculateLayout(
       rootComponentNode!.renderedNode!,
-      _screenWidth,
-      _screenHeight,
+      _screenWidth, // Pass as-is - native side will handle percentage
+      _screenHeight, // Pass as-is - native side will handle percentage
     );
 
     _performanceMonitor.endTimer('calculate_layout');
@@ -660,22 +667,18 @@ class VDom {
     _performanceMonitor.endTimer('apply_layout');
   }
 
-  /// Mark that layout needs recalculation
-  void markLayoutDirty() {
-    _layoutDirty = true;
-  }
-
   /// Calculate layout using Yoga and apply positions to native views
   Future<void> calculateAndApplyLayout() async {
     if (rootComponentNode?.renderedNode == null) return;
 
     _performanceMonitor.startTimer('calculate_layout');
 
-    // Calculate layout using Yoga
+    // Pass width and height directly - no conversion needed
+    // Let the native side handle the 100% values without conversion
     final layoutResults = _layoutCalculator.calculateLayout(
       rootComponentNode!.renderedNode!,
-      _screenWidth,
-      _screenHeight,
+      _screenWidth, // Pass as-is - native side will handle percentage
+      _screenHeight, // Pass as-is - native side will handle percentage
     );
 
     _performanceMonitor.endTimer('calculate_layout');
@@ -701,15 +704,25 @@ class VDom {
   }
 
   /// Update screen dimensions
-  void updateScreenDimensions(double width, double height) {
+  void updateScreenDimensions(dynamic width, dynamic height) {
+    // Handle double.infinity input by converting to percentages
+    String newWidth =
+        width is double && width.isInfinite ? "100%" : width.toString();
+    String newHeight =
+        height is double && height.isInfinite ? "100%" : height.toString();
+
+    // Treat current dimensions as strings for comparison
+    final String oldWidth = _screenWidth.toString();
+    final String oldHeight = _screenHeight.toString();
+
     // Only recalculate if dimensions actually changed
-    if (_screenWidth != width || _screenHeight != height) {
+    if (oldWidth != newWidth || oldHeight != newHeight) {
       developer.log(
-          'Screen dimensions changed from ${_screenWidth}x${_screenHeight} to ${width}x${height}',
+          'Screen dimensions changed from ${oldWidth}x${oldHeight} to ${newWidth}x${newHeight}',
           name: 'VDom');
 
-      _screenWidth = width;
-      _screenHeight = height;
+      _screenWidth = newWidth;
+      _screenHeight = newHeight;
 
       // Always mark layout as dirty when screen size changes
       markLayoutDirty();
