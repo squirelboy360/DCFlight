@@ -1,103 +1,81 @@
 import 'dart:ui';
 import '../packages/vdom/vdom_node.dart';
 import '../packages/vdom/vdom_element.dart';
-import '../packages/text/text_measurement_service.dart';
-import 'view_props.dart';
-import 'button_props.dart';
-import 'image_props.dart';
-import 'scroll_view_props.dart';
-import 'text_props.dart';
-import 'modifiers/text_content.dart';
+import '../constants/layout_properties.dart';
+import '../constants/style_properties.dart';
 
-/// Factory for creating UI components
+
+/// Factory for creating UI components with unified styling approach
 class UI {
   /// Create a View component
   static VDomElement View({
-    required ViewProps props,
+    required LayoutProps layout,
+    StyleSheet? style,
+    dynamic viewProps, // Component-specific props placeholder
     List<VDomNode> children = const [],
     String? key,
+    Map<String, dynamic>? events,
   }) {
+    // Merge props from both layout and style
+    final propsMap = <String, dynamic>{};
+
+    // Add layout props
+    propsMap.addAll(layout.toMap());
+
+    // Add style props if available
+    if (style != null) {
+      propsMap.addAll(style.toMap());
+    }
+
+    // Add component-specific props
+    // This would be handled by the component-specific props class later
+
+    // Add event handlers
+    if (events != null) {
+      propsMap.addAll(events);
+    }
+
     return VDomElement(
       type: 'View',
       key: key,
-      props: props.toMap(),
+      props: propsMap,
       children: children,
     );
   }
 
-  /// Create a Text component with automatic measurement
-  /// New simplified version that takes a direct string and TextProps
+  /// Create a Text component
   static VDomElement Text({
     required String content,
-    TextProps? props,
+    LayoutProps? layout,
+    StyleSheet? style,
+    dynamic textProps, // Component-specific props placeholder
     String? key,
+    Map<String, dynamic>? events,
   }) {
-    // Convert props to map or use empty map if null
-    final propsMap = props?.toMap() ?? <String, dynamic>{};
+    // Merge props from layout, style, and text-specific props
+    final propsMap = <String, dynamic>{};
 
-    // Add content to props
+    // Add content
     propsMap['content'] = content;
 
-    // Get the text content
-    final text = content;
-
-    // Initialize measurements with reasonable defaults
-    double width = 10.0;
-    double height = 20.0;
-
-    // Perform text measurement if we have enough info
-    if (propsMap.containsKey('fontSize')) {
-      final fontSize = propsMap['fontSize'] as double? ?? 14.0;
-
-      // Create measurement key
-      final measurementKey = TextMeasurementKey(
-        text: text,
-        fontSize: fontSize,
-        fontFamily: propsMap['fontFamily'] as String?,
-        fontWeight: propsMap['fontWeight'] as String?,
-        letterSpacing: propsMap['letterSpacing'] as double?,
-        textAlign: propsMap['textAlign'] as String?,
-        maxWidth: propsMap['width'] as double?,
-      );
-
-      // Try to get cached measurement
-      final cachedMeasurement =
-          TextMeasurementService.instance.getCachedMeasurement(measurementKey);
-
-      // If we have a cached measurement, use it to set dimensions
-      if (cachedMeasurement != null) {
-        width = cachedMeasurement.width;
-        height = cachedMeasurement.height;
-      } else {
-        // Schedule measurement for later, but use estimated size now
-        final estimate =
-            TextMeasurementService.instance.estimateTextSize(text, fontSize);
-        width = estimate.width;
-        height = estimate.height;
-
-        // Request actual measurement asynchronously
-        TextMeasurementService.instance.measureText(
-          text,
-          fontSize: fontSize,
-          fontFamily: propsMap['fontFamily'] as String?,
-          fontWeight: propsMap['fontWeight'] as String?,
-          letterSpacing: propsMap['letterSpacing'] as double?,
-          textAlign: propsMap['textAlign'] as String?,
-          maxWidth: propsMap['width'] as double?,
-        );
-      }
+    // Add layout props if available
+    if (layout != null) {
+      propsMap.addAll(layout.toMap());
     }
 
-    // Always set width and height to ensure the element has dimensions
-    if (!propsMap.containsKey('width') || propsMap['width'] == 0.0) {
-      propsMap['width'] = width;
+    // Add style props if available
+    if (style != null) {
+      propsMap.addAll(style.toMap());
     }
 
-    if (!propsMap.containsKey('height') || propsMap['height'] == 0.0) {
-      propsMap['height'] = height;
+    // Add component-specific props
+    // This would be handled by the component-specific props class later
+
+    // Add event handlers
+    if (events != null) {
+      propsMap.addAll(events);
     }
 
-    // Create the text element
     return VDomElement(
       type: 'Text',
       key: key,
@@ -107,14 +85,35 @@ class UI {
 
   /// Create a Button component
   static VDomElement Button({
-    required ButtonProps props,
+    required LayoutProps layout,
+    StyleSheet? style,
+    dynamic buttonProps, // Component-specific props placeholder
     String? key,
     Function? onPress,
+    Map<String, dynamic>? events,
   }) {
-    final propsMap = props.toMap();
+    // Merge props from both layout and style
+    final propsMap = <String, dynamic>{};
 
+    // Add layout props
+    propsMap.addAll(layout.toMap());
+
+    // Add style props if available
+    if (style != null) {
+      propsMap.addAll(style.toMap());
+    }
+
+    // Add component-specific props
+    // This would be handled by the component-specific props class later
+
+    // Add onPress handler
     if (onPress != null) {
       propsMap['onPress'] = onPress;
+    }
+
+    // Add additional event handlers
+    if (events != null) {
+      propsMap.addAll(events);
     }
 
     return VDomElement(
@@ -126,27 +125,81 @@ class UI {
 
   /// Create an Image component
   static VDomElement Image({
-    required ImageProps props,
+    required LayoutProps layout,
+    StyleSheet? style,
+    dynamic imageProps, // Component-specific props placeholder
     String? key,
+    Function? onLoad,
+    Function? onError,
+    Map<String, dynamic>? events,
   }) {
+    // Merge props from both layout and style
+    final propsMap = <String, dynamic>{};
+
+    // Add layout props
+    propsMap.addAll(layout.toMap());
+
+    // Add style props if available
+    if (style != null) {
+      propsMap.addAll(style.toMap());
+    }
+
+    // Add component-specific props
+    // This would be handled by the component-specific props class later
+
+    // Add image-specific event handlers
+    if (onLoad != null) {
+      propsMap['onLoad'] = onLoad;
+    }
+
+    if (onError != null) {
+      propsMap['onError'] = onError;
+    }
+
+    // Add additional event handlers
+    if (events != null) {
+      propsMap.addAll(events);
+    }
+
     return VDomElement(
       type: 'Image',
       key: key,
-      props: props.toMap(),
+      props: propsMap,
     );
   }
 
   /// Create a ScrollView component
   static VDomElement ScrollView({
-    required ScrollViewProps props,
+    required LayoutProps layout,
+    StyleSheet? style,
+    dynamic scrollViewProps, // Component-specific props placeholder
     List<VDomNode> children = const [],
     String? key,
     Function? onScroll,
+    Map<String, dynamic>? events,
   }) {
-    final propsMap = props.toMap();
+    // Merge props from both layout and style
+    final propsMap = <String, dynamic>{};
 
+    // Add layout props
+    propsMap.addAll(layout.toMap());
+
+    // Add style props if available
+    if (style != null) {
+      propsMap.addAll(style.toMap());
+    }
+
+    // Add component-specific props
+    // This would be handled by the component-specific props class later
+
+    // Add scroll event handler
     if (onScroll != null) {
       propsMap['onScroll'] = onScroll;
+    }
+
+    // Add additional event handlers
+    if (events != null) {
+      propsMap.addAll(events);
     }
 
     return VDomElement(

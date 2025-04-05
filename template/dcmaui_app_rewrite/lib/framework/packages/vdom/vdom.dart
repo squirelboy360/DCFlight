@@ -5,7 +5,6 @@ import 'dart:developer' as developer;
 
 import '../native_bridge/native_bridge.dart';
 import '../native_bridge/ffi_bridge.dart';
-import '../performance/performance_monitor.dart';
 import 'vdom_node.dart';
 import 'vdom_element.dart';
 import 'component.dart';
@@ -15,7 +14,6 @@ import 'context.dart';
 import 'fragment.dart';
 import 'error_boundary.dart';
 import '../yoga/layout_calculator.dart';
-import '../text/text_measurement_service.dart';
 
 /// Virtual DOM implementation that bridges to native UI
 class VDom {
@@ -97,9 +95,6 @@ class VDom {
 
     // Set up event handler
     _nativeBridge.setEventHandler(_handleNativeEvent);
-
-    // Initialize text measurement service
-    TextMeasurementService.instance.initialize(_nativeBridge);
 
     // Create reconciler
     _reconciler = Reconciler(this);
