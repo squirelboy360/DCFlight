@@ -63,6 +63,22 @@ class YogaBindings {
   late final void Function(Pointer<Void>, int) _YGNodeStyleSetPositionType;
   late final void Function(Pointer<Void>, int, double) _YGNodeStyleSetBorder;
 
+  // Add these missing method declarations
+  late final void Function(Pointer<Void>, double)
+      _YGNodeStyleSetMinWidthPercent;
+  late final void Function(Pointer<Void>, double)
+      _YGNodeStyleSetMinHeightPercent;
+  late final void Function(Pointer<Void>, double)
+      _YGNodeStyleSetMaxWidthPercent;
+  late final void Function(Pointer<Void>, double)
+      _YGNodeStyleSetMaxHeightPercent;
+  late final void Function(Pointer<Void>, double)
+      _YGNodeStyleSetFlexBasisPercent;
+  late final void Function(Pointer<Void>, int, double) _YGNodeStyleSetPosition;
+
+  // Add missing margin auto function
+  late final void Function(Pointer<Void>, int) _YGNodeStyleSetMarginAuto;
+
   // Private constructor
   YogaBindings._() {
     _initializeBindings();
@@ -289,6 +305,42 @@ class YogaBindings {
               'YGNodeStyleSetBorder')
           .asFunction();
 
+      // Add these in the _initializeBindings method
+      _YGNodeStyleSetMinWidthPercent = _yogaLib
+          .lookup<NativeFunction<Void Function(Pointer<Void>, Float)>>(
+              'YGNodeStyleSetMinWidthPercent')
+          .asFunction();
+
+      _YGNodeStyleSetMinHeightPercent = _yogaLib
+          .lookup<NativeFunction<Void Function(Pointer<Void>, Float)>>(
+              'YGNodeStyleSetMinHeightPercent')
+          .asFunction();
+
+      _YGNodeStyleSetMaxWidthPercent = _yogaLib
+          .lookup<NativeFunction<Void Function(Pointer<Void>, Float)>>(
+              'YGNodeStyleSetMaxWidthPercent')
+          .asFunction();
+
+      _YGNodeStyleSetMaxHeightPercent = _yogaLib
+          .lookup<NativeFunction<Void Function(Pointer<Void>, Float)>>(
+              'YGNodeStyleSetMaxHeightPercent')
+          .asFunction();
+
+      _YGNodeStyleSetFlexBasisPercent = _yogaLib
+          .lookup<NativeFunction<Void Function(Pointer<Void>, Float)>>(
+              'YGNodeStyleSetFlexBasisPercent')
+          .asFunction();
+
+      _YGNodeStyleSetPosition = _yogaLib
+          .lookup<NativeFunction<Void Function(Pointer<Void>, Int32, Float)>>(
+              'YGNodeStyleSetPosition')
+          .asFunction();
+
+      _YGNodeStyleSetMarginAuto = _yogaLib
+          .lookup<NativeFunction<Void Function(Pointer<Void>, Int32)>>(
+              'YGNodeStyleSetMarginAuto')
+          .asFunction();
+
       _isInitialized = true;
       developer.log('Yoga bindings initialized successfully',
           name: 'YogaBindings');
@@ -490,6 +542,42 @@ class YogaBindings {
   void nodeStyleSetPaddingPercent(
       Pointer<Void> node, YogaEdge edge, double percent) {
     _YGNodeStyleSetPaddingPercent(node, edge.index, percent);
+  }
+
+  /// Set min width as percentage
+  void nodeStyleSetMinWidthPercent(Pointer<Void> node, double percent) {
+    _YGNodeStyleSetMinWidthPercent(node, percent);
+  }
+
+  /// Set min height as percentage
+  void nodeStyleSetMinHeightPercent(Pointer<Void> node, double percent) {
+    _YGNodeStyleSetMinHeightPercent(node, percent);
+  }
+
+  /// Set max width as percentage
+  void nodeStyleSetMaxWidthPercent(Pointer<Void> node, double percent) {
+    _YGNodeStyleSetMaxWidthPercent(node, percent);
+  }
+
+  /// Set max height as percentage
+  void nodeStyleSetMaxHeightPercent(Pointer<Void> node, double percent) {
+    _YGNodeStyleSetMaxHeightPercent(node, percent);
+  }
+
+  /// Set flex basis as percentage
+  void nodeStyleSetFlexBasisPercent(Pointer<Void> node, double percent) {
+    _YGNodeStyleSetFlexBasisPercent(node, percent);
+  }
+
+  /// Set position for edge in points
+  void nodeStyleSetPosition(
+      Pointer<Void> node, YogaEdge edge, double position) {
+    _YGNodeStyleSetPosition(node, edge.index, position);
+  }
+
+  /// Set margin to auto for edge
+  void nodeStyleSetMarginAuto(Pointer<Void> node, YogaEdge edge) {
+    _YGNodeStyleSetMarginAuto(node, edge.index);
   }
 
   /// Set position type

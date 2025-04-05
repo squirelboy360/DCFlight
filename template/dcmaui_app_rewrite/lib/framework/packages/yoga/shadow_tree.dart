@@ -1,16 +1,17 @@
 import 'dart:developer' as developer;
-import 'dart:collection';
-import 'shadow_node.dart';
-import 'yoga_enums.dart';
+import 'dart:ffi';
+import 'package:dc_test/framework/packages/yoga/yoga_bindings.dart';
+import 'package:dc_test/framework/packages/yoga/yoga_enums.dart';
+import 'package:dc_test/framework/constants/layout_properties.dart';
 
-/// Result of layout calculation
-class LayoutResult {
+/// Node layout information
+class NodeLayout {
   final double left;
   final double top;
   final double width;
   final double height;
 
-  LayoutResult({
+  NodeLayout({
     required this.left,
     required this.top,
     required this.width,
@@ -18,171 +19,520 @@ class LayoutResult {
   });
 }
 
-/// Manager for the shadow tree that handles layout calculations
+/// Shadow tree for layout calculations
 class ShadowTree {
-  /// Map of node IDs to shadow nodes
-  final Map<String, ShadowNode> _nodes = {};
+  /// Yoga bindings instance
+  final YogaBindings _yogaBindings = YogaBindings.instance;
 
-  /// Root node ID
-  String? _rootNodeId;
+  /// Map of node IDs to their Yoga node pointers
+  final Map<String, Pointer<Void>> _nodeMap = {};
 
-  /// Create a node with a unique ID
-  ShadowNode createNode(String id) {
-    if (_nodes.containsKey(id)) {
-      return _nodes[id]!;
-    }
+  /// Map of node IDs to their parent node IDs
+  final Map<String, String> _parentMap = {};
 
-    final node = ShadowNode(id);
-    _nodes[id] = node;
-    return node;
-  }
+  /// Constructor
+  ShadowTree();
 
-  /// Set the root node ID
-  void setRoot(String id) {
-    if (!_nodes.containsKey(id)) {
-      developer.log('Root node $id not found in shadow tree',
-          name: 'ShadowTree');
-      return;
-    }
+  /// Add a node to the shadow tree
+  void addNode({
+    required String id,
+    String? parentId,
+    Map<String, dynamic>? layoutProps,
+  }) {
+    // Create a new Yoga node
+    final node = _yogaBindings.nodeNew();
+    _nodeMap[id] = node;
 
-    _rootNodeId = id;
-  }
+    if (parentId != null) {
+      _parentMap[id] = parentId;
 
-  /// Add a child to a parent node
-  void addChild(String parentId, String childId) {
-    final parent = _nodes[parentId];
-    final child = _nodes[childId];
+      // Add as child to parent if parent exists
+      if (_nodeMap.containsKey(parentId)) {
+        final parentNode = _nodeMap[parentId]!;
+        final childCount = _yogaBindings.nodeGetChildCount(parentNode);
+        _yogaBindings.nodeInsertChild(parentNode, node, childCount);
 
-    if (parent == null || child == null) {
-      developer.log('Parent $parentId or child $childId not found',
-          name: 'ShadowTree');
-      return;
-    }
-
-    parent.addChild(child);
-  }
-
-  /// Remove a node and its children
-  void removeNode(String id) {
-    final node = _nodes[id];
-    if (node == null) return;
-
-    // Find and remove node from its parent
-    for (final potentialParent in _nodes.values) {
-      potentialParent.removeChild(node);
-    }
-
-    // Remove the node and all its children
-    final nodesToRemove = <String>[];
-
-    // Helper to collect all descendants
-    void collectDescendants(ShadowNode currentNode) {
-      nodesToRemove.add(currentNode.id);
-
-      for (final child in currentNode.children) {
-        collectDescendants(child);
+        developer.log(
+            'Added node $id as child to $parentId (child #$childCount)',
+            name: 'ShadowTree');
+      } else {
+        developer.log('WARNING: Parent $parentId not found for node $id',
+            name: 'ShadowTree');
       }
+    } else {
+      developer.log('Added root node $id', name: 'ShadowTree');
     }
 
-    collectDescendants(node);
-
-    // Remove all collected nodes
-    for (final id in nodesToRemove) {
-      _nodes.remove(id);
-    }
-
-    // Update root if needed
-    if (_rootNodeId == id) {
-      _rootNodeId = null;
+    // Apply layout properties
+    if (layoutProps != null) {
+      applyLayoutProps(node, layoutProps);
     }
   }
 
-  /// Update layout props for a node
-  void updateLayoutProps(String id, Map<String, dynamic> props) {
-    final node = _nodes[id];
-    if (node == null) {
-      developer.log('Node $id not found for prop update', name: 'ShadowTree');
+  /// Update a node's properties
+  void updateNodeProps(String nodeId, Map<String, dynamic> props) {
+    final node = _nodeMap[nodeId];
+    if (node != null) {
+      applyLayoutProps(node, props);
+      developer.log('Updated layout props for node $nodeId',
+          name: 'ShadowTree');
+    } else {
+      developer.log('WARNING: Node $nodeId not found for prop update',
+          name: 'ShadowTree');
+    }
+  }
+
+  /// Remove a node from the shadow tree
+  void removeNode(String nodeId) {
+    final node = _nodeMap[nodeId];
+    if (node != null) {
+      // If node has a parent, remove it from parent
+      if (_parentMap.containsKey(nodeId)) {
+        final parentId = _parentMap[nodeId]!;
+        final parentNode = _nodeMap[parentId];
+
+        if (parentNode != null) {
+          // Find index of child
+          int index = -1;
+          final childCount = _yogaBindings.nodeGetChildCount(parentNode);
+
+          for (int i = 0; i < childCount; i++) {
+            final childNode = _yogaBindings.nodeGetChild(parentNode, i);
+            if (childNode == node) {
+              index = i;
+              break;
+            }
+          }
+
+          if (index >= 0) {
+            _yogaBindings.nodeRemoveChild(parentNode, node, index);
+          }
+        }
+
+        _parentMap.remove(nodeId);
+      }
+
+      // Free the node
+      _yogaBindings.nodeFree(node);
+      _nodeMap.remove(nodeId);
+
+      developer.log('Removed node $nodeId from shadow tree',
+          name: 'ShadowTree');
+    }
+  }
+
+  /// Calculate layout for the shadow tree
+  void calculateLayout({
+    required double width,
+    required double height,
+    YogaDirection direction = YogaDirection.ltr,
+  }) {
+    // Find root nodes (nodes with no parent)
+    final rootNodes = _nodeMap.keys
+        .where((id) => !_parentMap.containsKey(id))
+        .map((id) => _nodeMap[id]!)
+        .toList();
+
+    if (rootNodes.isEmpty) {
+      developer.log('No root nodes found for layout calculation',
+          name: 'ShadowTree');
       return;
     }
 
-    node.applyLayoutProps(props);
+    developer.log(
+        'Calculating layout for ${rootNodes.length} root nodes with dimensions: ${width}x${height}',
+        name: 'ShadowTree');
+
+    // Calculate layout for each root node
+    for (final rootNode in rootNodes) {
+      _yogaBindings.nodeCalculateLayout(rootNode, width, height, direction);
+    }
+
+    // Log some layout results for debugging
+    for (final entry in _nodeMap.entries) {
+      final nodeId = entry.key;
+      final node = entry.value;
+
+      final left = _yogaBindings.nodeLayoutGetLeft(node);
+      final top = _yogaBindings.nodeLayoutGetTop(node);
+      final nodeWidth = _yogaBindings.nodeLayoutGetWidth(node);
+      final nodeHeight = _yogaBindings.nodeLayoutGetHeight(node);
+
+      developer.log(
+          'Layout for node $nodeId: left=$left, top=$top, width=$nodeWidth, height=$nodeHeight',
+          name: 'ShadowTree');
+    }
   }
 
-  /// Clear the entire tree
-  void clear() {
-    _nodes.clear();
-    _rootNodeId = null;
-  }
-
-  /// Calculate layout with given dimensions
-  /// Handle string, number, or null dimensions - pass through as-is to Yoga
-  Map<String, LayoutResult> calculateLayout(dynamic width, dynamic height) {
-    if (_rootNodeId == null) {
-      return {};
-    }
-
-    final rootNode = _nodes[_rootNodeId!];
-    if (rootNode == null) {
-      return {};
-    }
-
-    // Handle percentage values for root node dimensions
-    // For width and height, pass the strings directly to the native side
-    if (width is String && width.endsWith('%')) {
-      // This is fine - percentage will be handled in yoga_node.dart
-      rootNode.yogaNode
-          .setWidthPercent(double.parse(width.substring(0, width.length - 1)));
-    } else if (width is num) {
-      rootNode.yogaNode.setWidth(width.toDouble());
-    }
-
-    if (height is String && height.endsWith('%')) {
-      // This is fine - percentage will be handled in yoga_node.dart
-      rootNode.yogaNode.setHeightPercent(
-          double.parse(height.substring(0, height.length - 1)));
-    } else if (height is num) {
-      rootNode.yogaNode.setHeight(height.toDouble());
-    }
-
-    // Calculate layout - use numeric dimensions for calculation
-    // but percentages are already applied above
-    double calcWidth = (width is num) ? width.toDouble() : 0;
-    double calcHeight = (height is num) ? height.toDouble() : 0;
-
-    // Calculate layout
-    rootNode.yogaNode.calculateLayout(
-        width: calcWidth, height: calcHeight, direction: YogaDirection.ltr);
-
-    // Extract layout results
-    final results = <String, LayoutResult>{};
-
-    // Use BFS to traverse the tree
-    final queue = Queue<ShadowNode>();
-    queue.add(rootNode);
-
-    while (queue.isNotEmpty) {
-      final node = queue.removeFirst();
-
-      // Get layout information
-      final left = node.yogaNode.getLayoutLeft();
-      final top = node.yogaNode.getLayoutTop();
-      final nodeWidth = node.yogaNode.getLayoutWidth();
-      final nodeHeight = node.yogaNode.getLayoutHeight();
-
-      // Store layout result
-      results[node.id] = LayoutResult(
-        left: left,
-        top: top,
-        width: nodeWidth,
-        height: nodeHeight,
+  /// Get layout for a specific node
+  NodeLayout? getNodeLayout(String nodeId) {
+    final node = _nodeMap[nodeId];
+    if (node != null) {
+      return NodeLayout(
+        left: _yogaBindings.nodeLayoutGetLeft(node),
+        top: _yogaBindings.nodeLayoutGetTop(node),
+        width: _yogaBindings.nodeLayoutGetWidth(node),
+        height: _yogaBindings.nodeLayoutGetHeight(node),
       );
+    }
+    return null;
+  }
 
-      // Add children to the queue
-      for (final child in node.children) {
-        queue.add(child);
+  /// Clear the shadow tree
+  void clear() {
+    // Free all nodes
+    for (final node in _nodeMap.values) {
+      _yogaBindings.nodeFree(node);
+    }
+
+    _nodeMap.clear();
+    _parentMap.clear();
+    developer.log('Shadow tree cleared', name: 'ShadowTree');
+  }
+
+  /// Apply layout properties to a node
+  void applyLayoutProps(Pointer<Void> node, Map<String, dynamic> props) {
+    // Apply width and height
+    if (props.containsKey('width')) {
+      _applyDimension(node, 'width', props['width']);
+    }
+
+    if (props.containsKey('height')) {
+      _applyDimension(node, 'height', props['height']);
+    }
+
+    // Apply margins
+    if (props.containsKey('margin')) {
+      _applyEdgeValue(node, 'margin', props['margin'], YogaEdge.all);
+    }
+
+    if (props.containsKey('marginTop')) {
+      _applyEdgeValue(node, 'marginTop', props['marginTop'], YogaEdge.top);
+    }
+
+    if (props.containsKey('marginBottom')) {
+      _applyEdgeValue(
+          node, 'marginBottom', props['marginBottom'], YogaEdge.bottom);
+    }
+
+    if (props.containsKey('marginLeft')) {
+      _applyEdgeValue(node, 'marginLeft', props['marginLeft'], YogaEdge.left);
+    }
+
+    if (props.containsKey('marginRight')) {
+      _applyEdgeValue(
+          node, 'marginRight', props['marginRight'], YogaEdge.right);
+    }
+
+    // Apply paddings
+    if (props.containsKey('padding')) {
+      _applyEdgeValue(node, 'padding', props['padding'], YogaEdge.all);
+    }
+
+    if (props.containsKey('paddingTop')) {
+      _applyEdgeValue(node, 'paddingTop', props['paddingTop'], YogaEdge.top);
+    }
+
+    if (props.containsKey('paddingBottom')) {
+      _applyEdgeValue(
+          node, 'paddingBottom', props['paddingBottom'], YogaEdge.bottom);
+    }
+
+    if (props.containsKey('paddingLeft')) {
+      _applyEdgeValue(node, 'paddingLeft', props['paddingLeft'], YogaEdge.left);
+    }
+
+    if (props.containsKey('paddingRight')) {
+      _applyEdgeValue(
+          node, 'paddingRight', props['paddingRight'], YogaEdge.right);
+    }
+
+    // Apply positions
+    if (props.containsKey('left')) {
+      _applyEdgeValue(node, 'left', props['left'], YogaEdge.left);
+    }
+
+    if (props.containsKey('right')) {
+      _applyEdgeValue(node, 'right', props['right'], YogaEdge.right);
+    }
+
+    if (props.containsKey('top')) {
+      _applyEdgeValue(node, 'top', props['top'], YogaEdge.top);
+    }
+
+    if (props.containsKey('bottom')) {
+      _applyEdgeValue(node, 'bottom', props['bottom'], YogaEdge.bottom);
+    }
+
+    // Apply flex properties
+    if (props.containsKey('flex')) {
+      final flex = props['flex'];
+      if (flex is num) {
+        _yogaBindings.nodeStyleSetFlex(node, flex.toDouble());
       }
     }
 
-    return results;
+    if (props.containsKey('flexGrow')) {
+      final flexGrow = props['flexGrow'];
+      if (flexGrow is num) {
+        _yogaBindings.nodeStyleSetFlexGrow(node, flexGrow.toDouble());
+      }
+    }
+
+    if (props.containsKey('flexShrink')) {
+      final flexShrink = props['flexShrink'];
+      if (flexShrink is num) {
+        _yogaBindings.nodeStyleSetFlexShrink(node, flexShrink.toDouble());
+      }
+    }
+
+    if (props.containsKey('flexBasis')) {
+      _applyDimension(node, 'flexBasis', props['flexBasis']);
+    }
+
+    if (props.containsKey('flexDirection')) {
+      final flexDirection = props['flexDirection'];
+      if (flexDirection is String) {
+        YogaFlexDirection? direction;
+
+        switch (flexDirection) {
+          case 'row':
+            direction = YogaFlexDirection.row;
+            break;
+          case 'rowReverse':
+            direction = YogaFlexDirection.rowReverse;
+            break;
+          case 'column':
+            direction = YogaFlexDirection.column;
+            break;
+          case 'columnReverse':
+            direction = YogaFlexDirection.columnReverse;
+            break;
+        }
+
+        if (direction != null) {
+          _yogaBindings.nodeStyleSetFlexDirection(node, direction);
+        }
+      }
+    }
+
+    if (props.containsKey('justifyContent')) {
+      final justifyContent = props['justifyContent'];
+      if (justifyContent is String) {
+        YogaJustifyContent? justify;
+
+        switch (justifyContent) {
+          case 'flexStart':
+            justify = YogaJustifyContent.flexStart;
+            break;
+          case 'center':
+            justify = YogaJustifyContent.center;
+            break;
+          case 'flexEnd':
+            justify = YogaJustifyContent.flexEnd;
+            break;
+          case 'spaceBetween':
+            justify = YogaJustifyContent.spaceBetween;
+            break;
+          case 'spaceAround':
+            justify = YogaJustifyContent.spaceAround;
+            break;
+          case 'spaceEvenly':
+            justify = YogaJustifyContent.spaceEvenly;
+            break;
+        }
+
+        if (justify != null) {
+          _yogaBindings.nodeStyleSetJustifyContent(node, justify);
+        }
+      }
+    }
+
+    if (props.containsKey('alignItems')) {
+      final alignItems = props['alignItems'];
+      if (alignItems is String) {
+        YogaAlign? align;
+
+        switch (alignItems) {
+          case 'flexStart':
+            align = YogaAlign.flexStart;
+            break;
+          case 'center':
+            align = YogaAlign.center;
+            break;
+          case 'flexEnd':
+            align = YogaAlign.flexEnd;
+            break;
+          case 'stretch':
+            align = YogaAlign.stretch;
+            break;
+          case 'baseline':
+            align = YogaAlign.baseline;
+            break;
+        }
+
+        if (align != null) {
+          _yogaBindings.nodeStyleSetAlignItems(node, align);
+        }
+      }
+    }
+
+    if (props.containsKey('position')) {
+      final position = props['position'];
+      if (position is String) {
+        YogaPositionType? positionType;
+
+        switch (position) {
+          case 'absolute':
+            positionType = YogaPositionType.absolute;
+            break;
+          case 'relative':
+            positionType = YogaPositionType.relative;
+            break;
+        }
+
+        if (positionType != null) {
+          _yogaBindings.nodeStyleSetPositionType(node, positionType);
+        }
+      }
+    }
+  }
+
+  /// Apply a dimension value (width, height, etc.)
+  void _applyDimension(Pointer<Void> node, String property, dynamic value) {
+    if (value == null) return;
+
+    if (value is num) {
+      // Numeric value - points
+      switch (property) {
+        case 'width':
+          _yogaBindings.nodeStyleSetWidth(node, value.toDouble());
+          break;
+        case 'height':
+          _yogaBindings.nodeStyleSetHeight(node, value.toDouble());
+          break;
+        case 'minWidth':
+          _yogaBindings.nodeStyleSetMinWidth(node, value.toDouble());
+          break;
+        case 'minHeight':
+          _yogaBindings.nodeStyleSetMinHeight(node, value.toDouble());
+          break;
+        case 'maxWidth':
+          _yogaBindings.nodeStyleSetMaxWidth(node, value.toDouble());
+          break;
+        case 'maxHeight':
+          _yogaBindings.nodeStyleSetMaxHeight(node, value.toDouble());
+          break;
+        case 'flexBasis':
+          _yogaBindings.nodeStyleSetFlexBasis(node, value.toDouble());
+          break;
+      }
+    } else if (value is String && value.endsWith('%')) {
+      // Percentage value
+      final percentValue =
+          double.tryParse(value.substring(0, value.length - 1));
+      if (percentValue != null) {
+        switch (property) {
+          case 'width':
+            _yogaBindings.nodeStyleSetWidthPercent(node, percentValue);
+            break;
+          case 'height':
+            _yogaBindings.nodeStyleSetHeightPercent(node, percentValue);
+            break;
+          case 'minWidth':
+            _yogaBindings.nodeStyleSetMinWidthPercent(node, percentValue);
+            break;
+          case 'minHeight':
+            _yogaBindings.nodeStyleSetMinHeightPercent(node, percentValue);
+            break;
+          case 'maxWidth':
+            _yogaBindings.nodeStyleSetMaxWidthPercent(node, percentValue);
+            break;
+          case 'maxHeight':
+            _yogaBindings.nodeStyleSetMaxHeightPercent(node, percentValue);
+            break;
+          case 'flexBasis':
+            _yogaBindings.nodeStyleSetFlexBasisPercent(node, percentValue);
+            break;
+        }
+      }
+    } else if (value == 'auto') {
+      // Auto value
+      switch (property) {
+        case 'width':
+          _yogaBindings.nodeStyleSetWidthAuto(node);
+          break;
+        case 'height':
+          _yogaBindings.nodeStyleSetHeightAuto(node);
+          break;
+        case 'flexBasis':
+          _yogaBindings.nodeStyleSetFlexBasisAuto(node);
+          break;
+      }
+    }
+  }
+
+  /// Apply an edge value (margin, padding, position)
+  void _applyEdgeValue(
+      Pointer<Void> node, String property, dynamic value, YogaEdge edge) {
+    if (value == null) return;
+
+    if (value is num) {
+      // Numeric value - points
+      switch (property) {
+        case 'margin':
+        case 'marginTop':
+        case 'marginBottom':
+        case 'marginLeft':
+        case 'marginRight':
+          _yogaBindings.nodeStyleSetMargin(node, edge, value.toDouble());
+          break;
+        case 'padding':
+        case 'paddingTop':
+        case 'paddingBottom':
+        case 'paddingLeft':
+        case 'paddingRight':
+          _yogaBindings.nodeStyleSetPadding(node, edge, value.toDouble());
+          break;
+        case 'top':
+        case 'bottom':
+        case 'left':
+        case 'right':
+          _yogaBindings.nodeStyleSetPosition(node, edge, value.toDouble());
+          break;
+      }
+    } else if (value is String && value.endsWith('%')) {
+      // Percentage value
+      final percentValue =
+          double.tryParse(value.substring(0, value.length - 1));
+      if (percentValue != null) {
+        switch (property) {
+          case 'margin':
+          case 'marginTop':
+          case 'marginBottom':
+          case 'marginLeft':
+          case 'marginRight':
+            _yogaBindings.nodeStyleSetMarginPercent(node, edge, percentValue);
+            break;
+          case 'padding':
+          case 'paddingTop':
+          case 'paddingBottom':
+          case 'paddingLeft':
+          case 'paddingRight':
+            _yogaBindings.nodeStyleSetPaddingPercent(node, edge, percentValue);
+            break;
+          case 'top':
+          case 'bottom':
+          case 'left':
+          case 'right':
+            _yogaBindings.nodeStyleSetPositionPercent(node, edge, percentValue);
+            break;
+        }
+      }
+    } else if (value == 'auto' &&
+        (property.startsWith('margin') || property == 'margin')) {
+      // Auto margin
+      _yogaBindings.nodeStyleSetMarginAuto(node, edge);
+    }
   }
 }

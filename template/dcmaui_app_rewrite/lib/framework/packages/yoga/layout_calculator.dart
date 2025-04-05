@@ -49,65 +49,75 @@ class LayoutCalculator {
     // Start layout calculation
     final startTime = DateTime.now();
 
-    try {
-      // Check if root node has an ID
-      if (rootNode.nativeViewId == null) {
-        developer.log('Root node has no ID, cannot calculate layout',
-            name: 'LayoutCalc');
-        return {};
-      }
+    // Clear processed nodes and rebuild the shadow tree
+    _processedNodes.clear();
+    _shadowTree.clear();
+    _buildShadowTree(rootNode);
 
-      // Clear tracking state
-      _processedNodes.clear();
+    // Log how many nodes were built
+    developer.log('Built shadow tree with ${_processedNodes.length} nodes',
+        name: 'LayoutCalculator');
 
-      // Build shadow tree from VDOM tree
-      _buildShadowTree(rootNode);
+    // Set width and height for calculation
+    // Convert percentages to numbers for Yoga calculation
+    double calculationWidth = 0;
+    double calculationHeight = 0;
 
-      // Set root node ID
-      _shadowTree.setRoot(rootNode.nativeViewId!);
-
-      // Don't convert any percentage values - pass them directly to the shadow tree
-      // Handle double.infinity by converting to "100%"
-      dynamic actualWidth = width;
-      dynamic actualHeight = height;
-
-      if (width is double && width.isInfinite) {
-        actualWidth = "100%";
-      }
-
-      if (height is double && height.isInfinite) {
-        actualHeight = "100%";
-      }
-
-      // Calculate layout using the shadow tree
-      final shadowResults =
-          _shadowTree.calculateLayout(actualWidth, actualHeight);
-
-      // Convert shadow tree results to layout results
-      final layoutResults = <String, LayoutResult>{};
-
-      for (final entry in shadowResults.entries) {
-        layoutResults[entry.key] = LayoutResult(
-          left: entry.value.left,
-          top: entry.value.top,
-          width: entry.value.width,
-          height: entry.value.height,
-        );
-      }
-
-      // Log calculation time
-      final endTime = DateTime.now();
-      final duration = endTime.difference(startTime);
-      developer.log(
-          'Layout calculated in ${duration.inMilliseconds}ms - ${layoutResults.length} nodes',
-          name: 'LayoutCalc');
-
-      return layoutResults;
-    } catch (e, stack) {
-      developer.log('Error calculating layout: $e',
-          name: 'LayoutCalc', error: e, stackTrace: stack);
-      return {};
+    if (width is String && width.endsWith('%')) {
+      // For percentages, use a standard reference (like 100% = 400pt)
+      calculationWidth = 400.0; // Default viewport width
+    } else if (width is num) {
+      calculationWidth = width.toDouble();
     }
+
+    if (height is String && height.endsWith('%')) {
+      // For percentages, use a standard reference (like 100% = 800pt)
+      calculationHeight = 800.0; // Default viewport height
+    } else if (height is num) {
+      calculationHeight = height.toDouble();
+    }
+
+    // Ensure we have valid dimensions
+    calculationWidth = calculationWidth > 0 ? calculationWidth : 400.0;
+    calculationHeight = calculationHeight > 0 ? calculationHeight : 800.0;
+
+    developer.log(
+        'Calculating layout with dimensions: $calculationWidth x $calculationHeight',
+        name: 'LayoutCalculator');
+
+    // Calculate layout using shadow tree
+    _shadowTree.calculateLayout(
+      width: calculationWidth,
+      height: calculationHeight,
+    );
+
+    // Extract layout results for all nodes
+    final layoutResults = <String, LayoutResult>{};
+
+    for (var nodeId in _processedNodes) {
+      final nodeLayout = _shadowTree.getNodeLayout(nodeId);
+      if (nodeLayout != null) {
+        layoutResults[nodeId] = LayoutResult(
+          left: nodeLayout.left,
+          top: nodeLayout.top,
+          width: nodeLayout.width,
+          height: nodeLayout.height,
+        );
+
+        // Log each layout result for debugging
+        developer.log(
+            'Layout for $nodeId: left=${nodeLayout.left}, top=${nodeLayout.top}, width=${nodeLayout.width}, height=${nodeLayout.height}',
+            name: 'LayoutCalculator');
+      }
+    }
+
+    final endTime = DateTime.now();
+    final elapsed = endTime.difference(startTime).inMilliseconds;
+    developer.log(
+        'Layout calculation completed in ${elapsed}ms for ${layoutResults.length} nodes',
+        name: 'LayoutCalculator');
+
+    return layoutResults;
   }
 
   /// Build shadow tree from VDOM tree
@@ -122,22 +132,19 @@ class LayoutCalculator {
     _processedNodes.add(node.nativeViewId!);
 
     if (node is VDomElement) {
-      // Create shadow node
-      final shadowNode = _shadowTree.createNode(node.nativeViewId!);
-
-      // Apply layout props
+      // Extract layout properties
       final layoutProps = _extractLayoutProps(node.props);
-      shadowNode.applyLayoutProps(layoutProps);
+
+      // Add node to shadow tree
+      _shadowTree.addNode(
+        id: node.nativeViewId!,
+        parentId: node.parent?.nativeViewId,
+        layoutProps: layoutProps,
+      );
 
       // Process children
-      for (final child in node.children) {
-        if (child.nativeViewId != null) {
-          // Build shadow tree for child
-          _buildShadowTree(child);
-
-          // Add child to parent in shadow tree
-          _shadowTree.addChild(node.nativeViewId!, child.nativeViewId!);
-        }
+      for (var child in node.children) {
+        _buildShadowTree(child);
       }
     }
   }
@@ -148,12 +155,7 @@ class LayoutCalculator {
 
     for (final prop in props.entries) {
       if (LayoutProps.isLayoutProperty(prop.key)) {
-        // For layout properties that are double.infinity, convert to "100%"
-        var value = prop.value;
-        if (value is double && value.isInfinite) {
-          value = "100%";
-        }
-        layoutProps[prop.key] = value;
+        layoutProps[prop.key] = prop.value;
       }
     }
 
@@ -162,12 +164,27 @@ class LayoutCalculator {
 
   /// Apply calculated layouts to native views
   Future<void> applyCalculatedLayouts(Map<String, LayoutResult> layouts) async {
+    developer.log('Applying layout for ${layouts.length} views',
+        name: 'LayoutCalculator');
+
     for (final entry in layouts.entries) {
       final viewId = entry.key;
       final layout = entry.value;
+
+      // Apply layout using native bridge
       await _nativeBridge.updateViewLayout(
-          viewId, layout.left, layout.top, layout.width, layout.height);
+        viewId,
+        layout.left,
+        layout.top,
+        layout.width,
+        layout.height,
+      );
+
+      developer.log('Applied layout to $viewId: $layout',
+          name: 'LayoutCalculator');
     }
+
+    developer.log('All layouts applied!', name: 'LayoutCalculator');
   }
 
   /// Calculate and apply layout in one step for convenience
@@ -176,29 +193,29 @@ class LayoutCalculator {
     dynamic width,
     dynamic height,
   ) async {
+    developer.log('Starting layout calculation and application',
+        name: 'LayoutCalculator');
+
     final layouts = calculateLayout(rootNode, width, height);
+
+    if (layouts.isEmpty) {
+      developer.log('WARNING: No layouts were calculated!',
+          name: 'LayoutCalculator');
+    }
+
     await applyCalculatedLayouts(layouts);
     return layouts;
   }
 
   /// Update layout props for a specific node
   void updateNodeLayoutProps(String nodeId, Map<String, dynamic> layoutProps) {
-    // Handle double.infinity in layout props
-    final processedProps = <String, dynamic>{};
-    for (var entry in layoutProps.entries) {
-      var value = entry.value;
-      if (value is double && value.isInfinite) {
-        value = "100%";
-      }
-      processedProps[entry.key] = value;
-    }
-
-    _shadowTree.updateLayoutProps(nodeId, processedProps);
+    _shadowTree.updateNodeProps(nodeId, layoutProps);
   }
 
   /// Remove a node from the shadow tree
   void removeNode(String nodeId) {
     _shadowTree.removeNode(nodeId);
+    _processedNodes.remove(nodeId);
   }
 
   /// Clear the entire shadow tree

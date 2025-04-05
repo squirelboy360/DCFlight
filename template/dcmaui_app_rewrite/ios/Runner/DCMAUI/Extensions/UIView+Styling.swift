@@ -24,8 +24,8 @@ extension UIView {
         // Accessibility is not visual styling but affects all components
         applyAccessibilityStyles(props: props)
         
-        // Apply percentage-based Yoga properties for layout
-        applyYogaPercentageStyles(props: props)
+        // Note: We're NOT applying Yoga percentage styles directly on iOS
+        // These will be handled through the Dart FFI bindings
     }
     
     // MARK: - Border Styles
@@ -321,13 +321,11 @@ extension UIView {
     // MARK: - Yoga Percentage Properties
     
     /// Apply percentage-based Yoga properties
+    /// This is now a no-op as we handle all Yoga properties through Dart FFI
     private func applyYogaPercentageStyles(props: [String: Any]) {
-        // Process percentage-based values for Yoga layout
-        for (key, value) in props {
-            if let strValue = value as? String, strValue.hasSuffix("%") {
-                applyYogaPercentageProperty(property: key, value: strValue)
-            }
-        }
+        // We intentionally do nothing here
+        // All Yoga layout properties are now handled through Dart FFI bindings
+        // This avoids issues with the Yoga Swift interface which doesn't match what we need
     }
     
     // MARK: - Percentage Value Helpers
@@ -355,79 +353,5 @@ extension UIView {
         }
         
         return nil
-    }
-    
-    /// Apply percentage-based property to a yoga node
-    func applyYogaPercentageProperty(property: String, value: String) {
-        guard let percentStr = value.dropLast().isEmpty ? nil : String(value.dropLast()),
-              let percentValue = Float(percentStr) else {
-            return
-        }
-        
-        // Apply to yoga node based on property name
-        switch property {
-        case "width":
-            yoga.width = YGValue(value: percentValue, unit: .percent)
-            
-        case "height":
-            yoga.height = YGValue(value: percentValue, unit: .percent)
-            
-        case "marginLeft", "marginStart":
-            yoga.marginLeft = YGValue(value: percentValue, unit: .percent)
-            
-        case "marginRight", "marginEnd":
-            yoga.marginRight = YGValue(value: percentValue, unit: .percent)
-            
-        case "marginTop":
-            yoga.marginTop = YGValue(value: percentValue, unit: .percent)
-            
-        case "marginBottom":
-            yoga.marginBottom = YGValue(value: percentValue, unit: .percent)
-            
-        case "margin":
-            yoga.margin = YGValue(value: percentValue, unit: .percent)
-            
-        case "paddingLeft":
-            yoga.paddingLeft = YGValue(value: percentValue, unit: .percent)
-            
-        case "paddingRight":
-            yoga.paddingRight = YGValue(value: percentValue, unit: .percent)
-            
-        case "paddingTop":
-            yoga.paddingTop = YGValue(value: percentValue, unit: .percent)
-            
-        case "paddingBottom":
-            yoga.paddingBottom = YGValue(value: percentValue, unit: .percent)
-            
-        case "padding":
-            yoga.padding = YGValue(value: percentValue, unit: .percent)
-            
-        case "left", "start":
-            yoga.left = YGValue(value: percentValue, unit: .percent)
-            
-        case "right", "end":
-            yoga.right = YGValue(value: percentValue, unit: .percent)
-            
-        case "top":
-            yoga.top = YGValue(value: percentValue, unit: .percent)
-            
-        case "bottom":
-            yoga.bottom = YGValue(value: percentValue, unit: .percent)
-            
-        case "minWidth":
-            yoga.minWidth = YGValue(value: percentValue, unit: .percent)
-            
-        case "minHeight":
-            yoga.minHeight = YGValue(value: percentValue, unit: .percent)
-            
-        case "maxWidth":
-            yoga.maxWidth = YGValue(value: percentValue, unit: .percent)
-            
-        case "maxHeight":
-            yoga.maxHeight = YGValue(value: percentValue, unit: .percent)
-            
-        default:
-            print("Unhandled percentage property: \(property)")
-        }
     }
 }

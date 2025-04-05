@@ -364,7 +364,7 @@ class VDom {
 
         // If this is the root of a component tree, calculate layout
         if (node == rootComponentNode?.renderedNode) {
-          await _calculateAndApplyLayout();
+          await calculateAndApplyLayout();
         }
 
         // Call lifecycle methods after full rendering
@@ -633,74 +633,34 @@ class VDom {
   }
 
   /// Calculate layout using Yoga and apply positions to native views
-  Future<void> _calculateAndApplyLayout() async {
-    if (rootComponentNode?.renderedNode == null) return;
-
-    _performanceMonitor.startTimer('calculate_layout');
-
-    // Pass width and height directly - no conversion needed
-    // Let the native side handle the 100% values without conversion
-    final layoutResults = _layoutCalculator.calculateLayout(
-      rootComponentNode!.renderedNode!,
-      _screenWidth, // Pass as-is - native side will handle percentage
-      _screenHeight, // Pass as-is - native side will handle percentage
-    );
-
-    _performanceMonitor.endTimer('calculate_layout');
-
-    // Apply layout results to native views
-    _performanceMonitor.startTimer('apply_layout');
-
-    for (final entry in layoutResults.entries) {
-      final viewId = entry.key;
-      final layout = entry.value;
-
-      await _nativeBridge.updateViewLayout(
-        viewId,
-        layout.left,
-        layout.top,
-        layout.width,
-        layout.height,
-      );
-    }
-
-    _performanceMonitor.endTimer('apply_layout');
-  }
-
-  /// Calculate layout using Yoga and apply positions to native views
   Future<void> calculateAndApplyLayout() async {
-    if (rootComponentNode?.renderedNode == null) return;
-
-    _performanceMonitor.startTimer('calculate_layout');
-
-    // Pass width and height directly - no conversion needed
-    // Let the native side handle the 100% values without conversion
-    final layoutResults = _layoutCalculator.calculateLayout(
-      rootComponentNode!.renderedNode!,
-      _screenWidth, // Pass as-is - native side will handle percentage
-      _screenHeight, // Pass as-is - native side will handle percentage
-    );
-
-    _performanceMonitor.endTimer('calculate_layout');
-
-    // Apply layout results to native views
-    _performanceMonitor.startTimer('apply_layout');
-
-    for (final entry in layoutResults.entries) {
-      final viewId = entry.key;
-      final layout = entry.value;
-
-      await _nativeBridge.updateViewLayout(
-        viewId,
-        layout.left,
-        layout.top,
-        layout.width,
-        layout.height,
-      );
+    if (rootComponentNode?.renderedNode == null) {
+      developer.log('No root component node for layout calculation',
+          name: 'VDom');
+      return;
     }
 
-    _layoutDirty = false;
-    _performanceMonitor.endTimer('apply_layout');
+    developer.log('Starting layout calculation', name: 'VDom');
+    _performanceMonitor.startTimer('calculate_layout');
+
+    try {
+      // Pass width and height directly - let the layout calculator handle percentages
+      final layoutResults = await _layoutCalculator.calculateAndApplyLayout(
+        rootComponentNode!.renderedNode!,
+        _screenWidth,
+        _screenHeight,
+      );
+
+      developer.log(
+          'Layout calculation applied for ${layoutResults.length} views',
+          name: 'VDom');
+      _layoutDirty = false;
+    } catch (e, stack) {
+      developer.log('Error in layout calculation: $e',
+          name: 'VDom', error: e, stackTrace: stack);
+    } finally {
+      _performanceMonitor.endTimer('calculate_layout');
+    }
   }
 
   /// Update screen dimensions

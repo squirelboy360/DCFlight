@@ -1,7 +1,4 @@
-import 'dart:developer' as developer;
-import 'package:dc_test/framework/constants/layout_properties.dart';
 import 'yoga_node.dart';
-import 'yoga_enums.dart';
 import 'layout_calculator.dart';
 
 /// Deprecated layout manager - redirects to LayoutCalculator
@@ -13,52 +10,30 @@ class DartLayoutManager {
   /// Layout calculator instance
   final LayoutCalculator _layoutCalculator = LayoutCalculator.instance;
 
-  /// Node mapping - maps view IDs to Yoga nodes
-  final Map<String, YogaNode> _nodeMapping = {};
-
   /// Private constructor
   DartLayoutManager._();
 
-  /// Get a node for a view
-  YogaNode? getNodeForView(String viewId) {
-    return _nodeMapping[viewId];
-  }
-
-  /// Create a Yoga node for a view
+  /// Create a Yoga node for a view (stub method)
   YogaNode createNodeForView(String viewId) {
-    // Check if already exists
-    if (_nodeMapping.containsKey(viewId)) {
-      return _nodeMapping[viewId]!;
-    }
-
-    // Create new node
-    final node = YogaNode();
-    _nodeMapping[viewId] = node;
-    return node;
+    return YogaNode();
   }
 
-  /// Register a parent-child relationship
-  void registerParentChild(String parentId, String childId) {
-    // This functionality is now handled by the shadow tree
-    // No need to do anything here
-  }
-
-  /// Apply flexbox properties to a node
+  /// Apply flexbox properties to a node (redirects to layout calculator)
   void applyFlexboxProps(String viewId, Map<String, dynamic> props) {
-    // This functionality is now handled by the shadow tree in LayoutCalculator
-    // No need to do anything here with the old node mapping
+    _layoutCalculator.updateNodeLayoutProps(viewId, props);
   }
 
-  /// Calculate layout for a view hierarchy
+  /// Get a node for a view (stub method)
+  YogaNode? getNodeForView(String viewId) {
+    return null;
+  }
+
+  /// Register a parent-child relationship (stub method)
+  void registerParentChild(String parentId, String childId) {}
+
+  /// Calculate layout for a view hierarchy (stub method)
   Map<String, _LayoutResult> calculateLayout(
       String rootId, double width, double height) {
-    // Get the results from the layout calculator
-    // This assumes you'll do proper node building elsewhere
-
-    developer.log('Warning: Using deprecated DartLayoutManager',
-        name: 'LayoutManager');
-
-    // Just use empty results for backward compatibility
     return <String, _LayoutResult>{};
   }
 }
