@@ -3,7 +3,11 @@ import '../packages/vdom/vdom_node.dart';
 import '../packages/vdom/vdom_element.dart';
 import '../constants/layout_properties.dart';
 import '../constants/style_properties.dart';
-
+import 'comp_props/view_props.dart';
+import 'comp_props/text_props.dart';
+import 'comp_props/button_props.dart';
+import 'comp_props/image_props.dart';
+import 'comp_props/scroll_view_props.dart';
 
 /// Factory for creating UI components with unified styling approach
 class UI {
@@ -11,7 +15,7 @@ class UI {
   static VDomElement View({
     required LayoutProps layout,
     StyleSheet? style,
-    dynamic viewProps, // Component-specific props placeholder
+    ViewProps? viewProps,
     List<VDomNode> children = const [],
     String? key,
     Map<String, dynamic>? events,
@@ -28,7 +32,9 @@ class UI {
     }
 
     // Add component-specific props
-    // This would be handled by the component-specific props class later
+    if (viewProps != null) {
+      propsMap.addAll(viewProps.toMap());
+    }
 
     // Add event handlers
     if (events != null) {
@@ -48,7 +54,7 @@ class UI {
     required String content,
     LayoutProps? layout,
     StyleSheet? style,
-    dynamic textProps, // Component-specific props placeholder
+    TextProps? textProps,
     String? key,
     Map<String, dynamic>? events,
   }) {
@@ -69,7 +75,9 @@ class UI {
     }
 
     // Add component-specific props
-    // This would be handled by the component-specific props class later
+    if (textProps != null) {
+      propsMap.addAll(textProps.toMap());
+    }
 
     // Add event handlers
     if (events != null) {
@@ -87,7 +95,7 @@ class UI {
   static VDomElement Button({
     required LayoutProps layout,
     StyleSheet? style,
-    dynamic buttonProps, // Component-specific props placeholder
+    ButtonProps? buttonProps,
     String? key,
     Function? onPress,
     Map<String, dynamic>? events,
@@ -104,7 +112,9 @@ class UI {
     }
 
     // Add component-specific props
-    // This would be handled by the component-specific props class later
+    if (buttonProps != null) {
+      propsMap.addAll(buttonProps.toMap());
+    }
 
     // Add onPress handler
     if (onPress != null) {
@@ -127,7 +137,7 @@ class UI {
   static VDomElement Image({
     required LayoutProps layout,
     StyleSheet? style,
-    dynamic imageProps, // Component-specific props placeholder
+    ImageProps? imageProps,
     String? key,
     Function? onLoad,
     Function? onError,
@@ -145,7 +155,9 @@ class UI {
     }
 
     // Add component-specific props
-    // This would be handled by the component-specific props class later
+    if (imageProps != null) {
+      propsMap.addAll(imageProps.toMap());
+    }
 
     // Add image-specific event handlers
     if (onLoad != null) {
@@ -172,7 +184,7 @@ class UI {
   static VDomElement ScrollView({
     required LayoutProps layout,
     StyleSheet? style,
-    dynamic scrollViewProps, // Component-specific props placeholder
+    ScrollViewProps? scrollViewProps,
     List<VDomNode> children = const [],
     String? key,
     Function? onScroll,
@@ -190,7 +202,9 @@ class UI {
     }
 
     // Add component-specific props
-    // This would be handled by the component-specific props class later
+    if (scrollViewProps != null) {
+      propsMap.addAll(scrollViewProps.toMap());
+    }
 
     // Add scroll event handler
     if (onScroll != null) {

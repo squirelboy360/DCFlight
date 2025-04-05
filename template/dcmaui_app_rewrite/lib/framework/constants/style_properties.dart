@@ -66,14 +66,18 @@ class StyleSheet {
 
     // Add border style properties
     if (borderRadius != null) map['borderRadius'] = borderRadius;
-    if (borderTopLeftRadius != null)
+    if (borderTopLeftRadius != null) {
       map['borderTopLeftRadius'] = borderTopLeftRadius;
-    if (borderTopRightRadius != null)
+    }
+    if (borderTopRightRadius != null) {
       map['borderTopRightRadius'] = borderTopRightRadius;
-    if (borderBottomLeftRadius != null)
+    }
+    if (borderBottomLeftRadius != null) {
       map['borderBottomLeftRadius'] = borderBottomLeftRadius;
-    if (borderBottomRightRadius != null)
+    }
+    if (borderBottomRightRadius != null) {
       map['borderBottomRightRadius'] = borderBottomRightRadius;
+    }
     if (borderColor != null) {
       final hexValue = borderColor!.value & 0xFFFFFF;
       map['borderColor'] = '#${hexValue.toRadixString(16).padLeft(6, '0')}';
@@ -106,8 +110,9 @@ class StyleSheet {
 
     // Add accessibility properties
     if (accessible != null) map['accessible'] = accessible;
-    if (accessibilityLabel != null)
+    if (accessibilityLabel != null) {
       map['accessibilityLabel'] = accessibilityLabel;
+    }
     if (testID != null) map['testID'] = testID;
     if (pointerEvents != null) map['pointerEvents'] = pointerEvents;
 
