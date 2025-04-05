@@ -1,5 +1,3 @@
-import 'dart:developer' as developer;
-
 /// Utility class for monitoring performance metrics
 class PerformanceMonitor {
   /// Map of timers by name

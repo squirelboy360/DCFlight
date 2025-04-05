@@ -77,5 +77,20 @@ class AppDelegate: FlutterAppDelegate {
         DCMauiNativeBridgeCoordinator.shared.manuallyCreateRootView(rootContainer, viewId: "root", props: rootProps)
         
         print("DC MAUI: Root view registered with ID: root - size: \(rootContainer.bounds)")
+        
+        // Set multiple layout verification phases to handle complex layouts
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            print("⏰ Phase 1: Initial layout verification")
+            DCMauiLayoutManager.shared.verifyAndFixLayout()
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            print("⏰ Phase 2: Advanced layout verification with visual debugging")
+            DCMauiLayoutManager.shared.forceLayoutForDebugging()
+            
+            // Force a redraw of the entire view hierarchy
+            rootContainer.setNeedsLayout()
+            rootContainer.layoutIfNeeded()
+        }
     }
 }

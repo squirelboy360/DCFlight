@@ -2,10 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
-import 'dart:ui';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/services.dart';
-import '../../constants/layout_properties.dart';
+
 import 'native_bridge.dart';
 import 'dart:developer' as developer;
 
@@ -263,17 +262,25 @@ class FFINativeBridge implements NativeBridge {
   @override
   Future<bool> updateViewLayout(String viewId, double left, double top,
       double width, double height) async {
-    developer.log(
-        'FFI updateViewLayout: viewId=$viewId, left=$left, top=$top, width=$width, height=$height',
-        name: 'FFI');
+    try {
+      developer.log(
+          '🔄 FFI: Updating view layout: $viewId - ($left, $top, $width, $height)',
+          name: 'FFINativeBridge');
 
-    return using((arena) {
-      final viewIdPointer = viewId.toNativeUtf8(allocator: arena);
+      final viewIdPtr = viewId.toNativeUtf8();
+      final result =
+          _updateViewLayout(viewIdPtr.cast(), left, top, width, height);
+      calloc.free(viewIdPtr);
 
-      final result = _updateViewLayout(viewIdPointer, left, top, width, height);
-      developer.log('FFI updateViewLayout result: $result', name: 'FFI');
+      developer.log(
+          '${result != 0 ? '✅' : '❌'} FFI: Update view layout result: $result',
+          name: 'FFINativeBridge');
       return result != 0;
-    });
+    } catch (e, stack) {
+      developer.log('❌ FFI: Error updating view layout: $e',
+          name: 'FFINativeBridge', error: e, stackTrace: stack);
+      return false;
+    }
   }
 
   @override

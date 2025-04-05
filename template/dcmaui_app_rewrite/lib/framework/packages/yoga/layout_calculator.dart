@@ -164,7 +164,7 @@ class LayoutCalculator {
 
   /// Apply calculated layouts to native views
   Future<void> applyCalculatedLayouts(Map<String, LayoutResult> layouts) async {
-    developer.log('Applying layout for ${layouts.length} views',
+    developer.log('🔄 Applying layout for ${layouts.length} views',
         name: 'LayoutCalculator');
 
     for (final entry in layouts.entries) {
@@ -172,7 +172,7 @@ class LayoutCalculator {
       final layout = entry.value;
 
       // Apply layout using native bridge
-      await _nativeBridge.updateViewLayout(
+      final success = await _nativeBridge.updateViewLayout(
         viewId,
         layout.left,
         layout.top,
@@ -180,11 +180,11 @@ class LayoutCalculator {
         layout.height,
       );
 
-      developer.log('Applied layout to $viewId: $layout',
+      developer.log('${success ? '✅' : '❌'} Applied layout to $viewId: $layout',
           name: 'LayoutCalculator');
     }
 
-    developer.log('All layouts applied!', name: 'LayoutCalculator');
+    developer.log('🎉 All layouts applied!', name: 'LayoutCalculator');
   }
 
   /// Calculate and apply layout in one step for convenience

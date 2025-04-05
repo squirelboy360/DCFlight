@@ -72,7 +72,7 @@ class Reconciler {
 
     // Calculate and apply layout after reconciliation if this is a root element
     if (newNode == vdom.rootComponentNode?.renderedNode) {
-      await vdom.calculateAndApplyLayout(); // Use public method
+      await vdom.calculateAndApplyLayout();
     }
   }
 

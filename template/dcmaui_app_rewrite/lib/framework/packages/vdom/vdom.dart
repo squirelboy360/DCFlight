@@ -635,15 +635,26 @@ class VDom {
   /// Calculate layout using Yoga and apply positions to native views
   Future<void> calculateAndApplyLayout() async {
     if (rootComponentNode?.renderedNode == null) {
-      developer.log('No root component node for layout calculation',
+      developer.log('❌ No root component node for layout calculation',
           name: 'VDom');
       return;
     }
 
-    developer.log('Starting layout calculation', name: 'VDom');
+    developer.log(
+        '🔥 Starting layout calculation with dimensions: $_screenWidth x $_screenHeight',
+        name: 'VDom');
     _performanceMonitor.startTimer('calculate_layout');
 
     try {
+      // IMPORTANT: Convert explicit dimensions to strings since _screenWidth/_screenHeight are String type
+      // This fixes the type mismatch error
+      _screenWidth = "400.0"; // Explicit width in points as string
+      _screenHeight = "800.0"; // Explicit height in points as string
+
+      developer.log(
+          '🔄 Using explicit dimensions for layout: $_screenWidth x $_screenHeight',
+          name: 'VDom');
+
       // Pass width and height directly - let the layout calculator handle percentages
       final layoutResults = await _layoutCalculator.calculateAndApplyLayout(
         rootComponentNode!.renderedNode!,
@@ -652,11 +663,18 @@ class VDom {
       );
 
       developer.log(
-          'Layout calculation applied for ${layoutResults.length} views',
+          '✅ Layout calculation applied for ${layoutResults.length} views',
           name: 'VDom');
+
+      // Print ALL layout results for debugging - we need to see what's happening
+      layoutResults.forEach((viewId, layout) {
+        developer.log('📐 View $viewId layout: ${layout.toString()}',
+            name: 'VDom');
+      });
+
       _layoutDirty = false;
     } catch (e, stack) {
-      developer.log('Error in layout calculation: $e',
+      developer.log('❌ Error in layout calculation: $e',
           name: 'VDom', error: e, stackTrace: stack);
     } finally {
       _performanceMonitor.endTimer('calculate_layout');

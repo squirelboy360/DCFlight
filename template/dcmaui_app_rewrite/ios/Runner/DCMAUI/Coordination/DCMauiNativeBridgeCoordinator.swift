@@ -317,7 +317,56 @@ class ViewRegistry {
     
     /// Update a view's layout directly with absolute positioning
     func updateViewLayout(viewId: String, left: CGFloat, top: CGFloat, width: CGFloat, height: CGFloat) -> Bool {
-        return DCMauiLayoutManager.shared.applyLayout(to: viewId, left: left, top: top, width: width, height: height)
+        guard let view = ViewRegistry.shared.getView(id: viewId) else {
+            print("❌ Layout Error: View not found for ID \(viewId)")
+            return false
+        }
+        
+        // Debugging layout application
+        print("📐 APPLYING LAYOUT: View \(viewId) - (\(left), \(top), \(width), \(height))")
+        
+        // Check for invalid dimensions and fix them
+        var fixedWidth = width
+        var fixedHeight = height
+        
+        // Don't allow zero or negative dimensions
+        if fixedWidth <= 0 {
+            fixedWidth = view.superview?.bounds.width ?? 100
+            print("⚠️ Fixed invalid width: \(width) → \(fixedWidth)")
+        }
+        
+        if fixedHeight <= 0 {
+            // Use minimal height for UI elements
+            fixedHeight = 44
+            print("⚠️ Fixed invalid height: \(height) → \(fixedHeight)")
+        }
+        
+        // Apply frame directly
+        let frame = CGRect(x: left, y: top, width: fixedWidth, height: fixedHeight)
+        
+        // Always apply layout on main thread
+        DispatchQueue.main.async {
+            view.frame = frame
+            
+            // Set background color for debugging visibility
+            if view.backgroundColor == nil || view.backgroundColor == .clear {
+                view.backgroundColor = UIColor(
+                    hue: CGFloat(viewId.hashValue % 100) / 100.0,
+                    saturation: 0.15,
+                    brightness: 0.95,
+                    alpha: 1.0
+                )
+            }
+            
+            // Force layout if needed
+            view.setNeedsLayout()
+            view.layoutIfNeeded()
+            
+            // Print actual frame after layout
+            print("📏 View \(viewId) actual frame: \(view.frame)")
+        }
+        
+        return true
     }
     
     /// Measure text with given attributes
