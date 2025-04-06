@@ -39,8 +39,7 @@ class ButtonProps {
     final map = <String, dynamic>{};
 
     if (title != null) map['title'] = title;
-    if (titleColor != null)
-      map['titleColor'] = titleColor; // Will be processed by _preprocessProps
+    if (titleColor != null) map['titleColor'] = titleColor;
     if (fontSize != null) map['fontSize'] = fontSize;
     if (fontWeight != null) map['fontWeight'] = fontWeight;
     if (fontFamily != null) map['fontFamily'] = fontFamily;

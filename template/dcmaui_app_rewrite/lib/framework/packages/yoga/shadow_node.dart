@@ -344,18 +344,40 @@ class ShadowNode {
     if (value == null) return;
 
     if (value is num) {
+      // For numerical values, use absolute points
       setAbsolute(value.toDouble());
-    } else if (value is String && value == 'auto') {
-      // Handle auto - leave it to the yoga node to figure out
-    } else if (value is String && value.endsWith('%')) {
-      final percentValue = _parseNumberProp(value);
-      if (percentValue != null) {
-        setPercent(percentValue);
-      }
+      developer.log('Applied absolute dimension: $value', name: 'ShadowNode');
     } else if (value is String) {
-      final pointValue = _parseNumberProp(value);
-      if (pointValue != null) {
-        setAbsolute(pointValue);
+      if (value == 'auto') {
+        // Auto dimensions are handled by specific Yoga auto methods
+        developer.log('Applied auto dimension', name: 'ShadowNode');
+      } else if (value.endsWith('%')) {
+        try {
+          // Extract percentage value (without the % symbol)
+          final percentStr = value.substring(0, value.length - 1);
+          final percentValue = double.parse(percentStr);
+
+          // Pass the actual percentage value (not divided by 100)
+          // Yoga's API expects the raw percentage number
+          setPercent(percentValue);
+
+          developer.log('Applied percentage dimension: $percentValue%',
+              name: 'ShadowNode');
+        } catch (e) {
+          developer.log('Failed to parse percentage value: $value',
+              name: 'ShadowNode');
+        }
+      } else {
+        // Try parsing as an absolute value
+        try {
+          final pointValue = double.parse(value);
+          setAbsolute(pointValue);
+          developer.log('Applied parsed absolute dimension: $pointValue',
+              name: 'ShadowNode');
+        } catch (e) {
+          developer.log('Failed to parse dimension value: $value',
+              name: 'ShadowNode');
+        }
       }
     }
   }

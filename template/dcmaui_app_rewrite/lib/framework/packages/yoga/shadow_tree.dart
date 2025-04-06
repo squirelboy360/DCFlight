@@ -145,6 +145,11 @@ class ShadowTree {
 
     // Calculate layout for each root node
     for (final rootNode in rootNodes) {
+      // Check if node is dirty before calculation
+      bool isDirty = _yogaBindings.nodeIsDirty(rootNode);
+      developer.log('Root node is dirty: $isDirty', name: 'ShadowTree');
+
+      // Calculate layout for the node
       _yogaBindings.nodeCalculateLayout(rootNode, width, height, direction);
     }
 
@@ -183,7 +188,7 @@ class ShadowTree {
     // Free all nodes
     for (final node in _nodeMap.values) {
       _yogaBindings.nodeFree(node);
-      print ('Freed node: $node');
+      print('Freed node: $node');
     }
 
     _nodeMap.clear();
@@ -534,6 +539,16 @@ class ShadowTree {
         (property.startsWith('margin') || property == 'margin')) {
       // Auto margin
       _yogaBindings.nodeStyleSetMarginAuto(node, edge);
+    }
+  }
+
+  // Add a new method to mark a node dirty
+  void markNodeDirty(String nodeId) {
+    final node = _nodeMap[nodeId];
+    if (node != null) {
+      // Use the Yoga function to mark the node dirty
+      _yogaBindings.nodeMarkDirty(node);
+      developer.log('Marked node $nodeId as dirty', name: 'ShadowTree');
     }
   }
 }

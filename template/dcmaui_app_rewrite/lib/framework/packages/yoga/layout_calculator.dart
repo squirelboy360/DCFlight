@@ -223,4 +223,26 @@ class LayoutCalculator {
     _shadowTree.clear();
     _processedNodes.clear();
   }
+
+  /// Add this method to clear the shadow tree and rebuild it
+  void clearAndRebuildShadowTree(VDomNode? rootNode) {
+    _processedNodes.clear();
+    _shadowTree.clear();
+
+    if (rootNode != null) {
+      _buildShadowTree(rootNode);
+      developer.log('Shadow tree rebuilt with ${_processedNodes.length} nodes',
+          name: 'LayoutCalculator');
+    }
+  }
+
+  /// Add this method to invalidate the layout
+  void invalidateLayout() {
+    developer.log('Invalidating layout calculations', name: 'LayoutCalculator');
+
+    // We'll mark all nodes as dirty to force recalculation
+    for (var nodeId in _processedNodes) {
+      _shadowTree.markNodeDirty(nodeId);
+    }
+  }
 }
