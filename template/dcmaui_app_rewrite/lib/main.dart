@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:dc_test/framework/packages/yoga/shadow_tree.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:developer' as developer;
@@ -20,7 +21,6 @@ import 'framework/utilities/screen_utilities.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   developer.log('Starting DCMAUI application', name: 'App');
 
@@ -62,50 +62,64 @@ class AnimatedAppComponent extends StatefulComponent {
   VDomNode render() {
     // State hooks
     final counter = useState(0, 'counter');
-
+    final screenWidth = useState(ScreenUtilities.instance.screenWidth, 'screenWidth');
+    final screenHeight = useState(ScreenUtilities.instance.screenHeight, 'screenHeight');
+    
     useEffect(() {
       // Set up a timer to update the color every second
       final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         // Update the background color
         counter.setValue(counter.value + 1);
       });
-
-      // Clean up the timer when the component is unmounted
+      
+      // Set up screen dimension listener
+      void onDimensionsChanged() {
+        screenWidth.setValue(ScreenUtilities.instance.screenWidth);
+        screenHeight.setValue(ScreenUtilities.instance.screenHeight);
+        developer.log(
+          'Screen dimensions updated in component: ${screenWidth.value} x ${screenHeight.value}',
+          name: 'AnimatedApp'
+        );
+      }
+      
+      // Register the listener
+      ScreenUtilities.instance.addDimensionChangeListener(onDimensionsChanged);
+      
+      // Clean up when component is unmounted
       return () {
         timer.cancel();
-        developer.log('Canceled background color animation timer',
-            name: 'ColorAnimation');
+        ScreenUtilities.instance.removeDimensionChangeListener(onDimensionsChanged);
+        developer.log('Cleaned up timer and screen dimension listener', name: 'AnimatedApp');
       };
     }, dependencies: []);
 
     return UI.View(
-        layout: LayoutProps(
-          // Use explicit dimensions instead of percentages for testing
-          height: ScreenUtilities.instance.screenHeight,
-          width: ScreenUtilities.instance.screenWidth,
-          alignItems: YogaAlign.center,
-          justifyContent: YogaJustifyContent.center,
-        ),
-        style: StyleSheet(backgroundColor: Colors.amber),
-        children: [
-          UI.View(
-            layout: LayoutProps(height: 100, width: 200),
-            style: StyleSheet(
-              backgroundColor: Colors.white,
-              borderRadius: 8,
-            ),
-            children: [
-              UI.Text(
-                content: 'Counter: ${counter.value}',
-                textProps: TextProps(
-                  // Use explicit color hex string for testing
-                  color: Colors.purpleAccent, // Explicit blue color
-                  fontSize: 20,
-                  fontWeight: 'bold',
-                ),
-              ),
-            ],
+      layout: LayoutProps(
+        // Use the state variables for dimensions
+        height: screenHeight.value,
+        width: screenWidth.value,
+        alignItems: YogaAlign.center,
+        justifyContent: YogaJustifyContent.center,
+      ),
+      style: StyleSheet(backgroundColor: Colors.amber),
+      children: [
+        UI.View(
+          layout: LayoutProps(height: 100, width: 200),
+          style: StyleSheet(
+            backgroundColor: Colors.white,
+            borderRadius: 8,
           ),
-        ]);
+          children: [
+            UI.Text(
+              content: 'Screen: ${screenWidth.value.toInt()} x ${screenHeight.value.toInt()}\nCounter: ${counter.value}',
+              textProps: TextProps(
+                color: Colors.purpleAccent,
+                fontSize: 20,
+                fontWeight: 'bold',
+              ),
+            ),
+          ],
+        ),
+      ]);
   }
 }

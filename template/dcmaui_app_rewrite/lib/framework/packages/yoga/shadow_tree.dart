@@ -183,6 +183,7 @@ class ShadowTree {
     // Free all nodes
     for (final node in _nodeMap.values) {
       _yogaBindings.nodeFree(node);
+      print ('Freed node: $node');
     }
 
     _nodeMap.clear();
