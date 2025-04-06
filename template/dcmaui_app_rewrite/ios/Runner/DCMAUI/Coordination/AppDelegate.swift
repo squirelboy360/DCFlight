@@ -30,7 +30,7 @@ class AppDelegate: FlutterAppDelegate {
         // Use the native view controller as root
         self.window.rootViewController = nativeRootVC
         self.window.makeKeyAndVisible()
-
+        
         // Keep a reference to the Flutter view controller
         let flutterViewController = FlutterViewController(engine: flutterEngine, nibName: nil, bundle: nil)
         flutterEngine.viewController = flutterViewController
@@ -78,15 +78,6 @@ class AppDelegate: FlutterAppDelegate {
         
         print("DC MAUI: Root view registered with ID: root - size: \(rootContainer.bounds)")
         
-        // Set up layout verification but with less verbose output
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            DCMauiLayoutManager.shared.verifyAndFixLayout()
-        }
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            // Force a redraw of the entire view hierarchy
-            rootContainer.setNeedsLayout()
-            rootContainer.layoutIfNeeded()
-        }
+    
     }
 }

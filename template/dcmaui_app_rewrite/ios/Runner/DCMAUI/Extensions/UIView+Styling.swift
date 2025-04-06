@@ -306,6 +306,9 @@ extension UIView {
     
     /// Apply overflow properties
     private func applyOverflowStyles(props: [String: Any]) {
+        // Check for explicit dimensions first
+        checkForExplicitDimensions(props: props)
+        
         if let overflow = props["overflow"] as? String {
             switch overflow {
             case "visible":
@@ -352,5 +355,25 @@ extension UIView {
         }
         
         return nil
+    }
+    
+    // MARK: - Explicit Dimensions Handler
+    
+    /// Check and mark if view has explicit dimensions
+    private func checkForExplicitDimensions(props: [String: Any]) {
+        let hasWidth = props["width"] != nil
+        let hasHeight = props["height"] != nil
+        
+        if hasWidth || hasHeight {
+            // Mark this view as having explicit dimensions
+            objc_setAssociatedObject(self, 
+                                   UnsafeRawPointer(bitPattern: "hasExplicitDimensions".hashValue)!,
+                                   true, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            
+            // Store the dimensions for debugging
+            if let viewId = accessibilityIdentifier {
+                print("🔒 View \(viewId) has explicit dimensions: width=\(props["width"] ?? "nil"), height=\(props["height"] ?? "nil")")
+            }
+        }
     }
 }

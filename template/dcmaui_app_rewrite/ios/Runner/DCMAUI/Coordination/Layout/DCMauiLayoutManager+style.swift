@@ -74,27 +74,26 @@ extension DCMauiLayoutManager {
     @discardableResult
     func applyLayout(to viewId: String, left: CGFloat, top: CGFloat, width: CGFloat, height: CGFloat) -> Bool {
         guard let view = getView(withId: viewId) else {
-            print("❌ Layout Error: View not found for ID \(viewId)")
+            print("Layout Error: View not found for ID \(viewId)")
             return false
         }
-        
-        // Debugging layout application
-        print("📐 APPLYING LAYOUT: View \(viewId) - (\(left), \(top), \(width), \(height))")
         
         // Apply frame directly
         let frame = CGRect(x: left, y: top, width: width, height: height)
         
         DispatchQueue.main.async {
-            view.frame = frame
+            // Check if explicit dimensions were set from Dart
+            let hasExplicitDimensions = objc_getAssociatedObject(view, 
+                                         UnsafeRawPointer(bitPattern: "hasExplicitDimensions".hashValue)!) as? Bool ?? false
+            
+            // Only modify frame if not explicitly set from Dart
+            if !hasExplicitDimensions {
+                view.frame = frame
+            }
             
             // Force layout if needed
             view.setNeedsLayout()
             view.layoutIfNeeded()
-            
-            // Use more concise logging for production mode
-            #if DEBUG
-            print("📏 View \(viewId) actual frame: \(view.frame)")
-            #endif
         }
         
         return true
@@ -102,119 +101,50 @@ extension DCMauiLayoutManager {
     
     // Add this debugging helper method to the manager
     func logLayoutApplication(viewId: String, frame: CGRect) {
-        #if DEBUG
-        // Add detailed logging for layout debugging
-        print("📐 DETAILED LAYOUT: View \(viewId) - frame: \(frame)")
-        
-        // Get view to log its actual frame after layout
-        if let view = getView(withId: viewId) {
-            // Measure time until actual layout occurs
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                print("📏 View \(viewId) actual frame after layout: \(view.frame)")
-            }
-        }
-        #endif
+        // Empty implementation - debugging functionality removed as requested
     }
     
-    // No need to define applyLayout again as it's already in the main class
-    // Instead, add enhanced debugging to trace layout application issues
-    
-    /// Debug utility to dump the view hierarchy
-    func debugViewHierarchy(startingAt viewId: String = "root") {
-        guard let view = getView(withId: viewId) else {
-            print("⚠️ Cannot debug hierarchy: View with ID \(viewId) not found")
-            return
-        }
-        
-        print("\n📊 VIEW HIERARCHY DUMP - Starting at \(viewId):")
-        _printView(view, level: 0)
-        print("📊 END OF HIERARCHY DUMP\n")
-    }
-    
-    private func _printView(_ view: UIView, level: Int) {
-        let indent = String(repeating: "  ", count: level)
-        let className = type(of: view)
-        let frame = view.frame
-        
-        print("\(indent)📱 \(className): frame=(\(frame.origin.x), \(frame.origin.y), \(frame.size.width), \(frame.size.height)), alpha=\(view.alpha)")
-        
-        // Print subviews
-        for subview in view.subviews {
-            _printView(subview, level: level + 1)
+    // Method to preserve dimensions specified in Dart
+    func preserveExplicitDimensions(for viewId: String, width: CGFloat?, height: CGFloat?) {
+        if let view = getView(withId: viewId), width != nil || height != nil {
+            // Mark this view as having explicit dimensions
+            objc_setAssociatedObject(view, 
+                                   UnsafeRawPointer(bitPattern: "hasExplicitDimensions".hashValue)!,
+                                   true, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }
     
     /// Verify and fix layout if needed - call this to ensure proper layout
-    func verifyAndFixLayout() {
-        print("🔍 Verifying and fixing layout of all registered views...")
-        
-        // First, force root view to take full screen size
+    func verifyAndFixLayout(respectExplicitDimensions: Bool = false) {
+        // Start with root view and properly size it
         if let rootView = getView(withId: "root") {
-            print("🔑 Setting root view to full screen size")
-            rootView.frame = UIScreen.main.bounds
+            // Check if root has explicit dimensions that should be preserved
+            let rootHasExplicitDimensions = objc_getAssociatedObject(rootView, 
+                                          UnsafeRawPointer(bitPattern: "hasExplicitDimensions".hashValue)!) as? Bool ?? false
+            
+            if !rootHasExplicitDimensions || !respectExplicitDimensions {
+                rootView.frame = UIScreen.main.bounds
+            }
         }
         
-        // Set explicit frames for main container views
-        if let view1 = getView(withId: "view_1") {
-            print("🔑 Setting main container view to full root size")
-            view1.frame = CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
-            
-            // Force layout
-            view1.setNeedsLayout()
-            view1.layoutIfNeeded()
-        }
-        
-        // Set background color for debugging
-        if let view2 = getView(withId: "view_2") {
-            print("🔑 Setting header view size")
-            view2.frame = CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: 80)
-            view2.backgroundColor = UIColor(red: 0.9, green: 0.9, blue: 0.9, alpha: 1.0)
-            
-            // Force layout
-            view2.setNeedsLayout()
-            view2.layoutIfNeeded()
-        }
-        
-        // Set main scroll view frame
-        if let scrollView = getView(withId: "view_7") as? UIScrollView {
-            print("🔑 Setting main scroll view size")
-            scrollView.frame = CGRect(x: 0, y: 80, width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height - 80)
-            scrollView.backgroundColor = UIColor.white
-            
-            // Set content size to ensure scrolling works
-            scrollView.contentSize = CGSize(width: UIScreen.main.bounds.width, height: 2000)
-            
-            // Force layout
-            scrollView.setNeedsLayout()
-            scrollView.layoutIfNeeded()
-        }
-        
-        // Apply layout to all views systematically
-        applySystematicLayoutToViewHierarchy()
-        
-        // Log the updated view hierarchy
-        debugViewHierarchy()
+        // Apply systematic layout to ensure everything fits
+        applySystematicLayout(respectExplicitDimensions: respectExplicitDimensions)
     }
     
     /// Apply layout systematically to the entire view hierarchy
-    private func applySystematicLayoutToViewHierarchy() {
-        print("⚙️ Applying systematic layout to all views...")
-        
+    private func applySystematicLayout(respectExplicitDimensions: Bool = false) {
         // Start with the root and work our way down
         guard let rootView = getView(withId: "root") else { return }
         
         // First pass: Set size for all parent views
-        resizeViewsWithChildren(rootView)
+        resizeViewsWithChildren(rootView, respectExplicitDimensions: respectExplicitDimensions)
         
         // Second pass: Position all child views within their parents
         positionChildrenInParents(rootView)
-        
-        print("✅ Systematic layout applied to view hierarchy")
     }
     
     /// Set size for views with children
-    private func resizeViewsWithChildren(_ view: UIView, depth: Int = 0, maxWidth: CGFloat? = nil) {
-        let indent = String(repeating: "  ", count: depth)
+    private func resizeViewsWithChildren(_ view: UIView, depth: Int = 0, maxWidth: CGFloat? = nil, respectExplicitDimensions: Bool = false) {
         let viewWidth = maxWidth ?? UIScreen.main.bounds.width
         
         // Apply size to the view
@@ -232,7 +162,6 @@ extension DCMauiLayoutManager {
             }
             
             view.frame = frame
-            print("\(indent)📐 Resized view: \(frame)")
         }
         
         // Handle scroll views specially
@@ -247,14 +176,12 @@ extension DCMauiLayoutManager {
         
         // Process children
         for subview in view.subviews {
-            resizeViewsWithChildren(subview, depth: depth + 1, maxWidth: viewWidth)
+            resizeViewsWithChildren(subview, depth: depth + 1, maxWidth: viewWidth, respectExplicitDimensions: respectExplicitDimensions)
         }
     }
     
     /// Position children within their parent views
     private func positionChildrenInParents(_ view: UIView, depth: Int = 0, yOffset: CGFloat = 0) {
-        let indent = String(repeating: "  ", count: depth)
-        
         // Handle scroll view content differently
         let isScrollViewContent = view.superview is UIScrollView
         let currentYOffset = isScrollViewContent ? yOffset : 0
@@ -288,7 +215,6 @@ extension DCMauiLayoutManager {
             }
             
             subview.frame = frame
-            print("\(indent)📍 Positioned view at index \(index) to y=\(frame.origin.y)")
             
             // Recursively process subviews
             positionChildrenInParents(subview, depth: depth + 1, yOffset: 0)
@@ -297,47 +223,6 @@ extension DCMauiLayoutManager {
         // If this is a scroll view content and we've stacked elements, update content size
         if isScrollViewContent, let scrollView = view.superview as? UIScrollView {
             scrollView.contentSize.height = max(nextYOffset, scrollView.contentSize.height)
-            print("\(indent)📜 Updated scroll view content height to \(scrollView.contentSize.height)")
-        }
-    }
-    
-    /// Force layout and background colors for debugging
-    func forceLayoutForDebugging() {
-        print("🔍 APPLYING DEBUG LAYOUT AND COLORS")
-        
-        // Apply background colors to help visualize the layout
-        if let rootView = getView(withId: "root") {
-            rootView.backgroundColor = UIColor(red: 0.9, green: 0.9, blue: 0.9, alpha: 1.0)
-        }
-        
-        if let mainView = getView(withId: "view_1") {
-            mainView.backgroundColor = UIColor.white
-            mainView.frame = UIScreen.main.bounds
-        }
-        
-        if let headerView = getView(withId: "view_2") {
-            headerView.backgroundColor = UIColor(red: 0.2, green: 0.6, blue: 1.0, alpha: 1.0)
-            headerView.frame = CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: 80)
-        }
-        
-        if let scrollView = getView(withId: "view_7") as? UIScrollView {
-            scrollView.backgroundColor = UIColor(red: 1.0, green: 0.9, blue: 0.9, alpha: 1.0)
-            scrollView.frame = CGRect(x: 0, y: 80, width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height - 80)
-            
-            // Set large content size to ensure scrolling works
-            scrollView.contentSize = CGSize(width: UIScreen.main.bounds.width, height: 2000)
-        }
-        
-        // Add a visual label to verify rendering is working
-        let debugLabel = UILabel(frame: CGRect(x: 20, y: 100, width: 300, height: 80))
-        debugLabel.text = "DEBUG: If you can see this text, rendering is working!"
-        debugLabel.textColor = UIColor.black
-        debugLabel.backgroundColor = UIColor.yellow
-        debugLabel.textAlignment = .center
-        debugLabel.font = UIFont.boldSystemFont(ofSize: 16)
-        
-        if let mainView = getView(withId: "view_1") {
-            mainView.addSubview(debugLabel)
         }
     }
 }

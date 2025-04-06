@@ -152,16 +152,21 @@ class LayoutProps {
     if (position != null) map['position'] = position.toString().split('.').last;
 
     // Add flex properties
-    if (flexDirection != null)
+    if (flexDirection != null) {
       map['flexDirection'] = flexDirection.toString().split('.').last;
-    if (justifyContent != null)
+    }
+    if (justifyContent != null) {
       map['justifyContent'] = justifyContent.toString().split('.').last;
-    if (alignItems != null)
+    }
+    if (alignItems != null) {
       map['alignItems'] = alignItems.toString().split('.').last;
-    if (alignSelf != null)
+    }
+    if (alignSelf != null) {
       map['alignSelf'] = alignSelf.toString().split('.').last;
-    if (alignContent != null)
+    }
+    if (alignContent != null) {
       map['alignContent'] = alignContent.toString().split('.').last;
+    }
     if (flexWrap != null) map['flexWrap'] = flexWrap.toString().split('.').last;
     if (flex != null) map['flex'] = flex;
     if (flexGrow != null) map['flexGrow'] = flexGrow;
@@ -173,8 +178,9 @@ class LayoutProps {
     if (overflow != null) map['overflow'] = overflow.toString().split('.').last;
 
     // Add direction property
-    if (direction != null)
+    if (direction != null) {
       map['direction'] = direction.toString().split('.').last;
+    }
 
     // Add border width (affects layout)
     if (borderWidth != null) map['borderWidth'] = borderWidth;

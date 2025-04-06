@@ -42,71 +42,55 @@ void startNativeApp() async {
   final appNode = vdom.createComponent(mainApp);
 
   // Render the component to native UI
-  final viewId = await vdom.renderToNative(appNode, parentId: "root", index: 0);
+  await vdom.renderToNative(appNode, parentId: "root", index: 0);
   developer.log(
       'DCMAUI framework successfully initialized and running in headless mode',
       name: 'App');
 }
 
 class AnimatedAppComponent extends StatefulComponent {
-  // Helper method to generate colored boxes
-  VDomNode createBox(int index, int counter) {
-    final hue = (index * 30 + counter * 5) % 360;
-    final color = HSVColor.fromAHSV(1.0, hue.toDouble(), 0.8, 0.9).toColor();
-
-    return UI.View(
-      layout: LayoutProps(
-        width: 80,
-        height: 80,
-        margin: 8,
-        alignItems: YogaAlign.center,
-        justifyContent: YogaJustifyContent.center,
-      ),
-      style: StyleSheet(
-        backgroundColor: color,
-        borderRadius: 8,
-        elevation: 3,
-      ),
-      children: [
-        UI.Text(
-          content: (index + 1).toString(),
-          textProps: TextProps(
-            color: '#FFFFFF',
-            fontSize: 20,
-            fontWeight: 'bold',
-          ),
-        ),
-      ],
-    );
-  }
-
   @override
   VDomNode render() {
     // State hooks
     final counter = useState(0, 'counter');
 
-    // Animation effect for color transitions
     useEffect(() {
-      return () {
+      // Set up a timer to update the color every second
+      final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        // Update the background color
+
         counter.setValue(counter.value + 1);
-        return null;
+      });
+
+      // Clean up the timer when the component is unmounted
+      return () {
+        timer.cancel();
+        developer.log('Canceled background color animation timer',
+            name: 'ColorAnimation');
       };
     }, dependencies: []);
 
     return UI.View(
-        layout: LayoutProps(height: 500, width: 200),
-        style: StyleSheet(backgroundColor: Colors.amber),children: [
-          UI.View(layout: LayoutProps(height: 100, width: 200),
+        layout: LayoutProps(
+          height: '100%',
+          width: '100%',
+          alignItems: YogaAlign.center,
+          justifyContent: YogaJustifyContent.center,
+        ),
+        style: StyleSheet(backgroundColor: Colors.amber),
+        children: [
+          UI.View(
+            layout: LayoutProps(height: 100, width: 200),
             style: StyleSheet(
               backgroundColor: Colors.white,
               borderRadius: 8,
-              elevation: 3,
+              // elevation: 3,
             ),
             children: [
               UI.Text(
-                content: 'Animated Color Boxes',
+                content: 'Counter: ${counter.value}',
                 textProps: TextProps(
-                  color: '#000000',
+                  color: Colors.blue.toARGB32().toString(),
                   fontSize: 20,
                   fontWeight: 'bold',
                 ),
