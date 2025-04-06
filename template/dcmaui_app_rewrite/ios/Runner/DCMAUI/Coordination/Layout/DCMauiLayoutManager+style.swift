@@ -84,7 +84,6 @@ extension DCMauiLayoutManager {
         // Apply frame directly
         let frame = CGRect(x: left, y: top, width: width, height: height)
         
-        // Apply on main thread
         DispatchQueue.main.async {
             view.frame = frame
             
@@ -92,8 +91,10 @@ extension DCMauiLayoutManager {
             view.setNeedsLayout()
             view.layoutIfNeeded()
             
-            // Print actual frame after layout
+            // Use more concise logging for production mode
+            #if DEBUG
             print("📏 View \(viewId) actual frame: \(view.frame)")
+            #endif
         }
         
         return true
@@ -101,6 +102,7 @@ extension DCMauiLayoutManager {
     
     // Add this debugging helper method to the manager
     func logLayoutApplication(viewId: String, frame: CGRect) {
+        #if DEBUG
         // Add detailed logging for layout debugging
         print("📐 DETAILED LAYOUT: View \(viewId) - frame: \(frame)")
         
@@ -111,6 +113,7 @@ extension DCMauiLayoutManager {
                 print("📏 View \(viewId) actual frame after layout: \(view.frame)")
             }
         }
+        #endif
     }
     
     // No need to define applyLayout again as it's already in the main class

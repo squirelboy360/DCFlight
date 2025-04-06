@@ -321,11 +321,10 @@ extension UIView {
     // MARK: - Yoga Percentage Properties
     
     /// Apply percentage-based Yoga properties
-    /// This is now a no-op as we handle all Yoga properties through Dart FFI
+    /// This is now handled through Dart FFI for better performance
     private func applyYogaPercentageStyles(props: [String: Any]) {
         // We intentionally do nothing here
         // All Yoga layout properties are now handled through Dart FFI bindings
-        // This avoids issues with the Yoga Swift interface which doesn't match what we need
     }
     
     // MARK: - Percentage Value Helpers
