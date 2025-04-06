@@ -16,6 +16,7 @@ import 'framework/components/ui.dart';
 import 'framework/constants/layout_properties.dart';
 import 'framework/constants/style_properties.dart';
 import 'framework/packages/yoga/yoga_enums.dart';
+import 'framework/utilities/screen_utilities.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +29,14 @@ void main() {
 }
 
 void startNativeApp() async {
+  // Initialize screen utilities first
+  await ScreenUtilities.instance.refreshDimensions();
+
+  // Log actual screen dimensions for debugging
+  developer.log(
+      'Screen dimensions: ${ScreenUtilities.instance.screenWidth} x ${ScreenUtilities.instance.screenHeight}',
+      name: 'App');
+
   // Create VDOM instance
   final vdom = VDom();
 
@@ -58,7 +67,6 @@ class AnimatedAppComponent extends StatefulComponent {
       // Set up a timer to update the color every second
       final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         // Update the background color
-
         counter.setValue(counter.value + 1);
       });
 
@@ -72,8 +80,9 @@ class AnimatedAppComponent extends StatefulComponent {
 
     return UI.View(
         layout: LayoutProps(
-          height: '100%',
-          width: '100%',
+          // Use explicit dimensions instead of percentages for testing
+          height: ScreenUtilities.instance.screenHeight,
+          width: ScreenUtilities.instance.screenWidth,
           alignItems: YogaAlign.center,
           justifyContent: YogaJustifyContent.center,
         ),
@@ -84,13 +93,13 @@ class AnimatedAppComponent extends StatefulComponent {
             style: StyleSheet(
               backgroundColor: Colors.white,
               borderRadius: 8,
-              // elevation: 3,
             ),
             children: [
               UI.Text(
                 content: 'Counter: ${counter.value}',
                 textProps: TextProps(
-                  color: Colors.blue.toARGB32().toString(),
+                  // Use explicit color hex string for testing
+                  color: Colors.purpleAccent, // Explicit blue color
                   fontSize: 20,
                   fontWeight: 'bold',
                 ),

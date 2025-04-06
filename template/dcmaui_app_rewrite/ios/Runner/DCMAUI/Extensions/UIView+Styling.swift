@@ -47,13 +47,16 @@ extension UIView {
         }
         
         // Corner radii - check if all individual corners are specified
-        let topLeftRadius = getActualValue(props["borderTopLeftRadius"], relativeTo: min(parentWidth, parentHeight) / 2)
-        let topRightRadius = getActualValue(props["borderTopRightRadius"], relativeTo: min(parentWidth, parentHeight) / 2)
-        let bottomLeftRadius = getActualValue(props["borderBottomLeftRadius"], relativeTo: min(parentWidth, parentHeight) / 2)
-        let bottomRightRadius = getActualValue(props["borderBottomRightRadius"], relativeTo: min(parentWidth, parentHeight) / 2)
+        let topLeftRadius = parsePercentageValue(props["borderTopLeftRadius"], relativeTo: min(parentWidth, parentHeight) / 2)
+        let topRightRadius = parsePercentageValue(props["borderTopRightRadius"], relativeTo: min(parentWidth, parentHeight) / 2)
+        let bottomLeftRadius = parsePercentageValue(props["borderBottomLeftRadius"], relativeTo: min(parentWidth, parentHeight) / 2)
+        let bottomRightRadius = parsePercentageValue(props["borderBottomRightRadius"], relativeTo: min(parentWidth, parentHeight) / 2)
         
-        applyCornerRadii(topLeft: topLeftRadius, topRight: topRightRadius,
-                         bottomLeft: bottomLeftRadius, bottomRight: bottomRightRadius)
+        // Apply individual corner radii if specified
+        if topLeftRadius != nil || topRightRadius != nil || bottomLeftRadius != nil || bottomRightRadius != nil {
+            applyCornerRadii(topLeft: topLeftRadius, topRight: topRightRadius,
+                            bottomLeft: bottomLeftRadius, bottomRight: bottomRightRadius)
+        }
         
         // Border color
         if let borderColor = props["borderColor"] as? String {
@@ -145,10 +148,10 @@ extension UIView {
         
         if hasShadow {
             // Default shadow values if not specified
-            let shadowRadius = getActualValue(props["shadowRadius"], relativeTo: min(parentWidth, parentHeight) / 10) ?? 3.0
+            let shadowRadius = parsePercentageValue(props["shadowRadius"], relativeTo: min(parentWidth, parentHeight) / 10) ?? 3.0
             let shadowOpacity = props["shadowOpacity"] as? Float ?? 0.3
-            let shadowOffsetX = getActualValue(props["shadowOffsetX"], relativeTo: parentWidth / 20) ?? 0
-            let shadowOffsetY = getActualValue(props["shadowOffsetY"], relativeTo: parentHeight / 20) ?? 2
+            let shadowOffsetX = parsePercentageValue(props["shadowOffsetX"], relativeTo: parentWidth / 20) ?? 0
+            let shadowOffsetY = parsePercentageValue(props["shadowOffsetY"], relativeTo: parentHeight / 20) ?? 2
             
             // Set shadow properties
             layer.shadowRadius = shadowRadius
@@ -210,8 +213,8 @@ extension UIView {
             
             // Apply translate with percentage support
             if let translateX = transform["translateX"], let translateY = transform["translateY"] {
-                let txValue = getActualValue(translateX, relativeTo: parentWidth) ?? 0
-                let tyValue = getActualValue(translateY, relativeTo: parentHeight) ?? 0
+                let txValue = parsePercentageValue(translateX, relativeTo: parentWidth) ?? 0
+                let tyValue = parsePercentageValue(translateY, relativeTo: parentHeight) ?? 0
                 
                 transform3D = CATransform3DTranslate(transform3D, txValue, tyValue, 0)
             }
@@ -333,21 +336,26 @@ extension UIView {
     // MARK: - Percentage Value Helpers
     
     /// Parse percentage value from string and calculate actual value based on reference size
-    func parsePercentageValue(_ value: Any, relativeTo referenceSize: CGFloat) -> CGFloat? {
-        if let percentString = value as? String, percentString.hasSuffix("%") {
-            if let percentValue = Float(percentString.dropLast()) {
-                return CGFloat(percentValue / 100.0) * referenceSize
-            }
-        }
-        return nil
-    }
-    
-    /// Get actual value from either percentage or direct value
-    func getActualValue(_ value: Any?, relativeTo referenceSize: CGFloat) -> CGFloat? {
+    func parsePercentageValue(_ value: Any?, relativeTo referenceSize: CGFloat) -> CGFloat? {
         guard let value = value else { return nil }
         
-        if let percentValue = parsePercentageValue(value, relativeTo: referenceSize) {
-            return percentValue
+        if let percentString = value as? String, percentString.hasSuffix("%") {
+            if let percentValue = Float(percentString.dropLast()) {
+                // Check if we're at the root view
+                let isRootOrDirectChild = (self.accessibilityIdentifier == "root" || 
+                                         self.superview?.accessibilityIdentifier == "root")
+                
+                // For root view or its direct children, use actual screen dimensions 
+                if isRootOrDirectChild {
+                    // Use UIScreen bounds for root-level percentage calculations
+                    let isWidthProperty = self.frame.width == referenceSize
+                    let screenReference = isWidthProperty ? 
+                        UIScreen.main.bounds.width : UIScreen.main.bounds.height
+                    return CGFloat(percentValue / 100.0) * screenReference
+                }
+                
+                return CGFloat(percentValue / 100.0) * referenceSize
+            }
         } else if let directValue = value as? CGFloat {
             return directValue
         } else if let intValue = value as? Int {
@@ -361,18 +369,45 @@ extension UIView {
     
     /// Check and mark if view has explicit dimensions
     private func checkForExplicitDimensions(props: [String: Any]) {
-        let hasWidth = props["width"] != nil
-        let hasHeight = props["height"] != nil
+        // Check for width
+        if let width = props["width"] {
+            if let widthStr = width as? String, widthStr.hasSuffix("%") {
+                // It's a percentage width - store the percentage value
+                if let percentValue = Float(widthStr.dropLast()) {
+                    objc_setAssociatedObject(self, 
+                                           UnsafeRawPointer(bitPattern: "hasPercentageWidth".hashValue)!,
+                                           true, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                    
+                    objc_setAssociatedObject(self, 
+                                           UnsafeRawPointer(bitPattern: "percentageWidthValue".hashValue)!,
+                                           CGFloat(percentValue), .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                }
+            } else {
+                // It's an explicit width
+                objc_setAssociatedObject(self, 
+                                       UnsafeRawPointer(bitPattern: "hasExplicitDimensions".hashValue)!,
+                                       true, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            }
+        }
         
-        if hasWidth || hasHeight {
-            // Mark this view as having explicit dimensions
-            objc_setAssociatedObject(self, 
-                                   UnsafeRawPointer(bitPattern: "hasExplicitDimensions".hashValue)!,
-                                   true, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-            
-            // Store the dimensions for debugging
-            if let viewId = accessibilityIdentifier {
-                print("🔒 View \(viewId) has explicit dimensions: width=\(props["width"] ?? "nil"), height=\(props["height"] ?? "nil")")
+        // Check for height
+        if let height = props["height"] {
+            if let heightStr = height as? String, heightStr.hasSuffix("%") {
+                // It's a percentage height - store the percentage value
+                if let percentValue = Float(heightStr.dropLast()) {
+                    objc_setAssociatedObject(self, 
+                                           UnsafeRawPointer(bitPattern: "hasPercentageHeight".hashValue)!,
+                                           true, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                    
+                    objc_setAssociatedObject(self, 
+                                           UnsafeRawPointer(bitPattern: "percentageHeightValue".hashValue)!,
+                                           CGFloat(percentValue), .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                }
+            } else {
+                // It's an explicit height
+                objc_setAssociatedObject(self, 
+                                       UnsafeRawPointer(bitPattern: "hasExplicitDimensions".hashValue)!,
+                                       true, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
             }
         }
     }

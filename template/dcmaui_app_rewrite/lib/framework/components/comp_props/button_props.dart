@@ -1,10 +1,12 @@
+import 'package:flutter/material.dart';
+
 /// Properties specific to Button components
 class ButtonProps {
   /// Button title text
   final String? title;
 
   /// Text color for the button
-  final String? titleColor;
+  final Color? titleColor; // Changed from String? to Color?
 
   /// Font size for button text
   final double? fontSize;
@@ -37,7 +39,8 @@ class ButtonProps {
     final map = <String, dynamic>{};
 
     if (title != null) map['title'] = title;
-    if (titleColor != null) map['titleColor'] = titleColor;
+    if (titleColor != null)
+      map['titleColor'] = titleColor; // Will be processed by _preprocessProps
     if (fontSize != null) map['fontSize'] = fontSize;
     if (fontWeight != null) map['fontWeight'] = fontWeight;
     if (fontFamily != null) map['fontFamily'] = fontFamily;
@@ -63,7 +66,7 @@ class ButtonProps {
   /// Create a copy with certain properties modified
   ButtonProps copyWith({
     String? title,
-    String? titleColor,
+    Color? titleColor,
     double? fontSize,
     String? fontWeight,
     String? fontFamily,

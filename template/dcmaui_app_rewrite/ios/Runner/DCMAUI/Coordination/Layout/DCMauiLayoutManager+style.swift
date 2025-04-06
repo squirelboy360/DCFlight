@@ -86,9 +86,30 @@ extension DCMauiLayoutManager {
             let hasExplicitDimensions = objc_getAssociatedObject(view, 
                                          UnsafeRawPointer(bitPattern: "hasExplicitDimensions".hashValue)!) as? Bool ?? false
             
-            // Only modify frame if not explicitly set from Dart
-            if !hasExplicitDimensions {
-                view.frame = frame
+            // Check if this is a percentage-based view
+            let hasPercentageWidth = objc_getAssociatedObject(view,
+                                    UnsafeRawPointer(bitPattern: "hasPercentageWidth".hashValue)!) as? Bool ?? false
+            let hasPercentageHeight = objc_getAssociatedObject(view,
+                                     UnsafeRawPointer(bitPattern: "hasPercentageHeight".hashValue)!) as? Bool ?? false
+            
+            // Only modify frame if not explicitly set from Dart or it's a percentage-based view
+            if !hasExplicitDimensions || hasPercentageWidth || hasPercentageHeight {
+                var newFrame = frame
+                
+                // If percentage width/height, recalculate based on screen dimensions
+                if hasPercentageWidth && view.accessibilityIdentifier?.hasPrefix("view_") == true {
+                    let percentValue = objc_getAssociatedObject(view, 
+                                      UnsafeRawPointer(bitPattern: "percentageWidthValue".hashValue)!) as? CGFloat ?? 100
+                    newFrame.size.width = UIScreen.main.bounds.width * percentValue / 100.0
+                }
+                
+                if hasPercentageHeight && view.accessibilityIdentifier?.hasPrefix("view_") == true {
+                    let percentValue = objc_getAssociatedObject(view, 
+                                      UnsafeRawPointer(bitPattern: "percentageHeightValue".hashValue)!) as? CGFloat ?? 100
+                    newFrame.size.height = UIScreen.main.bounds.height * percentValue / 100.0
+                }
+                
+                view.frame = newFrame
             }
             
             // Force layout if needed

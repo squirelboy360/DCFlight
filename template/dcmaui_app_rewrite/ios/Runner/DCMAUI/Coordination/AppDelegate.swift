@@ -35,6 +35,9 @@ class AppDelegate: FlutterAppDelegate {
         let flutterViewController = FlutterViewController(engine: flutterEngine, nibName: nil, bundle: nil)
         flutterEngine.viewController = flutterViewController
         
+        // Initialize screen utilities
+        _ = DCMauiScreenUtilities.shared
+        
         print("DC MAUI: Running in headless mode with native UI container")
         
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
@@ -78,6 +81,7 @@ class AppDelegate: FlutterAppDelegate {
         
         print("DC MAUI: Root view registered with ID: root - size: \(rootContainer.bounds)")
         
-    
+        // Initialize screen utilities with the Flutter binary messenger
+        DCMauiScreenUtilities.shared.initialize(with: flutterEngine.binaryMessenger)
     }
 }

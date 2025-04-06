@@ -325,24 +325,25 @@ class FFINativeBridge implements NativeBridge {
               name: 'FFI');
         }
       } else if (value is Color) {
-        // Convert Color objects to hex strings
-        final hexValue = value.value & 0xFFFFFF;
-        processedProps[key] = '#${hexValue.toRadixString(16).padLeft(6, '0')}';
+        // Convert Color objects to hex strings with alpha
+        processedProps[key] =
+            '#${value.value.toRadixString(16).padLeft(8, '0')}';
       } else if (value == double.infinity) {
         // Convert infinity to 100% string for percentage sizing
         processedProps[key] = '100%';
+      } else if (value is String &&
+          (value.endsWith('%') || value.startsWith('#'))) {
+        // Pass percentage strings and color strings through directly
+        processedProps[key] = value;
+        developer.log('Passing through special value: $key=$value',
+            name: 'FFI');
       } else if (key == 'width' ||
           key == 'height' ||
           key.startsWith('margin') ||
           key.startsWith('padding')) {
-        // Make sure percentage strings go through untouched for layout props
-        if (value is String && value.endsWith('%')) {
-          processedProps[key] = value;
-          developer.log('Preserving percentage value: $key=$value',
-              name: 'FFI');
-        } else if (value is num) {
+        // Make sure numeric values go through as doubles for consistent handling
+        if (value is num) {
           processedProps[key] = value.toDouble();
-          developer.log('Processing numeric $key: $value', name: 'FFI');
         } else {
           processedProps[key] = value;
         }

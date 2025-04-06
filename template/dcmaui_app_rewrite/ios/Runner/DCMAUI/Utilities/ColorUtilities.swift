@@ -4,9 +4,22 @@ import UIKit
 class ColorUtilities {
     
     /// Convert a hex string to a UIColor
-    /// Format: "#RRGGBB" or "#RRGGBBAA"
+    /// Format: "#RRGGBB" or "#RRGGBBAA" or "#AARRGGBB" (Android format)
     static func color(fromHexString hexString: String) -> UIColor? {
+        // Print debug info for troubleshooting color issues
+        print("⚡️ ColorUtilities: Processing color string: \(hexString)")
+        
         var hexString = hexString.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Special handling for Material colors from Flutter
+        // These come in as positive integer values
+        if let intValue = Int(hexString), intValue > 0 {
+            print("🎨 Converting int color value: \(intValue)")
+            // Convert the int to hex - Flutter uses ARGB format
+            let hexValue = String(format: "#%08x", intValue)
+            hexString = hexValue
+        }
+        
         hexString = hexString.replacingOccurrences(of: "#", with: "")
         
         // For 3-character hex codes like #RGB
@@ -26,18 +39,34 @@ class ColorUtilities {
         var blue: CGFloat = 0.0
         
         if hexString.count == 8 {
-            // RRGGBBAA format
-            red = CGFloat((rgbValue & 0xFF000000) >> 24) / 255.0
-            green = CGFloat((rgbValue & 0x00FF0000) >> 16) / 255.0
-            blue = CGFloat((rgbValue & 0x0000FF00) >> 8) / 255.0
-            alpha = CGFloat(rgbValue & 0x000000FF) / 255.0
-        } else {
+            // Check if it's RRGGBBAA or AARRGGBB format
+            let isARGB = (rgbValue & 0xFF000000) > 0
+            
+            if isARGB {
+                // AARRGGBB format (Android/Flutter)
+                alpha = CGFloat((rgbValue >> 24) & 0xFF) / 255.0
+                red = CGFloat((rgbValue >> 16) & 0xFF) / 255.0
+                green = CGFloat((rgbValue >> 8) & 0xFF) / 255.0
+                blue = CGFloat(rgbValue & 0xFF) / 255.0
+            } else {
+                // RRGGBBAA format
+                red = CGFloat((rgbValue >> 24) & 0xFF) / 255.0
+                green = CGFloat((rgbValue >> 16) & 0xFF) / 255.0
+                blue = CGFloat((rgbValue >> 8) & 0xFF) / 255.0
+                alpha = CGFloat(rgbValue & 0xFF) / 255.0
+            }
+        } else if hexString.count == 6 {
             // RRGGBB format
-            red = CGFloat((rgbValue & 0xFF0000) >> 16) / 255.0
-            green = CGFloat((rgbValue & 0x00FF00) >> 8) / 255.0
-            blue = CGFloat(rgbValue & 0x0000FF) / 255.0
+            red = CGFloat((rgbValue >> 16) & 0xFF) / 255.0
+            green = CGFloat((rgbValue >> 8) & 0xFF) / 255.0
+            blue = CGFloat(rgbValue & 0xFF) / 255.0
+            alpha = 1.0
+        } else {
+            print("⚠️ Invalid color format: \(hexString)")
+            return nil
         }
         
+        print("🎨 Color components: R=\(red), G=\(green), B=\(blue), A=\(alpha)")
         return UIColor(red: red, green: green, blue: blue, alpha: alpha)
     }
     

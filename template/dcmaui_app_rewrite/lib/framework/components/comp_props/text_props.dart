@@ -1,7 +1,9 @@
+import 'package:flutter/material.dart';
+
 /// Properties specific to Text components
 class TextProps {
   /// Text color
-  final String? color;
+  final dynamic color;
 
   /// Font size
   final double? fontSize;
@@ -40,7 +42,18 @@ class TextProps {
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{};
 
-    if (color != null) map['color'] = color;
+    // Handle color specially to ensure proper serialization
+    if (color != null) {
+      if (color is Color) {
+        // For Color objects, convert to proper format
+        final colorValue = color.value;
+        map['color'] = '#${colorValue.toRadixString(16).padLeft(8, '0')}';
+      } else {
+        // Strings and other values pass through as is
+        map['color'] = color;
+      }
+    }
+
     if (fontSize != null) map['fontSize'] = fontSize;
     if (fontWeight != null) map['fontWeight'] = fontWeight;
     if (fontFamily != null) map['fontFamily'] = fontFamily;
@@ -68,7 +81,7 @@ class TextProps {
 
   /// Create a copy with certain properties modified
   TextProps copyWith({
-    String? color,
+    dynamic color,
     double? fontSize,
     String? fontWeight,
     String? fontFamily,
