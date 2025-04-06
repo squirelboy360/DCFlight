@@ -1,127 +1,132 @@
-import 'package:flutter/services.dart';
+import 'dart:async';
 import 'dart:developer' as developer;
+import 'package:flutter/services.dart';
 
-/// Helper class for screen-related operations
+/// Utility class for handling screen dimensions and orientation changes
 class ScreenUtilities {
-  static final ScreenUtilities _instance = ScreenUtilities._();
-  
-  /// Get the singleton instance
-  static ScreenUtilities get instance => _instance;
-  
-  // Method channel for screen dimensions
-  final MethodChannel _channel = const MethodChannel('com.dcmaui.screen_dimensions');
-  
-  // Cached dimensions
-  double _screenWidth = 400.0; // Default fallback values
-  double _screenHeight = 800.0;
-  double _scale = 1.0;
-  double _statusBarHeight = 0.0;
-  
-  // Stream controller for dimension changes
+  /// Singleton instance
+  static final ScreenUtilities instance = ScreenUtilities._();
+
+  /// Method channel for communication with native side
+  final _methodChannel = const MethodChannel('com.dcmaui.screen_dimensions');
+
+  /// Stream of dimension change events
+  final _dimensionController = StreamController<void>.broadcast();
+
+  /// List of callbacks for dimension changes
   final List<Function()> _dimensionChangeListeners = [];
-  
+
+  /// Current screen width
+  double _screenWidth = 0.0;
+
+  /// Current screen height
+  double _screenHeight = 0.0;
+
+  /// Scale factor from native side
+  double _scaleFactor = 1.0;
+
+  /// Status bar height
+  double _statusBarHeight = 0.0;
+
+  /// Private constructor
   ScreenUtilities._() {
-    // Initialize dimensions on creation
+    // Set up the method channel handler
+    _methodChannel.setMethodCallHandler(_handleMethodCall);
+
+    // Initial refresh
     refreshDimensions();
-    
-    // Set up method channel handler for orientation changes
-    _channel.setMethodCallHandler(_handleMethodCall);
   }
-  
-  // Handle incoming method calls from native side
+
+  /// Handle method calls from the native side
   Future<dynamic> _handleMethodCall(MethodCall call) async {
     switch (call.method) {
       case 'dimensionsChanged':
+        // Update dimensions from native values
         final Map<dynamic, dynamic> args = call.arguments;
-        _screenWidth = args['width'].toDouble();
-        _screenHeight = args['height'].toDouble();
-        _scale = args['scale'].toDouble();
-        _statusBarHeight = args['statusBarHeight'].toDouble();
-        
+
+        _screenWidth = args['width'] as double;
+        _screenHeight = args['height'] as double;
+        _scaleFactor = args['scale'] as double;
+        _statusBarHeight = args['statusBarHeight'] as double;
+
+        // Log the change
         developer.log(
-          'Screen dimensions changed: $_screenWidth x $_screenHeight',
-          name: 'ScreenUtilities'
-        );
-        
+            'Screen dimensions changed: $_screenWidth x $_screenHeight',
+            name: 'ScreenUtilities');
+
         // Notify listeners
         _notifyDimensionChangeListeners();
-        break;
+        return null;
       default:
-        developer.log('Unknown method ${call.method}', name: 'ScreenUtilities');
+        return null;
     }
   }
-  
+
+  /// Refresh dimensions from native side
+  Future<void> refreshDimensions() async {
+    try {
+      final result = await _methodChannel
+          .invokeMapMethod<String, dynamic>('getScreenDimensions');
+      if (result != null) {
+        _screenWidth = result['width'] as double;
+        _screenHeight = result['height'] as double;
+        _scaleFactor = result['scale'] as double;
+        _statusBarHeight = result['statusBarHeight'] as double;
+
+        developer.log(
+            'Screen dimensions updated: $_screenWidth x $_screenHeight',
+            name: 'ScreenUtilities');
+
+        _notifyDimensionChangeListeners();
+      }
+    } catch (e) {
+      developer.log('Error refreshing dimensions: $e', name: 'ScreenUtilities');
+
+      // Fallback to reasonable defaults if needed
+      if (_screenWidth == 0 || _screenHeight == 0) {
+        _screenWidth = 400;
+        _screenHeight = 800;
+        _scaleFactor = 2.0;
+      }
+    }
+  }
+
   /// Add a listener for dimension changes
   void addDimensionChangeListener(Function() listener) {
     _dimensionChangeListeners.add(listener);
   }
-  
-  /// Remove a listener for dimension changes
+
+  /// Remove a dimension change listener
   void removeDimensionChangeListener(Function() listener) {
     _dimensionChangeListeners.remove(listener);
   }
-  
-  /// Notify all listeners of dimension changes
+
+  /// Notify all dimension change listeners
   void _notifyDimensionChangeListeners() {
     for (var listener in _dimensionChangeListeners) {
       listener();
     }
+    _dimensionController.add(null);
   }
-  
-  /// Get screen width
+
+  /// Get the current screen width
   double get screenWidth => _screenWidth;
-  
-  /// Get screen height
+
+  /// Get the current screen height
   double get screenHeight => _screenHeight;
-  
-  /// Get pixel scale factor
-  double get scale => _scale;
-  
-  /// Get status bar height
+
+  /// Get the scale factor
+  double get scaleFactor => _scaleFactor;
+
+  /// Get the status bar height
   double get statusBarHeight => _statusBarHeight;
-  
-  /// Update dimensions from method channel
-  Future<void> refreshDimensions() async {
-    try {
-      final dimensions = await _channel.invokeMapMethod<String, dynamic>('getScreenDimensions');
-      if (dimensions != null) {
-        _screenWidth = dimensions['width'].toDouble();
-        _screenHeight = dimensions['height'].toDouble();
-        _scale = dimensions['scale'].toDouble();
-        _statusBarHeight = dimensions['statusBarHeight'].toDouble();
-        
-        developer.log(
-          'Screen dimensions updated: $_screenWidth x $_screenHeight',
-          name: 'ScreenUtilities'
-        );
-      }
-    } catch (e) {
-      developer.log(
-        'Failed to get screen dimensions: $e',
-        name: 'ScreenUtilities'
-      );
-    }
-  }
-  
-  /// Calculate width from percentage
-  double widthFromPercentage(String percentage) {
-    if (percentage.endsWith('%')) {
-      final value = double.tryParse(percentage.substring(0, percentage.length - 1));
-      if (value != null) {
-        return _screenWidth * value / 100.0;
-      }
-    }
-    return 0;
-  }
-  
-  /// Calculate height from percentage
-  double heightFromPercentage(String percentage) {
-    if (percentage.endsWith('%')) {
-      final value = double.tryParse(percentage.substring(0, percentage.length - 1));
-      if (value != null) {
-        return _screenHeight * value / 100.0;
-      }
-    }
-    return 0;
-  }
+
+  /// Get a stream of dimension changes
+  Stream<void> get dimensionChanges => _dimensionController.stream;
+
+  /// Check if the device is in landscape mode
+  bool get isLandscape => _screenWidth > _screenHeight;
+
+  /// Check if the device is in portrait mode
+  bool get isPortrait => !isLandscape;
 }

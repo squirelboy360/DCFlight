@@ -102,6 +102,49 @@ class LayoutProps {
     this.borderWidth,
   });
 
+  /// Check if there are any layout properties set
+  bool get isNotEmpty {
+    return width != null ||
+        height != null ||
+        minWidth != null ||
+        maxWidth != null ||
+        minHeight != null ||
+        maxHeight != null ||
+        margin != null ||
+        marginTop != null ||
+        marginRight != null ||
+        marginBottom != null ||
+        marginLeft != null ||
+        marginHorizontal != null ||
+        marginVertical != null ||
+        padding != null ||
+        paddingTop != null ||
+        paddingRight != null ||
+        paddingBottom != null ||
+        paddingLeft != null ||
+        paddingHorizontal != null ||
+        paddingVertical != null ||
+        left != null ||
+        top != null ||
+        right != null ||
+        bottom != null ||
+        position != null ||
+        flexDirection != null ||
+        justifyContent != null ||
+        alignItems != null ||
+        alignSelf != null ||
+        alignContent != null ||
+        flexWrap != null ||
+        flex != null ||
+        flexGrow != null ||
+        flexShrink != null ||
+        flexBasis != null ||
+        display != null ||
+        overflow != null ||
+        direction != null ||
+        borderWidth != null;
+  }
+
   /// Convert layout props to a map for serialization
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{};

@@ -2,465 +2,333 @@ import 'dart:developer' as developer;
 import 'yoga_node.dart';
 import 'yoga_enums.dart';
 
-/// Shadow node representing a UI element in the layout tree
+/// Result of layout calculation for a node
+class LayoutResult {
+  /// Left position
+  final double left;
+
+  /// Top position
+  final double top;
+
+  /// Width
+  final double width;
+
+  /// Height
+  final double height;
+
+  /// Create a new layout result
+  LayoutResult({
+    required this.left,
+    required this.top,
+    required this.width,
+    required this.height,
+  });
+
+  @override
+  String toString() =>
+      'LayoutResult(left: $left, top: $top, width: $width, height: $height)';
+}
+
+/// A node in the shadow tree
 class ShadowNode {
-  /// Unique identifier for this node
+  /// Unique ID for this node
   final String id;
 
-  /// The Yoga node for layout calculations
+  /// Corresponding YogaNode for layout calculations
   final YogaNode yogaNode;
-
-  /// Parent node in the shadow tree
-  ShadowNode? parent;
 
   /// Child nodes
   final List<ShadowNode> children = [];
 
-  /// Layout props applied to this node
-  Map<String, dynamic> layoutProps = {};
+  /// Parent node
+  ShadowNode? parent;
 
-  /// Whether this node is dirty and needs layout recalculation
-  bool isDirty = true;
+  /// Whether the node is dirty and needs layout recalculation
+  bool _isDirty = true;
 
-  /// Whether this node is marked for deletion
-  bool isDeleted = false;
+  /// Last calculated layout result
+  LayoutResult? _lastLayout;
 
-  /// Create a shadow node with a unique ID and yoga node
+  /// Create a new shadow node
   ShadowNode(this.id) : yogaNode = YogaNode() {
-    // Set default properties
-    yogaNode.setFlexDirection(YogaFlexDirection.column);
-    yogaNode.setJustifyContent(YogaJustifyContent.flexStart);
-    yogaNode.setAlignItems(YogaAlign.stretch);
+    // When the YogaNode is marked dirty, mark this node dirty too
+    markDirty();
+  }
+
+  /// Dispose of resources
+  void dispose() {
+    // Remove from parent first
+    if (parent != null) {
+      parent!.children.remove(this);
+      parent = null;
+    }
+
+    // Dispose all children first
+    for (final child in List<ShadowNode>.from(children)) {
+      child.dispose();
+    }
+    children.clear();
+
+    // Dispose yoga node
+    yogaNode.dispose();
   }
 
   /// Add a child node
-  void addChild(ShadowNode child) {
-    children.add(child);
-    yogaNode.addChild(child.yogaNode);
-    child.parent = this;
-    markDirty();
-  }
-
-  /// Insert a child node at a specific index
-  void insertChild(ShadowNode child, int index) {
-    if (index < 0 || index > children.length) {
-      developer.log('Invalid index for insertChild: $index',
-          name: 'ShadowNode');
-      return;
+  void addChild(ShadowNode child, [int? index]) {
+    // Remove from previous parent
+    if (child.parent != null) {
+      child.parent!.removeChild(child);
     }
 
-    children.insert(index, child);
-    yogaNode.insertChild(child.yogaNode, index);
+    // Set new parent
     child.parent = this;
-    markDirty();
+
+    // Add to children list
+    final insertIndex = index ?? children.length;
+    if (insertIndex < children.length) {
+      children.insert(insertIndex, child);
+    } else {
+      children.add(child);
+    }
+
+    // Add to yoga node
+    yogaNode.insertChild(child.yogaNode, insertIndex);
+
+    developer.log(
+        'Added node ${child.id} as child to ${id} (child #$insertIndex)',
+        name: 'ShadowNode');
   }
 
   /// Remove a child node
-  bool removeChild(ShadowNode child) {
+  void removeChild(ShadowNode child) {
     final index = children.indexOf(child);
-    if (index == -1) return false;
+    if (index != -1) {
+      children.removeAt(index);
+      child.parent = null;
+      yogaNode.removeChild(child.yogaNode);
+      markDirty();
 
-    yogaNode.removeChild(child.yogaNode);
-    children.removeAt(index);
-    child.parent = null;
-    markDirty();
-    return true;
-  }
-
-  /// Remove a child node by index
-  bool removeChildAtIndex(int index) {
-    if (index < 0 || index >= children.length) {
-      return false;
+      developer.log('Removed node ${child.id} from ${id}', name: 'ShadowNode');
     }
-
-    final child = children[index];
-    yogaNode.removeChild(child.yogaNode);
-    children.removeAt(index);
-    child.parent = null;
-    markDirty();
-    return true;
   }
 
   /// Remove all children
   void removeAllChildren() {
-    for (final child in List.from(children)) {
-      child.parent = null;
+    for (final child in List<ShadowNode>.from(children)) {
+      removeChild(child);
     }
-    children.clear();
     yogaNode.removeAllChildren();
     markDirty();
   }
 
-  /// Apply layout properties to the yoga node
-  void applyLayoutProps(Map<String, dynamic> props) {
-    layoutProps = Map<String, dynamic>.from(props);
-    _applyPropsToYogaNode();
-    markDirty();
-  }
-
-  /// Update specific properties
-  void updateLayoutProps(Map<String, dynamic> props) {
-    layoutProps.addAll(props);
-    _applyPropsToYogaNode();
-    markDirty();
-  }
-
-  /// Apply the stored layout props to the yoga node
-  void _applyPropsToYogaNode() {
-    final props = layoutProps;
-
-    // Width and height (with percentage handling)
-    if (props.containsKey('width')) {
-      _applyDimension(props['width'], (val) => yogaNode.setWidth(val),
-          (val) => yogaNode.setWidthPercent(val));
-    }
-
-    if (props.containsKey('height')) {
-      _applyDimension(props['height'], (val) => yogaNode.setHeight(val),
-          (val) => yogaNode.setHeightPercent(val));
-    }
-
-    // Min width/height
-    if (props.containsKey('minWidth')) {
-      final minWidth = _parseNumberProp(props['minWidth']);
-      if (minWidth != null) {
-        yogaNode.setMinWidth(minWidth);
-      }
-    }
-
-    if (props.containsKey('minHeight')) {
-      final minHeight = _parseNumberProp(props['minHeight']);
-      if (minHeight != null) {
-        yogaNode.setMinHeight(minHeight);
-      }
-    }
-
-    // Max width/height
-    if (props.containsKey('maxWidth')) {
-      final maxWidth = _parseNumberProp(props['maxWidth']);
-      if (maxWidth != null) {
-        yogaNode.setMaxWidth(maxWidth);
-      }
-    }
-
-    if (props.containsKey('maxHeight')) {
-      final maxHeight = _parseNumberProp(props['maxHeight']);
-      if (maxHeight != null) {
-        yogaNode.setMaxHeight(maxHeight);
-      }
-    }
-
-    // Flex properties
-    if (props.containsKey('flex')) {
-      final flex = _parseNumberProp(props['flex']);
-      if (flex != null) {
-        yogaNode.setFlex(flex);
-      }
-    }
-
-    if (props.containsKey('flexGrow')) {
-      final flexGrow = _parseNumberProp(props['flexGrow']);
-      if (flexGrow != null) {
-        yogaNode.setFlexGrow(flexGrow);
-      }
-    }
-
-    if (props.containsKey('flexShrink')) {
-      final flexShrink = _parseNumberProp(props['flexShrink']);
-      if (flexShrink != null) {
-        yogaNode.setFlexShrink(flexShrink);
-      }
-    }
-
-    if (props.containsKey('flexBasis')) {
-      final val = props['flexBasis'];
-      if (val == 'auto') {
-        yogaNode.setFlexBasisAuto();
-      } else {
-        final flexBasis = _parseNumberProp(val);
-        if (flexBasis != null) {
-          yogaNode.setFlexBasis(flexBasis);
-        }
-      }
-    }
-
-    // Flex direction
-    if (props.containsKey('flexDirection')) {
-      final direction = props['flexDirection'];
-      switch (direction) {
-        case 'row':
-          yogaNode.setFlexDirection(YogaFlexDirection.row);
-          break;
-        case 'rowReverse':
-          yogaNode.setFlexDirection(YogaFlexDirection.rowReverse);
-          break;
-        case 'column':
-          yogaNode.setFlexDirection(YogaFlexDirection.column);
-          break;
-        case 'columnReverse':
-          yogaNode.setFlexDirection(YogaFlexDirection.columnReverse);
-          break;
-      }
-    }
-
-    // Justify content
-    if (props.containsKey('justifyContent')) {
-      final justifyContent = props['justifyContent'];
-      switch (justifyContent) {
-        case 'flexStart':
-          yogaNode.setJustifyContent(YogaJustifyContent.flexStart);
-          break;
-        case 'center':
-          yogaNode.setJustifyContent(YogaJustifyContent.center);
-          break;
-        case 'flexEnd':
-          yogaNode.setJustifyContent(YogaJustifyContent.flexEnd);
-          break;
-        case 'spaceBetween':
-          yogaNode.setJustifyContent(YogaJustifyContent.spaceBetween);
-          break;
-        case 'spaceAround':
-          yogaNode.setJustifyContent(YogaJustifyContent.spaceAround);
-          break;
-        case 'spaceEvenly':
-          yogaNode.setJustifyContent(YogaJustifyContent.spaceEvenly);
-          break;
-      }
-    }
-
-    // Align items
-    if (props.containsKey('alignItems')) {
-      final alignItems = props['alignItems'];
-      switch (alignItems) {
-        case 'flexStart':
-          yogaNode.setAlignItems(YogaAlign.flexStart);
-          break;
-        case 'center':
-          yogaNode.setAlignItems(YogaAlign.center);
-          break;
-        case 'flexEnd':
-          yogaNode.setAlignItems(YogaAlign.flexEnd);
-          break;
-        case 'stretch':
-          yogaNode.setAlignItems(YogaAlign.stretch);
-          break;
-        case 'baseline':
-          yogaNode.setAlignItems(YogaAlign.baseline);
-          break;
-      }
-    }
-
-    // Align self
-    if (props.containsKey('alignSelf')) {
-      final alignSelf = props['alignSelf'];
-      switch (alignSelf) {
-        case 'auto':
-          yogaNode.setAlignSelf(YogaAlign.auto);
-          break;
-        case 'flexStart':
-          yogaNode.setAlignSelf(YogaAlign.flexStart);
-          break;
-        case 'center':
-          yogaNode.setAlignSelf(YogaAlign.center);
-          break;
-        case 'flexEnd':
-          yogaNode.setAlignSelf(YogaAlign.flexEnd);
-          break;
-        case 'stretch':
-          yogaNode.setAlignSelf(YogaAlign.stretch);
-          break;
-        case 'baseline':
-          yogaNode.setAlignSelf(YogaAlign.baseline);
-          break;
-      }
-    }
-
-    // Flex wrap
-    if (props.containsKey('flexWrap')) {
-      final flexWrap = props['flexWrap'];
-      switch (flexWrap) {
-        case 'nowrap':
-          yogaNode.setFlexWrap(YogaWrap.nowrap);
-          break;
-        case 'wrap':
-          yogaNode.setFlexWrap(YogaWrap.wrap);
-          break;
-        case 'wrapReverse':
-          yogaNode.setFlexWrap(YogaWrap.wrapReverse);
-          break;
-      }
-    }
-
-    // Position type
-    if (props.containsKey('position')) {
-      final position = props['position'];
-      if (position == 'absolute') {
-        yogaNode.setPositionType(YogaPositionType.absolute);
-      } else {
-        yogaNode.setPositionType(YogaPositionType.relative);
-      }
-    }
-
-    // Apply margins
-    _applyEdgeValues(
-        props,
-        'margin',
-        (edge, value) => yogaNode.setMargin(edge, value),
-        (edge, percent) => yogaNode.setMarginPercent(edge, percent));
-
-    // Apply paddings
-    _applyEdgeValues(
-        props,
-        'padding',
-        (edge, value) => yogaNode.setPadding(edge, value),
-        (edge, percent) => yogaNode.setPaddingPercent(edge, percent));
-  }
-
-  /// Parse a number/percentage value
-  dynamic _parseNumberProp(dynamic value) {
-    if (value == null) return null;
-
-    if (value is num) {
-      return value.toDouble();
-    } else if (value is String && value.endsWith('%')) {
-      try {
-        return double.parse(value.substring(0, value.length - 1));
-      } catch (e) {
-        return null;
-      }
-    } else if (value is String) {
-      try {
-        return double.parse(value);
-      } catch (e) {
-        return null;
-      }
-    }
-    return null;
-  }
-
-  /// Apply a dimension value that could be a number or percentage
-  void _applyDimension(dynamic value, void Function(double) setAbsolute,
-      void Function(double) setPercent) {
-    if (value == null) return;
-
-    if (value is num) {
-      // For numerical values, use absolute points
-      setAbsolute(value.toDouble());
-      developer.log('Applied absolute dimension: $value', name: 'ShadowNode');
-    } else if (value is String) {
-      if (value == 'auto') {
-        // Auto dimensions are handled by specific Yoga auto methods
-        developer.log('Applied auto dimension', name: 'ShadowNode');
-      } else if (value.endsWith('%')) {
-        try {
-          // Extract percentage value (without the % symbol)
-          final percentStr = value.substring(0, value.length - 1);
-          final percentValue = double.parse(percentStr);
-
-          // Pass the actual percentage value (not divided by 100)
-          // Yoga's API expects the raw percentage number
-          setPercent(percentValue);
-
-          developer.log('Applied percentage dimension: $percentValue%',
-              name: 'ShadowNode');
-        } catch (e) {
-          developer.log('Failed to parse percentage value: $value',
-              name: 'ShadowNode');
-        }
-      } else {
-        // Try parsing as an absolute value
-        try {
-          final pointValue = double.parse(value);
-          setAbsolute(pointValue);
-          developer.log('Applied parsed absolute dimension: $pointValue',
-              name: 'ShadowNode');
-        } catch (e) {
-          developer.log('Failed to parse dimension value: $value',
-              name: 'ShadowNode');
-        }
-      }
-    }
-  }
-
-  /// Apply edge values (margin/padding) with support for percentages
-  void _applyEdgeValues(
-      Map<String, dynamic> props,
-      String baseProp,
-      void Function(YogaEdge, double) setter,
-      void Function(YogaEdge, double) percentSetter) {
-    // Handle all-sides value
-    if (props.containsKey(baseProp)) {
-      _applyEdgeValue(props[baseProp], YogaEdge.all, setter, percentSetter);
-    }
-
-    // Handle individual sides
-    final sides = {
-      'Top': YogaEdge.top,
-      'Right': YogaEdge.right,
-      'Bottom': YogaEdge.bottom,
-      'Left': YogaEdge.left,
-    };
-
-    sides.forEach((suffix, edge) {
-      final prop = '$baseProp$suffix';
-      if (props.containsKey(prop)) {
-        _applyEdgeValue(props[prop], edge, setter, percentSetter);
-      }
-    });
-
-    // Handle horizontal (left + right)
-    final propH = '${baseProp}Horizontal';
-    if (props.containsKey(propH)) {
-      _applyEdgeValue(props[propH], YogaEdge.horizontal, setter, percentSetter);
-    }
-
-    // Handle vertical (top + bottom)
-    final propV = '${baseProp}Vertical';
-    if (props.containsKey(propV)) {
-      _applyEdgeValue(props[propV], YogaEdge.vertical, setter, percentSetter);
-    }
-  }
-
-  /// Apply a single edge value (could be percentage)
-  void _applyEdgeValue(
-      dynamic value,
-      YogaEdge edge,
-      void Function(YogaEdge, double) setter,
-      void Function(YogaEdge, double) percentSetter) {
-    if (value is num) {
-      setter(edge, value.toDouble());
-    } else if (value is String && value.endsWith('%')) {
-      final percentValue = _parseNumberProp(value);
-      if (percentValue != null) {
-        percentSetter(edge, percentValue);
-      }
-    } else if (value is String) {
-      final pointValue = _parseNumberProp(value);
-      if (pointValue != null) {
-        setter(edge, pointValue);
-      }
-    }
-  }
-
-  /// Mark this node as dirty, needing layout recalculation
+  /// Mark the node as dirty
   void markDirty() {
-    isDirty = true;
+    _isDirty = true;
+    yogaNode.markDirty();
 
-    // Mark parent as dirty to propagate changes up the tree
+    // Mark parent as dirty
     if (parent != null) {
       parent!.markDirty();
     }
   }
 
-  /// Clean up this node and its children
-  void dispose() {
-    // Clean up children first
-    for (final child in List.from(children)) {
-      child.dispose();
+  /// Check if the node is dirty
+  bool get isDirty => _isDirty || yogaNode.isDirty;
+
+  /// Get the last calculated layout
+  LayoutResult? get layout => _lastLayout;
+
+  /// Calculate layout
+  void calculateLayout(double? width, double? height, YogaDirection direction) {
+    if (!isDirty && _lastLayout != null) {
+      return; // Skip calculation if not dirty
     }
 
-    // Clean up this node
-    yogaNode.dispose();
-    isDeleted = true;
+    // Calculate layout using yoga - use non-null values
+    final calculationWidth = width ?? double.infinity;
+    final calculationHeight = height ?? double.infinity;
+
+    yogaNode.calculateLayout(calculationWidth, calculationHeight, direction);
+
+    // Store the calculated layout
+    _lastLayout = LayoutResult(
+      left: yogaNode.layoutLeft,
+      top: yogaNode.layoutTop,
+      width: yogaNode.layoutWidth,
+      height: yogaNode.layoutHeight,
+    );
+
+    // Mark as not dirty
+    _isDirty = false;
+
+    developer.log(
+        'Layout for node $id: left=${_lastLayout!.left}, top=${_lastLayout!.top}, width=${_lastLayout!.width}, height=${_lastLayout!.height}',
+        name: 'ShadowNode');
+  }
+
+  /// Set layout properties from a map
+  void applyLayoutProps(Map<String, dynamic>? props) {
+    if (props == null) return;
+
+    // Handle dimensions
+    if (props.containsKey('width')) {
+      yogaNode.setWidth(props['width']);
+    }
+
+    if (props.containsKey('height')) {
+      yogaNode.setHeight(props['height']);
+    }
+
+    if (props.containsKey('minWidth')) {
+      yogaNode.setMinWidth(props['minWidth']);
+    }
+
+    if (props.containsKey('maxWidth')) {
+      yogaNode.setMaxWidth(props['maxWidth']);
+    }
+
+    if (props.containsKey('minHeight')) {
+      yogaNode.setMinHeight(props['minHeight']);
+    }
+
+    if (props.containsKey('maxHeight')) {
+      yogaNode.setMaxHeight(props['maxHeight']);
+    }
+
+    // Handle flex properties
+    if (props.containsKey('flex')) {
+      yogaNode.flex = props['flex'] as double;
+    }
+
+    if (props.containsKey('flexGrow')) {
+      yogaNode.flexGrow = props['flexGrow'] as double;
+    }
+
+    if (props.containsKey('flexShrink')) {
+      yogaNode.flexShrink = props['flexShrink'] as double;
+    }
+
+    if (props.containsKey('flexBasis')) {
+      yogaNode.setFlexBasis(props['flexBasis']);
+    }
+
+    if (props.containsKey('flexDirection')) {
+      yogaNode.flexDirection = props['flexDirection'] as YogaFlexDirection;
+    }
+
+    if (props.containsKey('flexWrap')) {
+      yogaNode.flexWrap = props['flexWrap'] as YogaWrap;
+    }
+
+    // Handle alignment
+    if (props.containsKey('justifyContent')) {
+      yogaNode.justifyContent = props['justifyContent'] as YogaJustifyContent;
+    }
+
+    if (props.containsKey('alignItems')) {
+      yogaNode.alignItems = props['alignItems'] as YogaAlign;
+    }
+
+    if (props.containsKey('alignSelf')) {
+      yogaNode.alignSelf = props['alignSelf'] as YogaAlign;
+    }
+
+    if (props.containsKey('alignContent')) {
+      yogaNode.alignContent = props['alignContent'] as YogaAlign;
+    }
+
+    // Handle position
+    if (props.containsKey('position')) {
+      yogaNode.positionType = props['position'] as YogaPositionType;
+    }
+
+    // Handle edges (position, margin, padding, border)
+    for (final edge in YogaEdge.values) {
+      final edgeName = _getEdgeName(edge);
+
+      // Position
+      final positionProp = props['$edgeName'];
+      if (positionProp != null) {
+        yogaNode.setPosition(edge, positionProp);
+      }
+
+      // Margin
+      final marginProp = props['margin$edgeName'];
+      if (marginProp != null) {
+        yogaNode.setMargin(edge, marginProp);
+      }
+
+      // Padding
+      final paddingProp = props['padding$edgeName'];
+      if (paddingProp != null) {
+        yogaNode.setPadding(edge, paddingProp);
+      }
+
+      // Border
+      final borderProp = props['border${edgeName}Width'];
+      if (borderProp != null) {
+        yogaNode.setBorder(edge, borderProp);
+      }
+    }
+
+    // Handle special cases for all edges
+    if (props.containsKey('margin')) {
+      final margin = props['margin'];
+      for (final edge in YogaEdge.values) {
+        yogaNode.setMargin(edge, margin);
+      }
+    }
+
+    if (props.containsKey('padding')) {
+      final padding = props['padding'];
+      for (final edge in YogaEdge.values) {
+        yogaNode.setPadding(edge, padding);
+      }
+    }
+
+    if (props.containsKey('borderWidth')) {
+      final borderWidth = props['borderWidth'];
+      for (final edge in YogaEdge.values) {
+        yogaNode.setBorder(edge, borderWidth);
+      }
+    }
+
+    // Handle display and overflow
+    if (props.containsKey('display')) {
+      yogaNode.display = props['display'] as YogaDisplay;
+    }
+
+    if (props.containsKey('overflow')) {
+      yogaNode.overflow = props['overflow'] as YogaOverflow;
+    }
+
+    // Mark as dirty after applying props
+    markDirty();
+
+    developer.log('Updated layout props for node $id', name: 'ShadowNode');
+  }
+
+  /// Get edge name for property names
+  String _getEdgeName(YogaEdge edge) {
+    switch (edge) {
+      case YogaEdge.top:
+        return 'Top';
+      case YogaEdge.right:
+        return 'Right';
+      case YogaEdge.bottom:
+        return 'Bottom';
+      case YogaEdge.left:
+        return 'Left';
+      case YogaEdge.all:
+        return '';
+      case YogaEdge.horizontal:
+        return 'Horizontal';
+      case YogaEdge.vertical:
+        return 'Vertical';
+      case YogaEdge.start:
+        return 'Start';
+      case YogaEdge.end:
+        return 'End';
+    }
   }
 }

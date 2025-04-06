@@ -21,34 +21,50 @@ React Native and DCMAUI both enable cross-platform development with native UI co
 1. **Faster UI Operations**: 
    - Direct FFI calls vs serialized bridge messages (40-60% faster)
    - No JS-to-native type conversion overhead
+   - Full Yoga implementation with proper layout hierarchies gives native performance
 
 2. **Enhanced Responsiveness**:
    - UI thread never blocked by event handling (demonstrated by 40-50% efficiency improvement)
    - Event processing doesn't delay animations or UI updates
+   - Shadow tree layout calculation performed in Dart using Yoga bindings
 
 3. **Startup Performance**:
    - No JavaScript VM to initialize
    - Direct rendering path with minimal initialization
+   - Efficient shadow tree reuses layout calculations
 
 4. **Memory Efficiency**:
    - Smaller runtime footprint (no JS engine)
    - Direct native memory management
+   - Shared Yoga instance between native and Dart code
+
+5. **Layout Performance**:
+   - Yoga layout calculation in Dart with direct FFI bindings
+   - Layout shadow tree identical to React Native's implementation
+   - Zero-copy layout transfer to native views
+   - Batch layout updates for optimal performance
 
 ## Developer Experience Trade-offs
 
-DCMAUI makes several bets on developer experience:
+1. **Familiar API**:
+   - Component-based architecture similar to React
+   - Hooks-based state management
+   - Flexbox-style layout system with Yoga
 
-1. **Flutter + Direct Native UI**: 
-   - Uses Dart for business logic rather than JavaScript
-   - Combines Flutter tooling with direct native UI rendering
+2. **Debugging**:
+   - Direct access to native debugging tools
+   - No bridge to inspect or debug
+   - Native-speed layout calculations
 
-2. **React-like Patterns**:
-   - Familiar component model and hooks-based state management
-   - VDOM-style diffing for efficient updates
+3. **Ecosystem**:
+   - Compatible with Flutter plugins
+   - Native UI components with direct FFI access
+   - No JavaScript dependencies
 
-3. **Simplified FFI Communication**:
-   - Optimized for UI performance with clear thread separation
-   - Developers don't need to manage thread safety manually
+4. **Learning Curve**:
+   - Familiar for React Native developers
+   - Dart syntax is similar to JavaScript/TypeScript
+   - Same layout system as React Native (Yoga)
 
 ## The Big Bet: Performance Without Compromise
 

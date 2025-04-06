@@ -1,5 +1,6 @@
-/// Direction of layout
+/// Direction for layout
 enum YogaDirection {
+  inherit,
   ltr,
   rtl,
 }
@@ -12,7 +13,7 @@ enum YogaFlexDirection {
   rowReverse,
 }
 
-/// Justify content
+/// Justify content options
 enum YogaJustifyContent {
   flexStart,
   center,
@@ -22,7 +23,7 @@ enum YogaJustifyContent {
   spaceEvenly,
 }
 
-/// Align items
+/// Align options
 enum YogaAlign {
   auto,
   flexStart,
@@ -34,14 +35,33 @@ enum YogaAlign {
   spaceAround,
 }
 
-/// Flex wrap
+/// Flex wrap options
 enum YogaWrap {
   nowrap,
   wrap,
   wrapReverse,
 }
 
-/// Edge for margin/padding
+/// Display options
+enum YogaDisplay {
+  flex,
+  none,
+}
+
+/// Position type options
+enum YogaPositionType {
+  relative,
+  absolute,
+}
+
+/// Overflow options
+enum YogaOverflow {
+  visible,
+  hidden,
+  scroll,
+}
+
+/// Edge options for position, margin, padding and border
 enum YogaEdge {
   left,
   top,
@@ -52,31 +72,4 @@ enum YogaEdge {
   horizontal,
   vertical,
   all,
-}
-
-/// Position type
-enum YogaPositionType {
-  relative,
-  absolute,
-}
-
-/// Layout direction for display
-enum YogaDisplay {
-  flex,
-  none,
-}
-
-/// Unit for layout properties
-enum YogaUnit {
-  undefined,
-  point,
-  percent,
-  auto,
-}
-
-/// Overflow behavior
-enum YogaOverflow {
-  visible,
-  hidden,
-  scroll,
 }

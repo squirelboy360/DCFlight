@@ -226,7 +226,9 @@ class Reconciler {
           final oldIndex = oldChildIndices[key] ?? 0;
           if (oldIndex < lastIndex) {
             // Node needs to move
-            await vdom.attachView(oldChild.nativeViewId!, parentViewId, i);
+            if (oldChild.nativeViewId != null) {
+              await _moveViewInParent(oldChild.nativeViewId!, parentViewId, i);
+            }
           } else {
             // Node stays in place
             lastIndex = oldIndex;
@@ -237,7 +239,7 @@ class Reconciler {
         final childId = await vdom.renderToNative(newChild,
             parentId: parentViewId, index: i);
 
-        if (childId.isNotEmpty) {
+        if (childId != null && childId.isNotEmpty) {
           updatedChildren.add(childId);
           newChild.nativeViewId = childId;
         }
@@ -250,7 +252,7 @@ class Reconciler {
       if (!newChildren.any((newChild) =>
           (newChild.key ?? newChildren.indexOf(newChild).toString()) == key)) {
         if (oldChild.nativeViewId != null) {
-          await vdom.deleteView(oldChild.nativeViewId!);
+          await _deleteView(oldChild.nativeViewId!);
         }
       }
     }
@@ -283,8 +285,9 @@ class Reconciler {
         // Render a new child
         final childId = await vdom.renderToNative(newChild,
             parentId: parentViewId, index: i);
-        if (childId.isNotEmpty) {
+        if (childId != null && childId.isNotEmpty) {
           updatedChildren.add(childId);
+          newChild.nativeViewId = childId;
         }
       }
     }
@@ -294,7 +297,7 @@ class Reconciler {
       for (var i = commonLength; i < oldChildren.length; i++) {
         final oldChild = oldChildren[i];
         if (oldChild.nativeViewId != null) {
-          await vdom.deleteView(oldChild.nativeViewId!);
+          await _deleteView(oldChild.nativeViewId!);
         }
       }
     }
@@ -305,8 +308,9 @@ class Reconciler {
         final newChild = newChildren[i];
         final childId = await vdom.renderToNative(newChild,
             parentId: parentViewId, index: i);
-        if (childId.isNotEmpty) {
+        if (childId != null && childId.isNotEmpty) {
           updatedChildren.add(childId);
+          newChild.nativeViewId = childId;
         }
       }
     }
@@ -337,7 +341,7 @@ class Reconciler {
     final index = parentInfo.index;
 
     // Delete the old node
-    await vdom.deleteView(oldNode.nativeViewId!);
+    await _deleteView(oldNode.nativeViewId!);
 
     // Create the new node under the same parent
     final newNodeId =
@@ -345,10 +349,25 @@ class Reconciler {
 
     // Update references
     newNode.nativeViewId = newNodeId;
-    vdom.removeNodeFromTree(oldNode.nativeViewId!);
-    if (newNodeId.isNotEmpty) {
+    if (oldNode.nativeViewId != null) {
+      vdom.removeNodeFromTree(oldNode.nativeViewId!);
+    }
+    if (newNodeId != null && newNodeId.isNotEmpty) {
       vdom.addNodeToTree(newNodeId, newNode);
     }
+  }
+
+  /// Helper method to move a view in its parent
+  Future<void> _moveViewInParent(
+      String childId, String parentId, int index) async {
+    // Delegate to vdom's native bridge
+    await vdom.detachView(childId);
+    await vdom.attachView(childId, parentId, index);
+  }
+
+  /// Helper method to delete a view
+  Future<void> _deleteView(String viewId) async {
+    await vdom.deleteView(viewId);
   }
 
   /// Get parent information for a node

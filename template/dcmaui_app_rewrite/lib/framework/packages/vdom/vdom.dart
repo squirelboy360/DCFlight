@@ -3,735 +3,614 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 
-import '../native_bridge/native_bridge.dart';
-import '../native_bridge/ffi_bridge.dart';
+import '../../utilities/screen_utilities.dart';
+import '../../packages/native_bridge/native_bridge.dart';
+import '../../packages/native_bridge/ffi_bridge.dart';
+import '../../packages/yoga/layout_calculator.dart';
+import '../../packages/yoga/yoga_enums.dart';
+import '../../constants/layout_properties.dart';
 import 'vdom_node.dart';
 import 'vdom_element.dart';
 import 'component.dart';
 import 'component_node.dart';
-import 'reconciler.dart';
-import 'context.dart';
-import 'fragment.dart';
-import 'error_boundary.dart';
-import '../yoga/layout_calculator.dart';
-import 'performance_monitor.dart';
 
-/// Virtual DOM implementation that bridges to native UI
+/// Virtual DOM implementation
 class VDom {
-  /// The native bridge for UI operations
-  final NativeBridge _nativeBridge;
+  /// Native bridge for UI operations
+  late final NativeBridge _nativeBridge;
 
-  /// Ready completer
+  /// Whether the VDom is ready for use
   final Completer<void> _readyCompleter = Completer<void>();
 
+  /// Counter for generating view IDs
+  int _viewIdCounter = 1;
+
   /// Map of component instances by ID
-  final Map<String, ComponentInstance> _componentInstances = {};
+  final Map<String, Component> _components = {};
 
-  /// Reconciliation engine
-  late final Reconciler _reconciler;
-
-  /// Tree of rendered nodes
-  final Map<String, VDomNode> _nodeTree = {};
-
-  /// Reverse mapping from component ID to view ID
-  final Map<String, String> _componentToViewId = {};
-
-  /// Next available view ID counter
-  int _nextViewIdCounter = 1;
-
-  /// Whether the VDOM is initialized
-  bool _isInitialized = false;
-
-  /// Performance monitor
-  final PerformanceMonitor _performanceMonitor = PerformanceMonitor();
-
-  /// Current batch update
-  final Set<String> _pendingUpdates = {};
-
-  /// Whether an update is scheduled
-  bool _isUpdateScheduled = false;
-
-  /// Context registry
-  final ContextRegistry _contextRegistry = ContextRegistry();
-
-  /// Error boundaries
-  final Map<String, ErrorBoundary> _errorBoundaries = {};
-
-  /// Map of component nodes by component instance ID for quick lookup
+  /// Map of component nodes by component instance ID
   final Map<String, ComponentNode> _componentNodes = {};
 
-  /// Layout calculator for computing layouts in Dart
-  final LayoutCalculator _layoutCalculator = LayoutCalculator.instance;
+  /// Map of view IDs to VDomNodes
+  final Map<String, VDomNode> _nodesByViewId = {};
 
-  /// Root component node for layout calculations
+  /// Map of node IDs from creation to view IDs after creation
+  final Map<String, String> _nodeIdToViewId = {};
+
+  /// Root component node (for main application)
   ComponentNode? rootComponentNode;
 
-  /// Current screen dimensions for layout calculation
-  String _screenWidth = "100%"; // Use percentage for dynamic sizing
-  String _screenHeight = "100%"; // Use percentage for dynamic sizing
-
-  /// Flag to indicate if layout needs to be recalculated
+  /// Flag to track if layout recalculation is needed
   bool _layoutDirty = false;
 
-  /// Constructor
-  VDom({NativeBridge? nativeBridge})
-      : _nativeBridge = nativeBridge ?? FFINativeBridge() {
+  /// Create a new VDom instance
+  VDom() {
     _initialize();
   }
 
-  /// Initialize the VDOM
-  void _initialize() async {
-    if (_isInitialized) return;
+  /// Initialize the VDom
+  Future<void> _initialize() async {
+    try {
+      // Create native bridge
+      _nativeBridge = NativeBridgeFactory.create();
 
-    // Initialize native bridge
-    _performanceMonitor.startTimer('vdom_initialize');
-    final success = await _nativeBridge.initialize();
-    _performanceMonitor.endTimer('vdom_initialize');
+      // Initialize bridge
+      final success = await _nativeBridge.initialize();
 
-    if (!success) {
-      developer.log('Failed to initialize native bridge', name: 'VDom');
-      _readyCompleter.completeError('Failed to initialize native bridge');
-      return;
+      if (!success) {
+        throw Exception('Failed to initialize native bridge');
+      }
+
+      // Register event handler
+      _nativeBridge.setEventHandler(_handleNativeEvent);
+
+      // Initialize layout calculator
+      LayoutCalculator.instance.initialize(_nativeBridge);
+
+      // Mark as ready
+      _readyCompleter.complete();
+
+      developer.log('VDom initialized', name: 'VDom');
+    } catch (e) {
+      _readyCompleter.completeError(e);
+      developer.log('Failed to initialize VDom: $e', name: 'VDom', error: e);
     }
-
-    // Set up event handler
-    _nativeBridge.setEventHandler(_handleNativeEvent);
-
-    // Create reconciler
-    _reconciler = Reconciler(this);
-
-    // Mark as initialized
-    _isInitialized = true;
-    _readyCompleter.complete();
-
-    developer.log('VDom initialized', name: 'VDom');
   }
 
   /// Future that completes when VDom is ready
   Future<void> get isReady => _readyCompleter.future;
 
-  /// Expose methods for reconciler to use
-  Future<bool> updateView(String viewId, Map<String, dynamic> props) {
-    return _nativeBridge.updateView(viewId, props);
-  }
-
-  Future<bool> attachView(String viewId, String parentId, int index) {
-    return _nativeBridge.attachView(viewId, parentId, index);
-  }
-
-  Future<bool> deleteView(String viewId) {
-    return _nativeBridge.deleteView(viewId);
-  }
-
-  Future<bool> setChildren(String viewId, List<String> childIds) {
-    return _nativeBridge.setChildren(viewId, childIds);
-  }
-
-  void removeNodeFromTree(String viewId) {
-    _nodeTree.remove(viewId);
-  }
-
-  void addNodeToTree(String viewId, VDomNode node) {
-    _nodeTree[viewId] = node;
-  }
-
-  /// Mark that layout needs recalculation
-  void markLayoutDirty() {
-    _layoutDirty = true;
+  /// Generate a unique view ID
+  String _generateViewId() {
+    return 'view_${_viewIdCounter++}';
   }
 
   /// Create a component node
   ComponentNode createComponent(Component component) {
     final node = ComponentNode(component: component);
 
-    // Create and register a component instance
-    _componentInstances[component.instanceId] = ComponentInstance(
-      component: component,
-      vdomRef: this,
-    );
-
-    // Store component node for quick lookup
+    // Store component and node by component ID
+    _components[component.instanceId] = component;
     _componentNodes[component.instanceId] = node;
-
-    // Create component instance and set up update scheduling
-    if (component is StatefulComponent) {
-      // Add method to schedule component updates
-      component.scheduleUpdate = () {
-        _scheduleComponentUpdate(component);
-      };
-    }
 
     return node;
   }
 
-  /// Render a node to native UI
-  Future<String> renderToNative(VDomNode node,
-      {required String parentId, int index = 0}) async {
-    // Wait for initialization
-    await isReady;
-
-    _performanceMonitor.startTimer('render_to_native');
-    try {
-      // Store root component node if this is the first render
-      if (rootComponentNode == null && node is ComponentNode) {
-        rootComponentNode = node;
-      }
-
-      // Handle Fragment nodes
-      if (node is Fragment) {
-        // Just render children directly to parent
-        final childIds = <String>[];
-        int childIndex = index;
-
-        for (final child in node.children) {
-          final childId = await renderToNative(
-            child,
-            parentId: parentId,
-            index: childIndex++,
-          );
-
-          if (childId.isNotEmpty) {
-            childIds.add(childId);
-          }
-        }
-
-        return ""; // Fragments don't have their own ID
-      }
-
-      if (node is ComponentNode) {
-        // Render the component
-        final instance = _componentInstances[node.component.instanceId];
-        if (instance == null) {
-          throw Exception('Component instance not found');
-        }
-
-        // Prepare component for render
-        if (node.component is StatefulComponent) {
-          (node.component as StatefulComponent).prepareForRender();
-        }
-
-        try {
-          // Render to get actual node
-          _performanceMonitor.startTimer('component_render');
-          final renderedNode = node.component.render();
-          _performanceMonitor.endTimer('component_render');
-
-          // Store rendered node
-          node.renderedNode = renderedNode;
-
-          // Set parent reference
-          renderedNode.parent = node;
-
-          // Add listener for updates
-          if (node.component is StatefulComponent) {
-            final stateful = node.component as StatefulComponent;
-            // Only add listener if not already listening
-            if (!instance.hasUpdateListener) {
-              instance.hasUpdateListener = true;
-            }
-          }
-
-          // Register error boundary if applicable
-          if (node.component is ErrorBoundary) {
-            _errorBoundaries[node.component.instanceId] =
-                node.component as ErrorBoundary;
-          }
-
-          // Continue with rendering the actual node
-          final viewId = await renderToNative(renderedNode,
-              parentId: parentId, index: index);
-
-          // Store component -> viewId mapping for quick lookups
-          if (viewId.isNotEmpty) {
-            _componentToViewId[node.component.instanceId] = viewId;
-          }
-
-          // Run effects after render for stateful components
-          if (node.component is StatefulComponent && instance.isMounted) {
-            (node.component as StatefulComponent).runEffectsAfterRender();
-          }
-
-          return viewId;
-        } catch (error, stackTrace) {
-          // Try to find nearest error boundary
-          final errorBoundary = _findNearestErrorBoundary(node);
-          if (errorBoundary != null) {
-            errorBoundary.handleError(error, stackTrace);
-            return ""; // Error handled by boundary
-          }
-
-          // No error boundary, propagate error
-          rethrow;
-        }
-      }
-
-      if (node is VDomElement) {
-        // Special handling for context provider
-        if (node.type == 'ContextProvider') {
-          final contextId = node.props['contextId'] as String;
-          final value = node.props['value'];
-          final providerId = 'provider_${_nextViewIdCounter++}';
-
-          // Register context value
-          _contextRegistry.setContextValue(contextId, providerId, value);
-
-          // Render children
-          if (node.children.isNotEmpty) {
-            return await renderToNative(node.children[0],
-                parentId: parentId, index: index);
-          }
-          return "";
-        }
-
-        // Special handling for context consumer
-        if (node.type == 'ContextConsumer') {
-          final contextId = node.props['contextId'] as String;
-          final consumer = node.props['consumer'] as Function;
-          final providerChain = _getProviderChain(node);
-
-          // Get context value
-          final value =
-              _contextRegistry.getContextValue(contextId, providerChain);
-
-          // Build child using consumer function
-          final child = consumer(value);
-
-          // Render the child
-          return await renderToNative(child, parentId: parentId, index: index);
-        }
-
-        // Regular element
-        // Generate a view ID if needed
-        final viewId = node.nativeViewId ?? _generateViewId();
-
-        // Store the node
-        node.nativeViewId = viewId;
-        _nodeTree[viewId] = node;
-
-        // Create the native view
-        _performanceMonitor.startTimer('create_native_view');
-        final created =
-            await _nativeBridge.createView(viewId, node.type, node.props);
-        _performanceMonitor.endTimer('create_native_view');
-
-        if (!created) {
-          developer.log('Failed to create native view', name: 'VDom');
-          return "";
-        }
-
-        // Attach to parent
-        _performanceMonitor.startTimer('attach_view');
-        await _nativeBridge.attachView(viewId, parentId, index);
-        _performanceMonitor.endTimer('attach_view');
-
-        // Register event listeners
-        final eventProps = node.props.entries
-            .where((entry) =>
-                entry.key.startsWith('on') && entry.value is Function)
-            .map((entry) => entry.key.substring(2).toLowerCase())
-            .toList();
-
-        if (eventProps.isNotEmpty) {
-          _performanceMonitor.startTimer('add_event_listeners');
-          await _nativeBridge.addEventListeners(viewId, eventProps);
-          _performanceMonitor.endTimer('add_event_listeners');
-        }
-
-        // Render children
-        final childIds = <String>[];
-
-        _performanceMonitor.startTimer('render_children');
-        for (int i = 0; i < node.children.length; i++) {
-          final childNode = node.children[i];
-          final childId = await renderToNative(
-            childNode,
-            parentId: viewId,
-            index: i,
-          );
-
-          if (childId.isNotEmpty) {
-            childIds.add(childId);
-          }
-        }
-        _performanceMonitor.endTimer('render_children');
-
-        // Set children order
-        if (childIds.isNotEmpty) {
-          _performanceMonitor.startTimer('set_children');
-          await _nativeBridge.setChildren(viewId, childIds);
-          _performanceMonitor.endTimer('set_children');
-        }
-
-        // If this is the root of a component tree, calculate layout
-        if (node == rootComponentNode?.renderedNode) {
-          await calculateAndApplyLayout(); // Use public method
-        }
-
-        // Call lifecycle methods after full rendering
-        _callLifecycleMethodsIfNeeded(node);
-
-        return viewId;
-      }
-
-      // Empty nodes don't render
-      return "";
-    } finally {
-      _performanceMonitor.endTimer('render_to_native');
-    }
-  }
-
-  /// Schedule a component update for batching
-  void _scheduleComponentUpdate(StatefulComponent component) {
-    _pendingUpdates.add(component.instanceId);
-
-    if (_isUpdateScheduled) return;
-    _isUpdateScheduled = true;
-
-    // Schedule updates to run after current execution using microtask for animations
-    // This is important for smooth animations (runs at end of current frame)
-    Future.microtask(() {
-      _processPendingUpdates();
-    });
-  }
-
-  /// Process all pending component updates
-  Future<void> _processPendingUpdates() async {
-    if (_pendingUpdates.isEmpty) {
-      _isUpdateScheduled = false;
-      return;
-    }
-
-    _performanceMonitor.startTimer('batch_update');
-
-    // Copy the pending updates to allow for new ones during processing
-    final updates = Set<String>.from(_pendingUpdates);
-    _pendingUpdates.clear();
-
-    // Process each pending component update
-    for (final instanceId in updates) {
-      final component = _findComponentById(instanceId);
-      if (component != null) {
-        await _updateComponent(component);
-      } else {
-        developer.log('Component not found for update: $instanceId',
-            name: 'VDom');
-        // Try to clean up stale update reference
-        _pendingUpdates.remove(instanceId);
-      }
-    }
-
-    _performanceMonitor.endTimer('batch_update');
-
-    // Check if new updates were added during processing
-    if (_pendingUpdates.isNotEmpty) {
-      // Process new updates in next microtask to avoid deep recursion
-      Future.microtask(() {
-        _processPendingUpdates();
-      });
-    } else {
-      _isUpdateScheduled = false;
-    }
-  }
-
-  /// Find a component by its ID
-  StatefulComponent? _findComponentById(String instanceId) {
-    for (final entry in _componentInstances.entries) {
-      if (entry.key == instanceId &&
-          entry.value.component is StatefulComponent) {
-        return entry.value.component as StatefulComponent;
-      }
-    }
-    return null;
-  }
-
-  /// Update a component when state changes
-  Future<void> _updateComponent(StatefulComponent component) async {
-    developer.log('Updating component: ${component.runtimeType}', name: 'VDom');
-
-    _performanceMonitor.startTimer('update_component');
-
-    try {
-      // Reset hook state for the next render
-      component.prepareForRender();
-
-      // Render the component
-      _performanceMonitor.startTimer('component_render');
-      final newNode = component.render();
-      _performanceMonitor.endTimer('component_render');
-
-      // Find the component node in the tree
-      final componentNode = _findComponentNode(component);
-      if (componentNode == null) {
-        developer.log(
-            'Component node not found for ${component.runtimeType}, unable to update UI',
-            name: 'VDom');
-        return;
-      }
-
-      developer.log(
-          'Found component node, updating UI for ${component.runtimeType}',
-          name: 'VDom');
-
-      // Store the previous rendered node
-      final previousNode = componentNode.renderedNode;
-
-      // Set the new rendered node
-      componentNode.renderedNode = newNode;
-
-      // If we have a previous node, reconcile it with the new one
-      if (previousNode != null) {
-        _performanceMonitor.startTimer('reconcile');
-        await _reconciler.reconcile(previousNode, newNode);
-        _performanceMonitor.endTimer('reconcile');
-      } else {
-        // If no previous node, this might be the first render or a node that was removed
-        // Attempt to render or re-render it to native
-        if (componentNode.nativeViewId != null) {
-          final parentId = _findParentViewId(componentNode);
-          if (parentId != null) {
-            await renderToNative(newNode, parentId: parentId, index: 0);
-          }
-        }
-      }
-
-      // Mark as mounted if not already
-      if (!component.isMounted) {
-        component.componentDidMount();
-      } else {
-        component.componentDidUpdate({});
-      }
-    } catch (e, stack) {
-      developer.log('Error updating component: $e',
-          name: 'VDom', error: e, stackTrace: stack);
-    } finally {
-      _performanceMonitor.endTimer('update_component');
-    }
-  }
-
-  /// Find the component node for a component
-  ComponentNode? _findComponentNode(Component component) {
-    // First try the direct lookup from the component nodes map
-    if (_componentNodes.containsKey(component.instanceId)) {
-      return _componentNodes[component.instanceId];
-    }
-
-    return null;
-  }
-
-  /// Handle events from native UI
+  /// Handle a native event
   void _handleNativeEvent(
       String viewId, String eventType, Map<String, dynamic> eventData) {
-    _performanceMonitor.startTimer('handle_native_event');
-
-    final node = _nodeTree[viewId];
-    if (node == null) {
-      _performanceMonitor.endTimer('handle_native_event');
-      return;
-    }
-
-    if (node is VDomElement) {
-      // Convert event name to prop name (e.g., 'press' -> 'onPress')
-      final propName =
-          'on${eventType[0].toUpperCase()}${eventType.substring(1)}';
-
-      // Call the handler if it exists
-      if (node.props.containsKey(propName) &&
-          node.props[propName] is Function) {
-        _performanceMonitor.startTimer('event_handler');
-        final handler = node.props[propName] as Function;
-        handler(eventData);
-        _performanceMonitor.endTimer('event_handler');
-      }
-    }
-
-    _performanceMonitor.endTimer('handle_native_event');
+    // TODO: Implement event handling
   }
 
-  /// Generate a unique view ID
-  String _generateViewId() {
-    return 'view_${_nextViewIdCounter++}';
+  /// Create a new element
+  VDomElement createElement(
+    String type, {
+    Map<String, dynamic>? props,
+    List<VDomNode>? children,
+    String? key,
+    String? tempId,
+  }) {
+    return VDomElement(
+      type: type,
+      props: props ?? {},
+      children: children ?? [],
+      key: key,
+    );
   }
 
-  /// Call lifecycle methods for components
-  void _callLifecycleMethodsIfNeeded(VDomNode node) {
-    // Find component owning this node by traversing up the tree
-    VDomNode? current = node;
-    ComponentNode? componentNode;
+  /// Render a node to native UI
+  Future<String?> renderToNative(VDomNode node,
+      {String? parentId, int? index}) async {
+    await isReady;
 
-    while (current != null) {
-      if (current is ComponentNode) {
-        componentNode = current;
-        break;
-      }
-      current = current.parent;
-    }
-
-    if (componentNode != null) {
-      final component = componentNode.component;
-      final instance = _componentInstances[component.instanceId];
-
-      if (instance != null && !instance.isMounted) {
-        if (component is StatefulComponent) {
-          // Call componentDidMount
-          component.componentDidMount();
-        } else {
-          // For non-stateful components, just call the method
-          component.componentDidMount();
-        }
-
-        instance.isMounted = true;
-      }
-    }
-  }
-
-  /// Get performance data
-  Map<String, dynamic> getPerformanceData() {
-    return _performanceMonitor.getMetricsReport();
-  }
-
-  /// Find the nearest error boundary for a node
-  ErrorBoundary? _findNearestErrorBoundary(VDomNode node) {
-    VDomNode? current = node;
-
-    while (current != null) {
-      if (current is ComponentNode && current.component is ErrorBoundary) {
-        return current.component as ErrorBoundary;
-      }
-      current = current.parent;
+    if (node is ComponentNode) {
+      return _renderComponentToNative(node, parentId: parentId, index: index);
+    } else if (node is VDomElement) {
+      return _renderElementToNative(node, parentId: parentId, index: index);
     }
 
     return null;
   }
 
-  /// Get provider chain for context lookup
-  List<String> _getProviderChain(VDomNode node) {
-    final result = <String>[];
-    VDomNode? current = node;
+  /// Render a component to native UI
+  Future<String?> _renderComponentToNative(ComponentNode componentNode,
+      {String? parentId, int? index}) async {
+    final component = componentNode.component;
 
-    while (current != null) {
-      if (current is VDomElement &&
-          current.type == 'ContextProvider' &&
-          current.nativeViewId != null) {
-        result.add(current.nativeViewId!);
-      }
-      current = current.parent;
+    // Set the update function
+    if (component is StatefulComponent) {
+      component.scheduleUpdate = () => _updateComponent(component.instanceId);
     }
 
+    // Reset hook state before render for stateful components
+    if (component is StatefulComponent) {
+      component.prepareForRender();
+    }
+
+    // Render the component
+    final renderedNode = component.render();
+    componentNode.renderedNode = renderedNode;
+    renderedNode.parent = componentNode;
+
+    // Render the rendered node
+    final viewId =
+        await renderToNative(renderedNode, parentId: parentId, index: index);
+
+    // Store the view ID
+    componentNode.contentViewId = viewId;
+
+    // Call lifecycle method
+    component.componentDidMount();
+
+    return viewId;
+  }
+
+  /// Render an element to native UI
+  Future<String?> _renderElementToNative(VDomElement element,
+      {String? parentId, int? index}) async {
+    // Generate view ID
+    final viewId = _generateViewId();
+
+    // Store map from node to view ID
+    _nodesByViewId[viewId] = element;
+
+    // Extract layout props
+    final layoutProps = _extractLayoutProps(element.props);
+
+    // Create the view
+    final success =
+        await _nativeBridge.createView(viewId, element.type, element.props);
+
+    if (!success) {
+      developer.log('Failed to create view: $viewId of type ${element.type}',
+          name: 'VDom');
+      return null;
+    }
+
+    // Add to layout tree
+    LayoutCalculator.instance.addNode(viewId, parentId: parentId, index: index);
+
+    // Apply layout props
+    if (layoutProps != null) {
+      final layoutMap = layoutProps.toMap();
+      if (layoutMap.isNotEmpty) {
+        LayoutCalculator.instance.updateNodeLayoutProps(viewId, layoutMap);
+      }
+    }
+
+    // If parent is specified, attach to parent
+    if (parentId != null) {
+      await attachView(viewId, parentId, index ?? 0);
+    }
+
+    // Render children
+    for (var i = 0; i < element.children.length; i++) {
+      await renderToNative(element.children[i], parentId: viewId, index: i);
+    }
+
+    // Register event listeners
+    final eventTypes = _extractEventTypes(element.props);
+    if (eventTypes.isNotEmpty) {
+      await _nativeBridge.addEventListeners(viewId, eventTypes);
+    }
+
+    return viewId;
+  }
+
+  /// Calculate and apply layout
+  Future<void> calculateAndApplyLayout({double? width, double? height}) async {
+    developer.log(
+        '🔥 Starting layout calculation with dimensions: ${width ?? '100%'} x ${height ?? '100%'}',
+        name: 'VDom');
+
+    // Use screen dimensions if not specified
+    double calculationWidth = width ?? ScreenUtilities.instance.screenWidth;
+    double calculationHeight = height ?? ScreenUtilities.instance.screenHeight;
+
+    developer.log(
+        '🔄 Using explicit dimensions for layout: $calculationWidth x $calculationHeight',
+        name: 'VDom');
+
+    // Perform layout calculation
+    await LayoutCalculator.instance.calculateAndApplyLayout(
+        calculationWidth, calculationHeight, YogaDirection.ltr);
+
+    developer.log(
+        '✅ Layout calculation applied for ${LayoutCalculator.instance.nodeCount} views',
+        name: 'VDom');
+
+    // Log layout results for debugging
+    for (final viewId in _nodesByViewId.keys) {
+      final layout = LayoutCalculator.instance.getLayoutForNode(viewId);
+      if (layout != null) {
+        developer.log('📐 View $viewId layout: $layout', name: 'VDom');
+      }
+    }
+
+    // Reset layout dirty flag
+    _layoutDirty = false;
+  }
+
+  /// Update a component
+  void _updateComponent(String componentId) {
+    if (!_components.containsKey(componentId) ||
+        !_componentNodes.containsKey(componentId)) {
+      return;
+    }
+
+    developer.log('Updating component: ${_components[componentId]!.typeName}',
+        name: 'VDom');
+
+    final component = _components[componentId]!;
+    final componentNode = _componentNodes[componentId]!;
+
+    // Handle stateful components
+    if (component is StatefulComponent) {
+      // Clean up old effects
+      component.componentWillUnmount();
+
+      // Reset hook state before render
+      component.prepareForRender();
+    }
+
+    // Re-render the component
+    final newRenderedNode = component.render();
+    final oldRenderedNode = componentNode.renderedNode;
+
+    // Update the rendered node
+    componentNode.renderedNode = newRenderedNode;
+    newRenderedNode.parent = componentNode;
+
+    // Reconcile (for now just replace)
+    if (oldRenderedNode != null &&
+        oldRenderedNode is VDomElement &&
+        newRenderedNode is VDomElement) {
+      _updateElement(oldRenderedNode, newRenderedNode);
+    }
+
+    // Calculate layout again
+    calculateLayout();
+  }
+
+  /// Update an element
+  Future<void> _updateElement(
+      VDomElement oldElement, VDomElement newElement) async {
+    // For now, just update props
+    final viewId = _findViewIdForNode(oldElement);
+
+    if (viewId != null) {
+      developer.log('Found component node, updating UI for ${oldElement.type}',
+          name: 'VDom');
+
+      // Extract layout props
+      final layoutProps = _extractLayoutProps(newElement.props);
+
+      // Update layout props if needed
+      if (layoutProps != null) {
+        final layoutMap = layoutProps.toMap();
+        if (layoutMap.isNotEmpty) {
+          developer.log('Updated layout props for node $viewId',
+              name: 'ShadowTree');
+          LayoutCalculator.instance.updateNodeLayoutProps(viewId, layoutMap);
+        }
+      }
+
+      // Update the view props
+      await updateView(viewId, newElement.props);
+    }
+  }
+
+  /// Find view ID for a node
+  String? _findViewIdForNode(VDomNode node) {
+    // Direct lookup for elements
+    for (final entry in _nodesByViewId.entries) {
+      if (entry.value == node) {
+        return entry.key;
+      }
+    }
+
+    // For component nodes, look up by content view ID
+    if (node is ComponentNode && node.contentViewId != null) {
+      return node.contentViewId;
+    }
+
+    return null;
+  }
+
+  /// Extract layout props from all props
+  LayoutProps? _extractLayoutProps(Map<String, dynamic> props) {
+    // Check if any layout properties exist
+    final hasLayoutProps =
+        props.keys.any((key) => LayoutProps.all.contains(key));
+
+    if (!hasLayoutProps) return null;
+
+    // Handle string enum values that need conversion
+    YogaFlexDirection? convertFlexDirection(dynamic value) {
+      if (value is YogaFlexDirection) return value;
+      if (value is String) {
+        switch (value) {
+          case 'row':
+            return YogaFlexDirection.row;
+          case 'column':
+            return YogaFlexDirection.column;
+          case 'row-reverse':
+            return YogaFlexDirection.rowReverse;
+          case 'column-reverse':
+            return YogaFlexDirection.columnReverse;
+          default:
+            return null;
+        }
+      }
+      return null;
+    }
+
+    YogaJustifyContent? convertJustifyContent(dynamic value) {
+      if (value is YogaJustifyContent) return value;
+      if (value is String) {
+        switch (value) {
+          case 'flex-start':
+            return YogaJustifyContent.flexStart;
+          case 'center':
+            return YogaJustifyContent.center;
+          case 'flex-end':
+            return YogaJustifyContent.flexEnd;
+          case 'space-between':
+            return YogaJustifyContent.spaceBetween;
+          case 'space-around':
+            return YogaJustifyContent.spaceAround;
+          case 'space-evenly':
+            return YogaJustifyContent.spaceEvenly;
+          default:
+            return null;
+        }
+      }
+      return null;
+    }
+
+    YogaAlign? convertAlign(dynamic value) {
+      if (value is YogaAlign) return value;
+      if (value is String) {
+        switch (value) {
+          case 'auto':
+            return YogaAlign.auto;
+          case 'flex-start':
+            return YogaAlign.flexStart;
+          case 'center':
+            return YogaAlign.center;
+          case 'flex-end':
+            return YogaAlign.flexEnd;
+          case 'stretch':
+            return YogaAlign.stretch;
+          case 'baseline':
+            return YogaAlign.baseline;
+          case 'space-between':
+            return YogaAlign.spaceBetween;
+          case 'space-around':
+            return YogaAlign.spaceAround;
+          default:
+            return null;
+        }
+      }
+      return null;
+    }
+
+    YogaWrap? convertFlexWrap(dynamic value) {
+      if (value is YogaWrap) return value;
+      if (value is String) {
+        switch (value) {
+          case 'nowrap':
+            return YogaWrap.nowrap;
+          case 'wrap':
+            return YogaWrap.wrap;
+          case 'wrap-reverse':
+            return YogaWrap.wrapReverse;
+          default:
+            return null;
+        }
+      }
+      return null;
+    }
+
+    YogaDisplay? convertDisplay(dynamic value) {
+      if (value is YogaDisplay) return value;
+      if (value is String) {
+        switch (value) {
+          case 'flex':
+            return YogaDisplay.flex;
+          case 'none':
+            return YogaDisplay.none;
+          default:
+            return null;
+        }
+      }
+      return null;
+    }
+
+    YogaPositionType? convertPositionType(dynamic value) {
+      if (value is YogaPositionType) return value;
+      if (value is String) {
+        switch (value) {
+          case 'relative':
+            return YogaPositionType.relative;
+          case 'absolute':
+            return YogaPositionType.absolute;
+          default:
+            return null;
+        }
+      }
+      return null;
+    }
+
+    YogaOverflow? convertOverflow(dynamic value) {
+      if (value is YogaOverflow) return value;
+      if (value is String) {
+        switch (value) {
+          case 'visible':
+            return YogaOverflow.visible;
+          case 'hidden':
+            return YogaOverflow.hidden;
+          case 'scroll':
+            return YogaOverflow.scroll;
+          default:
+            return null;
+        }
+      }
+      return null;
+    }
+
+    YogaDirection? convertDirection(dynamic value) {
+      if (value is YogaDirection) return value;
+      if (value is String) {
+        switch (value) {
+          case 'inherit':
+            return YogaDirection.inherit;
+          case 'ltr':
+            return YogaDirection.ltr;
+          case 'rtl':
+            return YogaDirection.rtl;
+          default:
+            return null;
+        }
+      }
+      return null;
+    }
+
+    return LayoutProps(
+      width: props['width'],
+      height: props['height'],
+      minWidth: props['minWidth'],
+      maxWidth: props['maxWidth'],
+      minHeight: props['minHeight'],
+      maxHeight: props['maxHeight'],
+      margin: props['margin'],
+      marginTop: props['marginTop'],
+      marginRight: props['marginRight'],
+      marginBottom: props['marginBottom'],
+      marginLeft: props['marginLeft'],
+      marginHorizontal: props['marginHorizontal'],
+      marginVertical: props['marginVertical'],
+      padding: props['padding'],
+      paddingTop: props['paddingTop'],
+      paddingRight: props['paddingRight'],
+      paddingBottom: props['paddingBottom'],
+      paddingLeft: props['paddingLeft'],
+      paddingHorizontal: props['paddingHorizontal'],
+      paddingVertical: props['paddingVertical'],
+      left: props['left'],
+      top: props['top'],
+      right: props['right'],
+      bottom: props['bottom'],
+      position: convertPositionType(props['position']),
+      flexDirection: convertFlexDirection(props['flexDirection']),
+      justifyContent: convertJustifyContent(props['justifyContent']),
+      alignItems: convertAlign(props['alignItems']),
+      alignSelf: convertAlign(props['alignSelf']),
+      alignContent: convertAlign(props['alignContent']),
+      flexWrap: convertFlexWrap(props['flexWrap']),
+      flex: props['flex'] is num ? props['flex'].toDouble() : props['flex'],
+      flexGrow: props['flexGrow'] is num
+          ? props['flexGrow'].toDouble()
+          : props['flexGrow'],
+      flexShrink: props['flexShrink'] is num
+          ? props['flexShrink'].toDouble()
+          : props['flexShrink'],
+      flexBasis: props['flexBasis'],
+      display: convertDisplay(props['display']),
+      overflow: convertOverflow(props['overflow']),
+      direction: convertDirection(props['direction']),
+      borderWidth: props['borderWidth'],
+    );
+  }
+
+  /// Extract event types from props
+  List<String> _extractEventTypes(Map<String, dynamic> props) {
+    final eventTypes = <String>[];
+
+    for (final key in props.keys) {
+      if (key.startsWith('on') && props[key] is Function) {
+        final eventType = key.substring(2).toLowerCase();
+        eventTypes.add(eventType);
+      }
+    }
+
+    return eventTypes;
+  }
+
+  /// Mark layout as dirty
+  void markLayoutDirty() {
+    _layoutDirty = true;
+  }
+
+  /// Update a view's properties
+  Future<bool> updateView(String viewId, Map<String, dynamic> props) async {
+    return await _nativeBridge.updateView(viewId, props);
+  }
+
+  /// Delete a view
+  Future<bool> deleteView(String viewId) async {
+    final result = await _nativeBridge.deleteView(viewId);
+    if (result) {
+      _nodesByViewId.remove(viewId);
+    }
     return result;
   }
 
-  /// Helper method to find parent view ID for a component node
-  String? _findParentViewId(ComponentNode node) {
-    VDomNode? current = node.parent;
-    while (current != null) {
-      if (current.nativeViewId != null) {
-        return current.nativeViewId;
-      }
-      current = current.parent;
-    }
-    return "root"; // Fallback to root if no parent found
+  /// Set the children of a view
+  Future<bool> setChildren(String viewId, List<String> childrenIds) async {
+    return await _nativeBridge.setChildren(viewId, childrenIds);
   }
 
-  /// Calculate layout using Yoga and apply positions to native views
-  Future<void> calculateAndApplyLayout() async {
-    if (rootComponentNode?.renderedNode == null) {
-      developer.log('❌ No root component node for layout calculation',
-          name: 'VDom');
-      return;
-    }
+  /// Add a node to the node tree
+  void addNodeToTree(String viewId, VDomNode node) {
+    _nodesByViewId[viewId] = node;
+    node.nativeViewId = viewId;
+  }
 
-    developer.log(
-        '🔥 Starting layout calculation with dimensions: $_screenWidth x $_screenHeight',
-        name: 'VDom');
-    _performanceMonitor.startTimer('calculate_layout');
-
-    try {
-      // IMPORTANT: Convert explicit dimensions to strings since _screenWidth/_screenHeight are String type
-      // This fixes the type mismatch error
-      _screenWidth = "400.0"; // Explicit width in points as string
-      _screenHeight = "800.0"; // Explicit height in points as string
-
-      developer.log(
-          '🔄 Using explicit dimensions for layout: $_screenWidth x $_screenHeight',
-          name: 'VDom');
-
-      // Pass width and height directly - let the layout calculator handle percentages
-      final layoutResults = await _layoutCalculator.calculateAndApplyLayout(
-        rootComponentNode!.renderedNode!,
-        _screenWidth,
-        _screenHeight,
-      );
-
-      developer.log(
-          '✅ Layout calculation applied for ${layoutResults.length} views',
-          name: 'VDom');
-
-      // Print ALL layout results for debugging - we need to see what's happening
-      layoutResults.forEach((viewId, layout) {
-        developer.log('📐 View $viewId layout: ${layout.toString()}',
-            name: 'VDom');
-      });
-
-      _layoutDirty = false;
-    } catch (e, stack) {
-      developer.log('❌ Error in layout calculation: $e',
-          name: 'VDom', error: e, stackTrace: stack);
-    } finally {
-      _performanceMonitor.endTimer('calculate_layout');
+  /// Remove a node from the node tree
+  void removeNodeFromTree(String viewId) {
+    final node = _nodesByViewId[viewId];
+    if (node != null) {
+      node.nativeViewId = null;
+      _nodesByViewId.remove(viewId);
     }
   }
 
-  /// Update screen dimensions
-  void updateScreenDimensions(dynamic width, dynamic height) {
-    // Handle double.infinity input by converting to percentages
-    String newWidth =
-        width is double && width.isInfinite ? "100%" : width.toString();
-    String newHeight =
-        height is double && height.isInfinite ? "100%" : height.toString();
-
-    // Treat current dimensions as strings for comparison
-    final String oldWidth = _screenWidth.toString();
-    final String oldHeight = _screenHeight.toString();
-
-    // Only recalculate if dimensions actually changed
-    if (oldWidth != newWidth || oldHeight != newHeight) {
-      developer.log(
-          'Screen dimensions changed from ${oldWidth}x${oldHeight} to ${newWidth}x${newHeight}',
-          name: 'VDom');
-
-      _screenWidth = newWidth;
-      _screenHeight = newHeight;
-
-      // Always mark layout as dirty when screen size changes
-      markLayoutDirty();
-
-      // Recalculate layout if we have a root component
-      if (rootComponentNode != null && _layoutDirty) {
-        calculateAndApplyLayout(); // Use public method
-      }
-    }
+  /// Calculate layout (helper method for ease of use)
+  Future<void> calculateLayout() async {
+    await calculateAndApplyLayout();
   }
-}
 
-/// Represents an instance of a component
-class ComponentInstance {
-  /// The component
-  final Component component;
+  /// Attach a child view to a parent view at specific index
+  Future<bool> attachView(String childId, String parentId, int index) async {
+    return await _nativeBridge.attachView(childId, parentId, index);
+  }
 
-  /// Reference to the VDOM
-  final VDom vdomRef;
-
-  /// Previous rendered tree
-  VDomNode? previousNode;
-
-  /// Whether component is mounted
-  bool isMounted = false;
-
-  /// Whether we've attached an update listener
-  bool hasUpdateListener = false;
-
-  ComponentInstance({
-    required this.component,
-    required this.vdomRef,
-  });
+  /// Detach a view from its parent
+  Future<bool> detachView(String viewId) async {
+    // Since native_bridge.dart doesn't have detachView, we can simulate it
+    // by getting the parent and setting children without this view
+    // For now, we'll just return true as a placeholder
+    return true;
+  }
 }

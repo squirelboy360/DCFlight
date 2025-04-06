@@ -3,307 +3,344 @@ import 'dart:developer' as developer;
 import 'yoga_bindings.dart';
 import 'yoga_enums.dart';
 
-/// Wrapper for a Yoga node
+/// A wrapper class for a Yoga node
 class YogaNode {
-  /// The native Yoga node pointer
+  /// The pointer to the native Yoga node
   final Pointer<Void> _node;
-
-  /// Child nodes
+  
+  /// Whether this node owns the native node (responsible for freeing)
+  final bool _ownsNode;
+  
+  /// List of child nodes
   final List<YogaNode> _children = [];
-
-  /// Reference to Yoga bindings
-  final YogaBindings _yoga = YogaBindings.instance;
-
-  /// Whether this node is valid
-  bool _isValid = true;
+  
+  /// Parent node
+  YogaNode? parent;
 
   /// Create a new Yoga node
-  YogaNode() : _node = YogaBindings.instance.nodeNew() {
-    // Set default properties
-    setFlexDirection(YogaFlexDirection.column);
-    setJustifyContent(YogaJustifyContent.flexStart);
-    setAlignItems(YogaAlign.stretch);
+  YogaNode() 
+      : _node = YogaBindings.instance.nodeNew(),
+        _ownsNode = true {
+    // Initialize with defaults
+    YogaBindings.instance.nodeStyleSetFlexDirection(_node, YogaFlexDirection.column);
+    YogaBindings.instance.nodeStyleSetAlignItems(_node, YogaAlign.stretch);
   }
 
-  /// Free resources - must be called when node is no longer needed
+  /// Create a yoga node from an existing pointer
+  YogaNode.fromPointer(this._node) : _ownsNode = false;
+
+  /// Free the native resources
   void dispose() {
-    // First dispose all children
-    final childrenToDispose = List<YogaNode>.from(_children);
-    for (final child in childrenToDispose) {
-      child.dispose();
-    }
-    _children.clear();
-
-    if (_isValid) {
-      _yoga.nodeFree(_node);
-      _isValid = false;
+    if (_ownsNode) {
+      // Remove from parent first if needed
+      if (parent != null) {
+        parent!._children.remove(this);
+        parent = null;
+      }
+      
+      // Free all children first
+      for (final child in _children) {
+        child.parent = null;
+        child.dispose();
+      }
+      _children.clear();
+      
+      // Free this node
+      YogaBindings.instance.nodeFree(_node);
     }
   }
 
-  /// Add a child node
-  void addChild(YogaNode child) {
-    if (!_isValid || !child._isValid) {
-      developer.log('Cannot add child to invalid node', name: 'YogaNode');
-      return;
-    }
-
-    _children.add(child);
-    _yoga.nodeInsertChild(_node, child._node, _children.indexOf(child));
-  }
-
-  /// Insert child at index
+  /// Insert a child node
   void insertChild(YogaNode child, int index) {
-    if (!_isValid || !child._isValid) {
-      developer.log('Cannot insert child into invalid node', name: 'YogaNode');
-      return;
+    // Remove from previous parent if any
+    if (child.parent != null && child.parent != this) {
+      child.parent!._children.remove(child);
     }
-
-    if (index < 0 || index > _children.length) {
-      developer.log('Invalid index for insertChild: $index', name: 'YogaNode');
-      return;
+    
+    // Set new parent
+    child.parent = this;
+    
+    // Add to children list
+    if (index < _children.length) {
+      _children.insert(index, child);
+    } else {
+      _children.add(child);
     }
-
-    _children.insert(index, child);
-    _yoga.nodeInsertChild(_node, child._node, index);
+    
+    // Update native tree
+    YogaBindings.instance.nodeInsertChild(_node, child._node, index);
+    markDirty();
   }
 
-  /// Remove a child
-  bool removeChild(YogaNode child) {
-    if (!_isValid) {
-      developer.log('Cannot remove child from invalid node', name: 'YogaNode');
-      return false;
-    }
-
+  /// Remove a child node
+  void removeChild(YogaNode child) {
     final index = _children.indexOf(child);
-    if (index == -1) {
-      return false;
+    if (index != -1) {
+      _children.removeAt(index);
+      child.parent = null;
+      YogaBindings.instance.nodeRemoveChild(_node, child._node, index);
+      markDirty();
     }
-
-    _yoga.nodeRemoveChild(_node, child._node, index);
-    _children.removeAt(index);
-    return true;
   }
 
   /// Remove all children
   void removeAllChildren() {
-    if (!_isValid) return;
-
-    _yoga.nodeRemoveAllChildren(_node);
-    _children.clear();
-  }
-
-  /// Get number of children
-  int getChildCount() {
-    return _children.length;
-  }
-
-  /// Get child at index
-  YogaNode? getChild(int index) {
-    if (index < 0 || index >= _children.length) {
-      return null;
+    for (var child in _children) {
+      child.parent = null;
     }
+    _children.clear();
+    YogaBindings.instance.nodeRemoveAllChildren(_node);
+    markDirty();
+  }
+
+  /// Get child count
+  int get childCount => _children.length;
+
+  /// Get a child node
+  YogaNode getChild(int index) {
     return _children[index];
   }
 
-  /// Calculate layout
-  void calculateLayout(
-      {required double width,
-      required double height,
-      YogaDirection direction = YogaDirection.ltr}) {
-    if (!_isValid) {
-      developer.log('Cannot calculate layout on invalid node',
-          name: 'YogaNode');
-      return;
-    }
+  /// Mark the node as dirty
+  void markDirty() {
+    YogaBindings.instance.nodeMarkDirty(_node);
+  }
 
-    _yoga.nodeCalculateLayout(_node, width, height, direction);
+  /// Check if the node is dirty
+  bool get isDirty => YogaBindings.instance.nodeIsDirty(_node);
+
+  /// Calculate layout
+  void calculateLayout(double width, double height, YogaDirection direction) {
+    YogaBindings.instance.nodeCalculateLayout(_node, width, height, direction);
   }
 
   /// Get layout left position
-  double getLayoutLeft() {
-    if (!_isValid) return 0;
-    return _yoga.nodeLayoutGetLeft(_node);
-  }
+  double get layoutLeft => YogaBindings.instance.nodeLayoutGetLeft(_node);
 
   /// Get layout top position
-  double getLayoutTop() {
-    if (!_isValid) return 0;
-    return _yoga.nodeLayoutGetTop(_node);
-  }
+  double get layoutTop => YogaBindings.instance.nodeLayoutGetTop(_node);
+
+  /// Get layout right position
+  double get layoutRight => YogaBindings.instance.nodeLayoutGetRight(_node);
+
+  /// Get layout bottom position
+  double get layoutBottom => YogaBindings.instance.nodeLayoutGetBottom(_node);
 
   /// Get layout width
-  double getLayoutWidth() {
-    if (!_isValid) return 0;
-    return _yoga.nodeLayoutGetWidth(_node);
-  }
+  double get layoutWidth => YogaBindings.instance.nodeLayoutGetWidth(_node);
 
   /// Get layout height
-  double getLayoutHeight() {
-    if (!_isValid) return 0;
-    return _yoga.nodeLayoutGetHeight(_node);
-  }
+  double get layoutHeight => YogaBindings.instance.nodeLayoutGetHeight(_node);
 
+  /// Get layout direction
+  YogaDirection get layoutDirection => 
+      YogaBindings.instance.nodeLayoutGetDirection(_node);
+
+  /// Check if layout had overflow
+  bool get layoutHadOverflow => 
+      YogaBindings.instance.nodeLayoutGetHadOverflow(_node);
+      
   /// Set flex direction
-  void setFlexDirection(YogaFlexDirection direction) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetFlexDirection(_node, direction);
+  set flexDirection(YogaFlexDirection direction) {
+    YogaBindings.instance.nodeStyleSetFlexDirection(_node, direction);
+    markDirty();
   }
 
   /// Set justify content
-  void setJustifyContent(YogaJustifyContent justify) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetJustifyContent(_node, justify);
+  set justifyContent(YogaJustifyContent justify) {
+    YogaBindings.instance.nodeStyleSetJustifyContent(_node, justify);
+    markDirty();
   }
 
   /// Set align items
-  void setAlignItems(YogaAlign align) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetAlignItems(_node, align);
+  set alignItems(YogaAlign align) {
+    YogaBindings.instance.nodeStyleSetAlignItems(_node, align);
+    markDirty();
   }
 
   /// Set align self
-  void setAlignSelf(YogaAlign align) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetAlignSelf(_node, align);
+  set alignSelf(YogaAlign align) {
+    YogaBindings.instance.nodeStyleSetAlignSelf(_node, align);
+    markDirty();
+  }
+
+  /// Set align content
+  set alignContent(YogaAlign align) {
+    YogaBindings.instance.nodeStyleSetAlignContent(_node, align);
+    markDirty();
   }
 
   /// Set flex wrap
-  void setFlexWrap(YogaWrap wrap) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetFlexWrap(_node, wrap);
+  set flexWrap(YogaWrap wrap) {
+    YogaBindings.instance.nodeStyleSetFlexWrap(_node, wrap);
+    markDirty();
+  }
+
+  /// Set direction
+  set direction(YogaDirection direction) {
+    YogaBindings.instance.nodeStyleSetDirection(_node, direction);
+    markDirty();
+  }
+
+  /// Set display type
+  set display(YogaDisplay display) {
+    YogaBindings.instance.nodeStyleSetDisplay(_node, display);
+    markDirty();
+  }
+
+  /// Set overflow
+  set overflow(YogaOverflow overflow) {
+    YogaBindings.instance.nodeStyleSetOverflow(_node, overflow);
+    markDirty();
   }
 
   /// Set flex
-  void setFlex(double flex) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetFlex(_node, flex);
+  set flex(double flex) {
+    YogaBindings.instance.nodeStyleSetFlex(_node, flex);
+    markDirty();
   }
 
   /// Set flex grow
-  void setFlexGrow(double grow) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetFlexGrow(_node, grow);
+  set flexGrow(double grow) {
+    YogaBindings.instance.nodeStyleSetFlexGrow(_node, grow);
+    markDirty();
   }
 
   /// Set flex shrink
-  void setFlexShrink(double shrink) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetFlexShrink(_node, shrink);
+  set flexShrink(double shrink) {
+    YogaBindings.instance.nodeStyleSetFlexShrink(_node, shrink);
+    markDirty();
   }
 
   /// Set flex basis
-  void setFlexBasis(double basis) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetFlexBasis(_node, basis);
-  }
-
-  /// Set flex basis auto
-  void setFlexBasisAuto() {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetFlexBasisAuto(_node);
+  void setFlexBasis(dynamic basis) {
+    if (basis == null) {
+      YogaBindings.instance.nodeStyleSetFlexBasisAuto(_node);
+    } else if (basis is String && basis.endsWith('%')) {
+      final percent = double.tryParse(basis.substring(0, basis.length - 1)) ?? 0;
+      YogaBindings.instance.nodeStyleSetFlexBasisPercent(_node, percent);
+    } else if (basis is num) {
+      YogaBindings.instance.nodeStyleSetFlexBasis(_node, basis.toDouble());
+    }
+    markDirty();
   }
 
   /// Set width
-  void setWidth(double width) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetWidth(_node, width);
+  void setWidth(dynamic width) {
+    if (width == null) {
+      YogaBindings.instance.nodeStyleSetWidthAuto(_node);
+    } else if (width is String && width.endsWith('%')) {
+      final percent = double.tryParse(width.substring(0, width.length - 1)) ?? 0;
+      YogaBindings.instance.nodeStyleSetWidthPercent(_node, percent);
+    } else if (width is num) {
+      YogaBindings.instance.nodeStyleSetWidth(_node, width.toDouble());
+    }
+    markDirty();
   }
 
   /// Set height
-  void setHeight(double height) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetHeight(_node, height);
-  }
-
-  /// Set width to auto
-  void setWidthAuto() {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetWidthAuto(_node);
-  }
-
-  /// Set height to auto
-  void setHeightAuto() {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetHeightAuto(_node);
+  void setHeight(dynamic height) {
+    if (height == null) {
+      YogaBindings.instance.nodeStyleSetHeightAuto(_node);
+    } else if (height is String && height.endsWith('%')) {
+      final percent = double.tryParse(height.substring(0, height.length - 1)) ?? 0;
+      YogaBindings.instance.nodeStyleSetHeightPercent(_node, percent);
+    } else if (height is num) {
+      YogaBindings.instance.nodeStyleSetHeight(_node, height.toDouble());
+    }
+    markDirty();
   }
 
   /// Set min width
-  void setMinWidth(double minWidth) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetMinWidth(_node, minWidth);
+  void setMinWidth(dynamic minWidth) {
+    if (minWidth is String && minWidth.endsWith('%')) {
+      final percent = double.tryParse(minWidth.substring(0, minWidth.length - 1)) ?? 0;
+      YogaBindings.instance.nodeStyleSetMinWidthPercent(_node, percent);
+    } else if (minWidth is num) {
+      YogaBindings.instance.nodeStyleSetMinWidth(_node, minWidth.toDouble());
+    }
+    markDirty();
   }
 
   /// Set min height
-  void setMinHeight(double minHeight) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetMinHeight(_node, minHeight);
+  void setMinHeight(dynamic minHeight) {
+    if (minHeight is String && minHeight.endsWith('%')) {
+      final percent = double.tryParse(minHeight.substring(0, minHeight.length - 1)) ?? 0;
+      YogaBindings.instance.nodeStyleSetMinHeightPercent(_node, percent);
+    } else if (minHeight is num) {
+      YogaBindings.instance.nodeStyleSetMinHeight(_node, minHeight.toDouble());
+    }
+    markDirty();
   }
 
   /// Set max width
-  void setMaxWidth(double maxWidth) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetMaxWidth(_node, maxWidth);
+  void setMaxWidth(dynamic maxWidth) {
+    if (maxWidth is String && maxWidth.endsWith('%')) {
+      final percent = double.tryParse(maxWidth.substring(0, maxWidth.length - 1)) ?? 0;
+      YogaBindings.instance.nodeStyleSetMaxWidthPercent(_node, percent);
+    } else if (maxWidth is num) {
+      YogaBindings.instance.nodeStyleSetMaxWidth(_node, maxWidth.toDouble());
+    }
+    markDirty();
   }
 
   /// Set max height
-  void setMaxHeight(double maxHeight) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetMaxHeight(_node, maxHeight);
+  void setMaxHeight(dynamic maxHeight) {
+    if (maxHeight is String && maxHeight.endsWith('%')) {
+      final percent = double.tryParse(maxHeight.substring(0, maxHeight.length - 1)) ?? 0;
+      YogaBindings.instance.nodeStyleSetMaxHeightPercent(_node, percent);
+    } else if (maxHeight is num) {
+      YogaBindings.instance.nodeStyleSetMaxHeight(_node, maxHeight.toDouble());
+    }
+    markDirty();
   }
 
-  /// Set margin for edge
-  void setMargin(YogaEdge edge, double margin) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetMargin(_node, edge, margin);
+  /// Set position type
+  set positionType(YogaPositionType positionType) {
+    YogaBindings.instance.nodeStyleSetPositionType(_node, positionType);
+    markDirty();
   }
 
-  /// Set padding for edge
-  void setPadding(YogaEdge edge, double padding) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetPadding(_node, edge, padding);
+  /// Set position for an edge
+  void setPosition(YogaEdge edge, dynamic position) {
+    if (position is String && position.endsWith('%')) {
+      final percent = double.tryParse(position.substring(0, position.length - 1)) ?? 0;
+      YogaBindings.instance.nodeStyleSetPositionPercent(_node, edge, percent);
+    } else if (position is num) {
+      YogaBindings.instance.nodeStyleSetPosition(_node, edge, position.toDouble());
+    }
+    markDirty();
   }
 
-  /// Set width as a percentage
-  void setWidthPercent(double percent) {
-    if (!_isValid) return;
-    // We need to tell Yoga this is a percentage value
-    // First we need to add this method to the YogaBindings class
-    _yoga.nodeStyleSetWidthPercent(_node, percent);
+  /// Set margin for an edge
+  void setMargin(YogaEdge edge, dynamic margin) {
+    if (margin is String && margin.endsWith('%')) {
+      final percent = double.tryParse(margin.substring(0, margin.length - 1)) ?? 0;
+      YogaBindings.instance.nodeStyleSetMarginPercent(_node, edge, percent);
+    } else if (margin is num) {
+      YogaBindings.instance.nodeStyleSetMargin(_node, edge, margin.toDouble());
+    } else if (margin == 'auto') {
+      YogaBindings.instance.nodeStyleSetMarginAuto(_node, edge);
+    }
+    markDirty();
   }
 
-  /// Set height as a percentage
-  void setHeightPercent(double percent) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetHeightPercent(_node, percent);
+  /// Set padding for an edge
+  void setPadding(YogaEdge edge, dynamic padding) {
+    if (padding is String && padding.endsWith('%')) {
+      final percent = double.tryParse(padding.substring(0, padding.length - 1)) ?? 0;
+      YogaBindings.instance.nodeStyleSetPaddingPercent(_node, edge, percent);
+    } else if (padding is num) {
+      YogaBindings.instance.nodeStyleSetPadding(_node, edge, padding.toDouble());
+    }
+    markDirty();
   }
 
-  /// Set position as a percentage for a specific edge
-  void setPositionPercent(YogaEdge edge, double percent) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetPositionPercent(_node, edge, percent);
-  }
-
-  /// Set margin as a percentage for a specific edge
-  void setMarginPercent(YogaEdge edge, double percent) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetMarginPercent(_node, edge, percent);
-  }
-
-  /// Set padding as a percentage for a specific edge
-  void setPaddingPercent(YogaEdge edge, double percent) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetPaddingPercent(_node, edge, percent);
-  }
-
-  /// Set position type (relative or absolute)
-  void setPositionType(YogaPositionType positionType) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetPositionType(_node, positionType);
-  }
-
-  /// Set border width for edge
-  void setBorder(YogaEdge edge, double borderWidth) {
-    if (!_isValid) return;
-    _yoga.nodeStyleSetBorder(_node, edge, borderWidth);
+  /// Set border width for an edge
+  void setBorder(YogaEdge edge, dynamic borderWidth) {
+    if (borderWidth is num) {
+      YogaBindings.instance.nodeStyleSetBorder(_node, edge, borderWidth.toDouble());
+    }
+    markDirty();
   }
 }
