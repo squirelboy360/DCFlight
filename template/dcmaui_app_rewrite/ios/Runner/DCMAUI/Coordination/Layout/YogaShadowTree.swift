@@ -46,11 +46,13 @@ class YogaShadowTree {
         let node = YGNodeNew()
         
         // Configure default properties based on component type
-        configureNodeDefaults(node, forComponentType: componentType)
-        
-        // Store node
-        nodes[id] = node
-        nodeTypes[id] = componentType
+        if let node = node {  // Safely unwrap the optional
+            configureNodeDefaults(node, forComponentType: componentType)
+            
+            // Store node
+            nodes[id] = node
+            nodeTypes[id] = componentType
+        }
     }
     
     // Add a child node to a parent node
@@ -68,14 +70,16 @@ class YogaShadowTree {
         // Then add to new parent
         if let index = index {
             // Add at specific index
-            if index < Int(YGNodeGetChildCount(parentNode)) {
-                YGNodeInsertChild(parentNode, childNode, UInt32(index))
+            let childCount = Int(YGNodeGetChildCount(parentNode))
+            if index < childCount {
+                YGNodeInsertChild(parentNode, childNode, Int(Int32(index)))
             } else {
-                YGNodeInsertChild(parentNode, childNode, UInt32(YGNodeGetChildCount(parentNode)))
+                YGNodeInsertChild(parentNode, childNode, Int(Int32(childCount)))
             }
         } else {
             // Add at the end
-            YGNodeInsertChild(parentNode, childNode, UInt32(YGNodeGetChildCount(parentNode)))
+            let childCount = Int(YGNodeGetChildCount(parentNode))
+            YGNodeInsertChild(parentNode, childNode, Int(Int32(childCount)))
         }
         
         // Update parent reference

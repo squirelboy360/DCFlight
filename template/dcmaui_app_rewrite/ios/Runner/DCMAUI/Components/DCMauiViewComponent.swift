@@ -45,3 +45,19 @@ class DCMauiViewComponent: NSObject, DCMauiComponent {
 
 }
 
+
+
+/// Static list of layout property names
+class LayoutProps {
+    static let all = [
+        "width", "height", "minWidth", "maxWidth", "minHeight", "maxHeight",
+        "margin", "marginTop", "marginRight", "marginBottom", "marginLeft",
+        "marginHorizontal", "marginVertical",
+        "padding", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+        "paddingHorizontal", "paddingVertical",
+        "left", "top", "right", "bottom", "position",
+        "flexDirection", "justifyContent", "alignItems", "alignSelf", "alignContent",
+        "flexWrap", "flex", "flexGrow", "flexShrink", "flexBasis",
+        "display", "overflow", "direction"
+    ]
+}
