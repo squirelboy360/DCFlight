@@ -46,9 +46,6 @@ class ViewRegistry {
     
     // Clean up views
     func cleanup() {
-        for id in registry.keys {
-            DCMauiLayoutManager.shared.cleanUp(viewId: id)
-        }
         registry.removeAll()
     }
 }
@@ -441,71 +438,4 @@ class ViewRegistry {
         
         return "{\"width\": \(boundingRect.width), \"height\": \(boundingRect.height)}"
     }
-}
-
-// Function declarations for C bridge (these remain unchanged)
-@_cdecl("dcmaui_initialize_impl")
-public func dcmaui_initialize_impl() -> Int8 {
-    return DCMauiNativeBridgeCoordinator.shared.dcmaui_initialize()
-}
-
-@_cdecl("dcmaui_create_view_impl")
-public func dcmaui_create_view_impl(viewId: UnsafePointer<CChar>, type: UnsafePointer<CChar>, propsJson: UnsafePointer<CChar>) -> Int8 {
-    return DCMauiNativeBridgeCoordinator.shared.dcmaui_create_view(viewId, type, propsJson)
-}
-
-@_cdecl("dcmaui_update_view_impl")
-public func dcmaui_update_view_impl(viewId: UnsafePointer<CChar>, propsJson: UnsafePointer<CChar>) -> Int8 {
-    return DCMauiNativeBridgeCoordinator.shared.dcmaui_update_view(viewId, propsJson)
-}
-
-@_cdecl("dcmaui_delete_view_impl")
-public func dcmaui_delete_view_impl(viewId: UnsafePointer<CChar>) -> Int8 {
-    return DCMauiNativeBridgeCoordinator.shared.dcmaui_delete_view(viewId)
-}
-
-@_cdecl("dcmaui_attach_view_impl")
-public func dcmaui_attach_view_impl(childId: UnsafePointer<CChar>, parentId: UnsafePointer<CChar>, index: Int32) -> Int8 {
-    return DCMauiNativeBridgeCoordinator.shared.dcmaui_attach_view(childId, parentId, index)
-}
-
-@_cdecl("dcmaui_set_children_impl")
-public func dcmaui_set_children_impl(viewId: UnsafePointer<CChar>, childrenJson: UnsafePointer<CChar>) -> Int8 {
-    return DCMauiNativeBridgeCoordinator.shared.dcmaui_set_children(viewId, childrenJson)
-}
-
-@_cdecl("dcmaui_update_view_layout_impl")
-public func dcmaui_update_view_layout_impl(viewId: UnsafePointer<CChar>, left: Float, top: Float, width: Float, height: Float) -> Int8 {
-    let viewIdString = String(cString: viewId)
-    return DCMauiNativeBridgeCoordinator.shared.updateViewLayout(
-        viewId: viewIdString,
-        left: CGFloat(left),
-        top: CGFloat(top),
-        width: CGFloat(width),
-        height: CGFloat(height)
-    ) ? 1 : 0
-}
-
-@_cdecl("dcmaui_measure_text_impl")
-public func dcmaui_measure_text_impl(viewId: UnsafePointer<CChar>, text: UnsafePointer<CChar>, attributesJson: UnsafePointer<CChar>) -> UnsafePointer<CChar>? {
-    let viewIdString = String(cString: viewId)
-    let textString = String(cString: text)
-    let attributesJsonString = String(cString: attributesJson)
-    
-    let result = DCMauiNativeBridgeCoordinator.shared.measureText(
-        viewId: viewIdString,
-        text: textString,
-        attributesJson: attributesJsonString
-    )
-    
-    // Convert result to C string (will be freed by Swift runtime)
-    if let cString = result.cString(using: .utf8) {
-        let buffer = UnsafeMutablePointer<CChar>.allocate(capacity: cString.count)
-        cString.withUnsafeBufferPointer { pointer in
-            buffer.initialize(from: pointer.baseAddress!, count: cString.count)
-        }
-        return UnsafePointer(buffer)
-    }
-    
-    return nil
 }

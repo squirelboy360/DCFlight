@@ -7,78 +7,61 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
     }
     
     func createView(props: [String: Any]) -> UIView {
-        // Create label
         let label = UILabel()
+        label.numberOfLines = 0 // Allow multiple lines by default
         
-        // Apply all styling props first
-        label.applyStyles(props: props)
-        
-        // Then apply text-specific props
-        applyTextProps(label, props: props)
+        // Apply properties
+        _ = updateView(label, withProps: props)
         
         return label
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        guard let label = view as? UILabel else { return false }
-        
-        // Apply all styling props first
-        label.applyStyles(props: props)
-        
-        // Then apply text-specific props
-        applyTextProps(label, props: props)
-        
-        return true
-    }
-    
-    private func applyTextProps(_ label: UILabel, props: [String: Any]) {
-        // Text specific properties (not styling)
-        if let content = props["content"] as? String {
-            label.text = content
+        guard let label = view as? UILabel else {
+            return false
         }
         
+        // Apply text properties
+        if let text = props["text"] as? String {
+            label.text = text
+        }
+        
+        // Apply style properties using existing UIView extension
+        view.applyStyles(props: props)
+        
+        // Apply text-specific styles
         if let color = props["color"] as? String {
-            label.textColor = ColorUtilities.color(fromHexString: color)
+            label.textColor = UIColor(named: color)
         }
         
         if let fontSize = props["fontSize"] as? CGFloat {
-            // Create a font with the current weight (if any) but new size
-            if let currentFont = label.font {
-                label.font = UIFont(descriptor: currentFont.fontDescriptor, size: fontSize)
-            } else {
-                label.font = UIFont.systemFont(ofSize: fontSize)
-            }
+            label.font = UIFont.systemFont(ofSize: fontSize)
         }
         
         if let fontWeight = props["fontWeight"] as? String {
-            var weight: UIFont.Weight = .regular
-            
             switch fontWeight {
-            case "bold", "700":
-                weight = .bold
-            case "600":
-                weight = .semibold
-            case "500":
-                weight = .medium
-            case "400", "normal", "regular":
-                weight = .regular
-            case "300":
-                weight = .light
-            case "200":
-                weight = .thin
+            case "bold":
+                label.font = UIFont.boldSystemFont(ofSize: label.font.pointSize)
             case "100":
-                weight = .ultraLight
+                label.font = UIFont.systemFont(ofSize: label.font.pointSize, weight: .ultraLight)
+            case "200":
+                label.font = UIFont.systemFont(ofSize: label.font.pointSize, weight: .thin)
+            case "300":
+                label.font = UIFont.systemFont(ofSize: label.font.pointSize, weight: .light)
+            case "400":
+                label.font = UIFont.systemFont(ofSize: label.font.pointSize, weight: .regular)
+            case "500":
+                label.font = UIFont.systemFont(ofSize: label.font.pointSize, weight: .medium)
+            case "600":
+                label.font = UIFont.systemFont(ofSize: label.font.pointSize, weight: .semibold)
+            case "700":
+                label.font = UIFont.systemFont(ofSize: label.font.pointSize, weight: .bold)
+            case "800":
+                label.font = UIFont.systemFont(ofSize: label.font.pointSize, weight: .heavy)
+            case "900":
+                label.font = UIFont.systemFont(ofSize: label.font.pointSize, weight: .black)
             default:
-                weight = .regular
-            }
-            
-            let size = label.font?.pointSize ?? 17
-            label.font = UIFont.systemFont(ofSize: size, weight: weight)
-        }
-        
-        if let fontFamily = props["fontFamily"] as? String {
-            if let font = UIFont(name: fontFamily, size: label.font?.pointSize ?? 17) {
-                label.font = font
+                break
             }
         }
         
@@ -90,7 +73,7 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
                 label.textAlignment = .center
             case "right":
                 label.textAlignment = .right
-            case "justified":
+            case "justify":
                 label.textAlignment = .justified
             default:
                 label.textAlignment = .natural
@@ -99,147 +82,34 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
         
         if let lineHeight = props["lineHeight"] as? CGFloat {
             let paragraphStyle = NSMutableParagraphStyle()
-            paragraphStyle.minimumLineHeight = lineHeight
-            paragraphStyle.maximumLineHeight = lineHeight
-            
-            let attributedString = NSMutableAttributedString(string: label.text ?? "")
-            attributedString.addAttribute(
-                .paragraphStyle,
-                value: paragraphStyle,
-                range: NSRange(location: 0, length: attributedString.length)
+            paragraphStyle.lineSpacing = lineHeight - label.font.lineHeight
+            label.attributedText = NSAttributedString(
+                string: label.text ?? "",
+                attributes: [NSAttributedString.Key.paragraphStyle: paragraphStyle]
             )
-            
-            // Add the line height offset to center the text within line height
-            if let font = label.font {
-                let offset = (lineHeight - font.lineHeight) / 4
-                attributedString.addAttribute(
-                    .baselineOffset,
-                    value: offset,
-                    range: NSRange(location: 0, length: attributedString.length)
-                )
-            }
-            
-            label.attributedText = attributedString
         }
         
-        if let letterSpacing = props["letterSpacing"] as? CGFloat {
-            let attributedString: NSMutableAttributedString
-            if let current = label.attributedText {
-                attributedString = NSMutableAttributedString(attributedString: current)
-            } else {
-                attributedString = NSMutableAttributedString(string: label.text ?? "")
-            }
-            
-            attributedString.addAttribute(
-                .kern,
-                value: letterSpacing,
-                range: NSRange(location: 0, length: attributedString.length)
-            )
-            
-            label.attributedText = attributedString
-        }
-        
-        if let numberOfLines = props["numberOfLines"] as? Int {
-            label.numberOfLines = numberOfLines
-        }
-        
-        // Set appropriate line break mode
-        if let numberOfLines = props["numberOfLines"] as? Int, numberOfLines > 0 {
-            label.lineBreakMode = .byTruncatingTail
-        } else {
-            label.lineBreakMode = .byWordWrapping
-        }
-        
-        // Ensure minimum hit size for accessibility
-        if label.bounds.width < 44 || label.bounds.height < 44 {
-            label.isUserInteractionEnabled = true
-        }
+        return true
     }
     
-    func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], 
-                          eventCallback: @escaping (String, String, [String: Any]) -> Void) {
-        guard let label = view as? UILabel else { return }
-        
-        // Add press gesture recognizer if needed
-        if eventTypes.contains("press") {
-            label.isUserInteractionEnabled = true
-            
-            // Remove existing gesture recognizers first
-            if let existingGestureRecognizers = label.gestureRecognizers {
-                for recognizer in existingGestureRecognizers {
-                    if recognizer is UITapGestureRecognizer {
-                        label.removeGestureRecognizer(recognizer)
-                    }
-                }
-            }
-            
-            // Create and add tap gesture recognizer
-            let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleLabelTap(_:)))
-            label.addGestureRecognizer(tapGesture)
-            
-            // Store callback and viewId for the event handler
-            objc_setAssociatedObject(
-                label,
-                UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!,
-                eventCallback,
-                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-            )
-            
-            objc_setAssociatedObject(
-                label,
-                UnsafeRawPointer(bitPattern: "viewId".hashValue)!,
-                viewId,
-                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-            )
-        }
-    }
-    
-    func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String]) {
-        guard let label = view as? UILabel else { return }
-        
-        if eventTypes.contains("press") {
-            // Remove existing gesture recognizers
-            if let existingGestureRecognizers = label.gestureRecognizers {
-                for recognizer in existingGestureRecognizers {
-                    if recognizer is UITapGestureRecognizer {
-                        label.removeGestureRecognizer(recognizer)
-                    }
-                }
-            }
-            
-            // Clean up stored properties
-            objc_setAssociatedObject(
-                label,
-                UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!,
-                nil,
-                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-            )
-            
-            objc_setAssociatedObject(
-                label,
-                UnsafeRawPointer(bitPattern: "viewId".hashValue)!,
-                nil,
-                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-            )
-            
-            // Reset user interaction if not needed
-            label.isUserInteractionEnabled = false
-        }
-    }
-    
-    @objc private func handleLabelTap(_ sender: UITapGestureRecognizer) {
-        guard let label = sender.view as? UILabel,
-              let callback = objc_getAssociatedObject(
-                label,
-                UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!
-              ) as? (String, String, [String: Any]) -> Void,
-              let viewId = objc_getAssociatedObject(
-                label,
-                UnsafeRawPointer(bitPattern: "viewId".hashValue)!
-              ) as? String else {
-            return
+    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+        guard let label = view as? UILabel,
+              let text = props["text"] as? String else {
+            return .zero
         }
         
-        callback(viewId, "press", [:])
+        // Create a temporary label to measure text with the same properties
+        let tempLabel = UILabel()
+        tempLabel.text = text
+        tempLabel.font = label.font
+        tempLabel.numberOfLines = 0
+        
+        // Calculate size with constraints
+        let maxWidth = props["maxWidth"] as? CGFloat ?? CGFloat.greatestFiniteMagnitude
+        let constraintSize = CGSize(width: maxWidth, height: CGFloat.greatestFiniteMagnitude)
+        let size = tempLabel.sizeThatFits(constraintSize)
+        
+        return size
     }
+
 }

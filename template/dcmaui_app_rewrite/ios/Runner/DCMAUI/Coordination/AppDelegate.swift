@@ -1,5 +1,6 @@
 import UIKit
 import Flutter
+import yoga
 
 @UIApplicationMain
 class AppDelegate: FlutterAppDelegate {
@@ -83,5 +84,9 @@ class AppDelegate: FlutterAppDelegate {
         
         // Initialize screen utilities with the Flutter binary messenger
         DCMauiScreenUtilities.shared.initialize(with: flutterEngine.binaryMessenger)
+        
+        // Initialize the yoga layout system
+        _ = YogaShadowTree.shared
+        _ = DCMauiLayoutManager.shared
     }
 }

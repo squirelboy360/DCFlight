@@ -1,7 +1,7 @@
 import UIKit
 import yoga
 
-class DCMauiScrollComponent: NSObject, DCMauiComponent {
+class DCMauiScrollComponent: NSObject, DCMauiComponent, UIScrollViewDelegate {
     // Required initializer
     required override init() {
         super.init()
@@ -13,6 +13,7 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent {
     func createView(props: [String: Any]) -> UIView {
         // Create scroll view
         let scrollView = UIScrollView()
+        scrollView.delegate = self
         
         // Content view to hold children and enforce proper sizing
         let contentView = UIView()
@@ -173,6 +174,42 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent {
         return true
     }
     
+    func applyLayout(_ view: UIView, layout: YGNodeLayout) {
+        // Apply frame to the scroll view
+        view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
+        
+        // Get content view
+        guard let scrollView = view as? UIScrollView,
+              let contentView = scrollView.viewWithTag(1001) else {
+            return
+        }
+        
+        // Determine if this is horizontal scrolling
+        let isHorizontal = scrollView.showsHorizontalScrollIndicator &&
+            !scrollView.showsVerticalScrollIndicator
+        
+        // Set content view size based on children
+        var contentWidth: CGFloat = 0
+        var contentHeight: CGFloat = 0
+        
+        // Find the furthest edge of any subview
+        for subview in contentView.subviews {
+            let rightEdge = subview.frame.origin.x + subview.frame.size.width
+            let bottomEdge = subview.frame.origin.y + subview.frame.size.height
+            
+            contentWidth = max(contentWidth, rightEdge)
+            contentHeight = max(contentHeight, bottomEdge)
+        }
+        
+        // Ensure minimum content size
+        contentWidth = max(contentWidth, scrollView.frame.width)
+        contentHeight = max(contentHeight, scrollView.frame.height)
+        
+        // Update content size
+        contentView.frame = CGRect(x: 0, y: 0, width: contentWidth, height: contentHeight)
+        scrollView.contentSize = CGSize(width: contentWidth, height: contentHeight)
+    }
+    
     // Add event listeners to the scroll view
     func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], 
                          eventCallback: @escaping (String, String, [String: Any]) -> Void) {
@@ -214,6 +251,12 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent {
             DCMauiScrollComponent.scrollViewDelegates[scrollView] = delegate
             scrollView.delegate = delegate
         }
+        
+        // Store callback and viewId for scroll events
+        objc_setAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!, 
+                               eventCallback, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        objc_setAssociatedObject(view, UnsafeRawPointer(bitPattern: "viewId".hashValue)!, 
+                               viewId, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
     }
     
     func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String]) {
@@ -224,6 +267,39 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent {
             DCMauiScrollComponent.scrollViewDelegates.removeValue(forKey: scrollView)
             scrollView.delegate = nil
         }
+        
+        // Remove stored event callback
+        objc_setAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!, 
+                               nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+    }
+    
+    // MARK: - UIScrollViewDelegate
+    
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        // Get stored event callback if any
+        guard let eventCallback = objc_getAssociatedObject(scrollView, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!) 
+                              as? (String, String, [String: Any]) -> Void,
+              let viewId = objc_getAssociatedObject(scrollView, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String 
+        else { return }
+        
+        // Create scroll event data
+        let eventData: [String: Any] = [
+            "contentOffset": [
+                "x": scrollView.contentOffset.x,
+                "y": scrollView.contentOffset.y
+            ],
+            "contentSize": [
+                "width": scrollView.contentSize.width,
+                "height": scrollView.contentSize.height
+            ],
+            "layoutMeasurement": [
+                "width": scrollView.frame.width,
+                "height": scrollView.frame.height
+            ]
+        ]
+        
+        // Send event
+        eventCallback(viewId, "scroll", eventData)
     }
 }
 

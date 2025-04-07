@@ -4,7 +4,7 @@ import UIKit
 class DCMauiComponentRegistry {
     static let shared = DCMauiComponentRegistry()
     
-    private var componentTypes: [String: DCMauiComponent.Type] = [:]
+    internal var componentTypes: [String: DCMauiComponent.Type] = [:]
     
     private init() {
         // Register all built-in components
