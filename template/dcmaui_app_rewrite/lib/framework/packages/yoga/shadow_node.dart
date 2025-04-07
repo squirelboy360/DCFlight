@@ -166,146 +166,486 @@ class ShadowNode {
         name: 'ShadowNode');
   }
 
-  /// Set layout properties from a map
-  void applyLayoutProps(Map<String, dynamic>? props) {
-    if (props == null) return;
+  /// Apply layout properties to the yoga node
+  void applyLayoutProps(Map<String, dynamic> props) {
+    if (!isValid) return;
 
-    // Handle dimensions
-    if (props.containsKey('width')) {
-      yogaNode.setWidth(props['width']);
+    // Width and height
+    if (props.containsKey('width')) _setWidth(props['width']);
+    if (props.containsKey('height')) _setHeight(props['height']);
+    if (props.containsKey('minWidth')) _setMinWidth(props['minWidth']);
+    if (props.containsKey('maxWidth')) _setMaxWidth(props['maxWidth']);
+    if (props.containsKey('minHeight')) _setMinHeight(props['minHeight']);
+    if (props.containsKey('maxHeight')) _setMaxHeight(props['maxHeight']);
+
+    // Margin
+    if (props.containsKey('margin')) _setMargin(YogaEdge.all, props['margin']);
+    if (props.containsKey('marginTop'))
+      _setMargin(YogaEdge.top, props['marginTop']);
+    if (props.containsKey('marginRight'))
+      _setMargin(YogaEdge.right, props['marginRight']);
+    if (props.containsKey('marginBottom'))
+      _setMargin(YogaEdge.bottom, props['marginBottom']);
+    if (props.containsKey('marginLeft'))
+      _setMargin(YogaEdge.left, props['marginLeft']);
+    if (props.containsKey('marginHorizontal')) {
+      _setMargin(YogaEdge.horizontal, props['marginHorizontal']);
+    }
+    if (props.containsKey('marginVertical')) {
+      _setMargin(YogaEdge.vertical, props['marginVertical']);
     }
 
-    if (props.containsKey('height')) {
-      yogaNode.setHeight(props['height']);
+    // Padding
+    if (props.containsKey('padding'))
+      _setPadding(YogaEdge.all, props['padding']);
+    if (props.containsKey('paddingTop'))
+      _setPadding(YogaEdge.top, props['paddingTop']);
+    if (props.containsKey('paddingRight'))
+      _setPadding(YogaEdge.right, props['paddingRight']);
+    if (props.containsKey('paddingBottom'))
+      _setPadding(YogaEdge.bottom, props['paddingBottom']);
+    if (props.containsKey('paddingLeft'))
+      _setPadding(YogaEdge.left, props['paddingLeft']);
+    if (props.containsKey('paddingHorizontal')) {
+      _setPadding(YogaEdge.horizontal, props['paddingHorizontal']);
+    }
+    if (props.containsKey('paddingVertical')) {
+      _setPadding(YogaEdge.vertical, props['paddingVertical']);
     }
 
-    if (props.containsKey('minWidth')) {
-      yogaNode.setMinWidth(props['minWidth']);
+    // Position
+    if (props.containsKey('left')) _setPosition(YogaEdge.left, props['left']);
+    if (props.containsKey('top')) _setPosition(YogaEdge.top, props['top']);
+    if (props.containsKey('right'))
+      _setPosition(YogaEdge.right, props['right']);
+    if (props.containsKey('bottom'))
+      _setPosition(YogaEdge.bottom, props['bottom']);
+
+    // Position type
+    if (props.containsKey('position')) {
+      final positionType = _convertToYogaPositionType(props['position']);
+      if (positionType != null) yogaNode.positionType = positionType;
     }
 
-    if (props.containsKey('maxWidth')) {
-      yogaNode.setMaxWidth(props['maxWidth']);
-    }
-
-    if (props.containsKey('minHeight')) {
-      yogaNode.setMinHeight(props['minHeight']);
-    }
-
-    if (props.containsKey('maxHeight')) {
-      yogaNode.setMaxHeight(props['maxHeight']);
-    }
-
-    // Handle flex properties
-    if (props.containsKey('flex')) {
-      yogaNode.flex = props['flex'] as double;
-    }
-
-    if (props.containsKey('flexGrow')) {
-      yogaNode.flexGrow = props['flexGrow'] as double;
-    }
-
-    if (props.containsKey('flexShrink')) {
-      yogaNode.flexShrink = props['flexShrink'] as double;
-    }
-
-    if (props.containsKey('flexBasis')) {
-      yogaNode.setFlexBasis(props['flexBasis']);
-    }
-
+    // Flex properties
     if (props.containsKey('flexDirection')) {
-      yogaNode.flexDirection = props['flexDirection'] as YogaFlexDirection;
+      final flexDirection = _convertToYogaFlexDirection(props['flexDirection']);
+      if (flexDirection != null) yogaNode.flexDirection = flexDirection;
     }
 
-    if (props.containsKey('flexWrap')) {
-      yogaNode.flexWrap = props['flexWrap'] as YogaWrap;
-    }
-
-    // Handle alignment
     if (props.containsKey('justifyContent')) {
-      yogaNode.justifyContent = props['justifyContent'] as YogaJustifyContent;
+      final justifyContent =
+          _convertToYogaJustifyContent(props['justifyContent']);
+      if (justifyContent != null) yogaNode.justifyContent = justifyContent;
     }
 
     if (props.containsKey('alignItems')) {
-      yogaNode.alignItems = props['alignItems'] as YogaAlign;
+      final alignItems = _convertToYogaAlign(props['alignItems']);
+      if (alignItems != null) yogaNode.alignItems = alignItems;
     }
 
     if (props.containsKey('alignSelf')) {
-      yogaNode.alignSelf = props['alignSelf'] as YogaAlign;
+      final alignSelf = _convertToYogaAlign(props['alignSelf']);
+      if (alignSelf != null) yogaNode.alignSelf = alignSelf;
     }
 
     if (props.containsKey('alignContent')) {
-      yogaNode.alignContent = props['alignContent'] as YogaAlign;
+      final alignContent = _convertToYogaAlign(props['alignContent']);
+      if (alignContent != null) yogaNode.alignContent = alignContent;
     }
 
-    // Handle position
-    if (props.containsKey('position')) {
-      yogaNode.positionType = props['position'] as YogaPositionType;
+    if (props.containsKey('flexWrap')) {
+      final flexWrap = _convertToYogaWrap(props['flexWrap']);
+      if (flexWrap != null) yogaNode.flexWrap = flexWrap;
     }
 
-    // Handle edges (position, margin, padding, border)
-    for (final edge in YogaEdge.values) {
-      final edgeName = _getEdgeName(edge);
-
-      // Position
-      final positionProp = props['$edgeName'];
-      if (positionProp != null) {
-        yogaNode.setPosition(edge, positionProp);
-      }
-
-      // Margin
-      final marginProp = props['margin$edgeName'];
-      if (marginProp != null) {
-        yogaNode.setMargin(edge, marginProp);
-      }
-
-      // Padding
-      final paddingProp = props['padding$edgeName'];
-      if (paddingProp != null) {
-        yogaNode.setPadding(edge, paddingProp);
-      }
-
-      // Border
-      final borderProp = props['border${edgeName}Width'];
-      if (borderProp != null) {
-        yogaNode.setBorder(edge, borderProp);
-      }
+    if (props.containsKey('flex')) {
+      final flexValue = props['flex'];
+      if (flexValue is num) yogaNode.flex = flexValue.toDouble();
     }
 
-    // Handle special cases for all edges
-    if (props.containsKey('margin')) {
-      final margin = props['margin'];
-      for (final edge in YogaEdge.values) {
-        yogaNode.setMargin(edge, margin);
-      }
+    if (props.containsKey('flexGrow')) {
+      final flexGrow = props['flexGrow'];
+      if (flexGrow is num) yogaNode.flexGrow = flexGrow.toDouble();
     }
 
-    if (props.containsKey('padding')) {
-      final padding = props['padding'];
-      for (final edge in YogaEdge.values) {
-        yogaNode.setPadding(edge, padding);
-      }
+    if (props.containsKey('flexShrink')) {
+      final flexShrink = props['flexShrink'];
+      if (flexShrink is num) yogaNode.flexShrink = flexShrink.toDouble();
     }
 
-    if (props.containsKey('borderWidth')) {
-      final borderWidth = props['borderWidth'];
-      for (final edge in YogaEdge.values) {
-        yogaNode.setBorder(edge, borderWidth);
-      }
+    if (props.containsKey('flexBasis')) {
+      _setFlexBasis(props['flexBasis']);
     }
 
-    // Handle display and overflow
+    // Display and overflow
     if (props.containsKey('display')) {
-      yogaNode.display = props['display'] as YogaDisplay;
+      final display = _convertToYogaDisplay(props['display']);
+      if (display != null) yogaNode.display = display;
     }
 
     if (props.containsKey('overflow')) {
-      yogaNode.overflow = props['overflow'] as YogaOverflow;
+      final overflow = _convertToYogaOverflow(props['overflow']);
+      if (overflow != null) yogaNode.overflow = overflow;
     }
 
-    // Mark as dirty after applying props
-    markDirty();
+    // Direction
+    if (props.containsKey('direction')) {
+      final direction = _convertToYogaDirection(props['direction']);
+      if (direction != null) yogaNode.direction = direction;
+    }
 
-    developer.log('Updated layout props for node $id', name: 'ShadowNode');
+    // Border (although visual, it affects layout)
+    if (props.containsKey('borderWidth')) {
+      _setBorderWidth(YogaEdge.all, props['borderWidth']);
+    }
+
+    // Mark the node as dirty after applying properties
+    markDirty();
+  }
+
+  // Helper methods to convert string values to Yoga enums
+  YogaPositionType? _convertToYogaPositionType(dynamic value) {
+    if (value is YogaPositionType) return value;
+    if (value is String) {
+      switch (value.toLowerCase()) {
+        case 'relative':
+          return YogaPositionType.relative;
+        case 'absolute':
+          return YogaPositionType.absolute;
+        default:
+          return null;
+      }
+    }
+    return null;
+  }
+
+  YogaFlexDirection? _convertToYogaFlexDirection(dynamic value) {
+    if (value is YogaFlexDirection) return value;
+    if (value is String) {
+      switch (value.toLowerCase()) {
+        case 'column':
+          return YogaFlexDirection.column;
+        case 'column-reverse':
+        case 'columnreverse':
+          return YogaFlexDirection.columnReverse;
+        case 'row':
+          return YogaFlexDirection.row;
+        case 'row-reverse':
+        case 'rowreverse':
+          return YogaFlexDirection.rowReverse;
+        default:
+          return null;
+      }
+    }
+    return null;
+  }
+
+  YogaJustifyContent? _convertToYogaJustifyContent(dynamic value) {
+    if (value is YogaJustifyContent) return value;
+    if (value is String) {
+      switch (value.toLowerCase()) {
+        case 'flex-start':
+        case 'flexstart':
+          return YogaJustifyContent.flexStart;
+        case 'center':
+          return YogaJustifyContent.center;
+        case 'flex-end':
+        case 'flexend':
+          return YogaJustifyContent.flexEnd;
+        case 'space-between':
+        case 'spacebetween':
+          return YogaJustifyContent.spaceBetween;
+        case 'space-around':
+        case 'spacearound':
+          return YogaJustifyContent.spaceAround;
+        case 'space-evenly':
+        case 'spaceevenly':
+          return YogaJustifyContent.spaceEvenly;
+        default:
+          return null;
+      }
+    }
+    return null;
+  }
+
+  YogaAlign? _convertToYogaAlign(dynamic value) {
+    if (value is YogaAlign) return value;
+    if (value is String) {
+      switch (value.toLowerCase()) {
+        case 'auto':
+          return YogaAlign.auto;
+        case 'flex-start':
+        case 'flexstart':
+          return YogaAlign.flexStart;
+        case 'center':
+          return YogaAlign.center;
+        case 'flex-end':
+        case 'flexend':
+          return YogaAlign.flexEnd;
+        case 'stretch':
+          return YogaAlign.stretch;
+        case 'baseline':
+          return YogaAlign.baseline;
+        case 'space-between':
+        case 'spacebetween':
+          return YogaAlign.spaceBetween;
+        case 'space-around':
+        case 'spacearound':
+          return YogaAlign.spaceAround;
+        default:
+          return null;
+      }
+    }
+    return null;
+  }
+
+  YogaWrap? _convertToYogaWrap(dynamic value) {
+    if (value is YogaWrap) return value;
+    if (value is String) {
+      switch (value.toLowerCase()) {
+        case 'nowrap':
+        case 'no-wrap':
+          return YogaWrap.nowrap;
+        case 'wrap':
+          return YogaWrap.wrap;
+        case 'wrap-reverse':
+        case 'wrapreverse':
+          return YogaWrap.wrapReverse;
+        default:
+          return null;
+      }
+    }
+    return null;
+  }
+
+  YogaDisplay? _convertToYogaDisplay(dynamic value) {
+    if (value is YogaDisplay) return value;
+    if (value is String) {
+      switch (value.toLowerCase()) {
+        case 'flex':
+          return YogaDisplay.flex;
+        case 'none':
+          return YogaDisplay.none;
+        default:
+          return null;
+      }
+    }
+    return null;
+  }
+
+  YogaOverflow? _convertToYogaOverflow(dynamic value) {
+    if (value is YogaOverflow) return value;
+    if (value is String) {
+      switch (value.toLowerCase()) {
+        case 'visible':
+          return YogaOverflow.visible;
+        case 'hidden':
+          return YogaOverflow.hidden;
+        case 'scroll':
+          return YogaOverflow.scroll;
+        default:
+          return null;
+      }
+    }
+    return null;
+  }
+
+  YogaDirection? _convertToYogaDirection(dynamic value) {
+    if (value is YogaDirection) return value;
+    if (value is String) {
+      switch (value.toLowerCase()) {
+        case 'inherit':
+          return YogaDirection.inherit;
+        case 'ltr':
+          return YogaDirection.ltr;
+        case 'rtl':
+          return YogaDirection.rtl;
+        default:
+          return null;
+      }
+    }
+    return null;
+  }
+
+  /// Implementation of the helper methods needed for ShadowNode
+
+  /// Whether this node is valid (not disposed)
+  bool get isValid => yogaNode != null && !yogaNode.isDisposed;
+
+  /// Set width property - handles various dimension values
+  void _setWidth(dynamic width) {
+    if (width == null || !isValid) return;
+
+    if (width is String && width.endsWith('%')) {
+      // Handle percentage values
+      final percent = double.tryParse(width.substring(0, width.length - 1));
+      if (percent != null) {
+        yogaNode.setWidth(width); // Pass the original percentage string
+      }
+    } else if (width is num) {
+      yogaNode.setWidth(width);
+    } else if (width == 'auto') {
+      yogaNode.setWidth(null); // In YogaNode, null means auto
+    }
+  }
+
+  /// Set height property - handles various dimension values
+  void _setHeight(dynamic height) {
+    if (height == null || !isValid) return;
+
+    if (height is String && height.endsWith('%')) {
+      // Handle percentage values
+      final percent = double.tryParse(height.substring(0, height.length - 1));
+      if (percent != null) {
+        yogaNode.setHeight(height); // Pass the original percentage string
+      }
+    } else if (height is num) {
+      yogaNode.setHeight(height);
+    } else if (height == 'auto') {
+      yogaNode.setHeight(null); // In YogaNode, null means auto
+    }
+  }
+
+  /// Set minimum width property
+  void _setMinWidth(dynamic minWidth) {
+    if (minWidth == null || !isValid) return;
+
+    if (minWidth is String && minWidth.endsWith('%')) {
+      // Handle percentage values
+      final percent =
+          double.tryParse(minWidth.substring(0, minWidth.length - 1));
+      if (percent != null) {
+        yogaNode.setMinWidth(minWidth); // Pass the original percentage string
+      }
+    } else if (minWidth is num) {
+      yogaNode.setMinWidth(minWidth);
+    }
+  }
+
+  /// Set maximum width property
+  void _setMaxWidth(dynamic maxWidth) {
+    if (maxWidth == null || !isValid) return;
+
+    if (maxWidth is String && maxWidth.endsWith('%')) {
+      // Handle percentage values
+      final percent =
+          double.tryParse(maxWidth.substring(0, maxWidth.length - 1));
+      if (percent != null) {
+        yogaNode.setMaxWidth(maxWidth); // Pass the original percentage string
+      }
+    } else if (maxWidth is num) {
+      yogaNode.setMaxWidth(maxWidth);
+    }
+  }
+
+  /// Set minimum height property
+  void _setMinHeight(dynamic minHeight) {
+    if (minHeight == null || !isValid) return;
+
+    if (minHeight is String && minHeight.endsWith('%')) {
+      // Handle percentage values
+      final percent =
+          double.tryParse(minHeight.substring(0, minHeight.length - 1));
+      if (percent != null) {
+        yogaNode.setMinHeight(minHeight); // Pass the original percentage string
+      }
+    } else if (minHeight is num) {
+      yogaNode.setMinHeight(minHeight);
+    }
+  }
+
+  /// Set maximum height property
+  void _setMaxHeight(dynamic maxHeight) {
+    if (maxHeight == null || !isValid) return;
+
+    if (maxHeight is String && maxHeight.endsWith('%')) {
+      // Handle percentage values
+      final percent =
+          double.tryParse(maxHeight.substring(0, maxHeight.length - 1));
+      if (percent != null) {
+        yogaNode.setMaxHeight(maxHeight); // Pass the original percentage string
+      }
+    } else if (maxHeight is num) {
+      yogaNode.setMaxHeight(maxHeight);
+    }
+  }
+
+  /// Set margin for a specific edge
+  void _setMargin(YogaEdge edge, dynamic margin) {
+    if (margin == null || !isValid) return;
+
+    if (margin is String && margin.endsWith('%')) {
+      // Handle percentage values
+      final percent = double.tryParse(margin.substring(0, margin.length - 1));
+      if (percent != null) {
+        yogaNode.setMargin(edge, margin); // Pass the original percentage string
+      }
+    } else if (margin is num) {
+      yogaNode.setMargin(edge, margin);
+    } else if (margin == 'auto') {
+      yogaNode.setMargin(edge, 'auto');
+    }
+  }
+
+  /// Set padding for a specific edge
+  void _setPadding(YogaEdge edge, dynamic padding) {
+    if (padding == null || !isValid) return;
+
+    if (padding is String && padding.endsWith('%')) {
+      // Handle percentage values
+      final percent = double.tryParse(padding.substring(0, padding.length - 1));
+      if (percent != null) {
+        yogaNode.setPadding(
+            edge, padding); // Pass the original percentage string
+      }
+    } else if (padding is num) {
+      yogaNode.setPadding(edge, padding);
+    }
+  }
+
+  /// Set position for a specific edge
+  void _setPosition(YogaEdge edge, dynamic position) {
+    if (position == null || !isValid) return;
+
+    if (position is String && position.endsWith('%')) {
+      // Handle percentage values
+      final percent =
+          double.tryParse(position.substring(0, position.length - 1));
+      if (percent != null) {
+        yogaNode.setPosition(
+            edge, position); // Pass the original percentage string
+      }
+    } else if (position is num) {
+      yogaNode.setPosition(edge, position);
+    }
+  }
+
+  /// Set border width for a specific edge
+  void _setBorderWidth(YogaEdge edge, dynamic borderWidth) {
+    if (borderWidth == null || !isValid) return;
+
+    if (borderWidth is num) {
+      yogaNode.setBorder(edge, borderWidth);
+    }
+  }
+
+  /// Set flex basis property
+  void _setFlexBasis(dynamic flexBasis) {
+    if (flexBasis == null || !isValid) return;
+
+    if (flexBasis is String && flexBasis.endsWith('%')) {
+      // Handle percentage values
+      final percent =
+          double.tryParse(flexBasis.substring(0, flexBasis.length - 1));
+      if (percent != null) {
+        yogaNode.setFlexBasis(flexBasis); // Pass the original percentage string
+      }
+    } else if (flexBasis is num) {
+      yogaNode.setFlexBasis(flexBasis);
+    } else if (flexBasis == 'auto') {
+      yogaNode.setFlexBasis('auto');
+    }
   }
 
   /// Get edge name for property names

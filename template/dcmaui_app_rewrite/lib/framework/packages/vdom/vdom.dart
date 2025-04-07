@@ -597,7 +597,9 @@ class VDom {
     return await _nativeBridge.attachView(childId, parentId, index);
   }
 
-  /// Detach a view from its parent
+  /// Detach/delete a view from its parent
+  /// This shouold be helpful in removing those redundant views that stack ontop of currrent view stack 
+  /// when thereb is a hot restart and probaly in the future hot reload via the dart-hot-relaoder package
   Future<bool> detachView(String viewId) async {
     await _nativeBridge.deleteView(viewId);
     return true;
