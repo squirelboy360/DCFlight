@@ -260,19 +260,21 @@ class YogaNode {
     
     try {
       if (_node != null) {
-        // CRITICAL FIX: Only call nodeMarkDirty on leaf nodes with measure functions
-        // For non-leaf nodes, we should not call this directly
-        if (_children.isEmpty) {
-          // Only leaf nodes should be marked dirty directly
+        // According to Yoga's source code, only leaf nodes with measure functions
+        // should call YGNodeMarkDirty directly
+        if (_children.isEmpty && YogaBindings.instance.nodeHasMeasureFunc(_node!)) {
+          // Only leaf nodes with measure functions should call nodeMarkDirty directly
           YogaBindings.instance.nodeMarkDirty(_node!);
         } else {
-          // For parent nodes, Yoga will automatically mark them dirty 
-          // when their children or properties change
-          developer.log('Skipping direct markDirty call on non-leaf node', name: 'YogaNode');
+          // For non-leaf nodes or nodes without measure functions:
+          // Instead of directly marking this node dirty, propagate dirtiness up the tree
+          if (parent != null && !parent!.isDisposed) {
+            parent!.markDirty();
+          }
         }
       }
     } catch (e) {
-      developer.log('Error marking node dirty in Yoga: $e', name: 'YogaNode');
+      developer.log('Error in markDirty: $e', name: 'YogaNode');
     } finally {
       _endSafeOperation();
     }
