@@ -223,29 +223,20 @@ class VDom {
         '🔥 Starting layout calculation with dimensions: ${width ?? '100%'} x ${height ?? '100%'}',
         name: 'VDom');
 
-    // Use screen dimensions if not specified
-    double calculationWidth = width ?? ScreenUtilities.instance.screenWidth;
-    double calculationHeight = height ?? ScreenUtilities.instance.screenHeight;
+    // Use percentage values instead of explicit dimensions when possible
+    // For the root calculation, we still need some concrete values though
+    double calculationWidth =
+        width ?? double.infinity; // Use infinity to represent 100%
+    double calculationHeight =
+        height ?? double.infinity; // Use infinity to represent 100%
 
-    developer.log(
-        '🔄 Using explicit dimensions for layout: $calculationWidth x $calculationHeight',
-        name: 'VDom');
-
-    // Perform layout calculation
+    // Perform layout calculation with percentage support
     await LayoutCalculator.instance.calculateAndApplyLayout(
         calculationWidth, calculationHeight, YogaDirection.ltr);
 
     developer.log(
         '✅ Layout calculation applied for ${LayoutCalculator.instance.nodeCount} views',
         name: 'VDom');
-
-    // Log layout results for debugging
-    for (final viewId in _nodesByViewId.keys) {
-      final layout = LayoutCalculator.instance.getLayoutForNode(viewId);
-      if (layout != null) {
-        developer.log('📐 View $viewId layout: $layout', name: 'VDom');
-      }
-    }
 
     // Reset layout dirty flag
     _layoutDirty = false;
@@ -608,9 +599,7 @@ class VDom {
 
   /// Detach a view from its parent
   Future<bool> detachView(String viewId) async {
-    // Since native_bridge.dart doesn't have detachView, we can simulate it
-    // by getting the parent and setting children without this view
-    // For now, we'll just return true as a placeholder
+    await _nativeBridge.deleteView(viewId);
     return true;
   }
 }

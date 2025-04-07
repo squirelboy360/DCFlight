@@ -62,64 +62,67 @@ class AnimatedAppComponent extends StatefulComponent {
   VDomNode render() {
     // State hooks
     final counter = useState(0, 'counter');
-    final screenWidth = useState(ScreenUtilities.instance.screenWidth, 'screenWidth');
-    final screenHeight = useState(ScreenUtilities.instance.screenHeight, 'screenHeight');
-    
+    final screenWidth =
+        useState(ScreenUtilities.instance.screenWidth, 'screenWidth');
+    final screenHeight =
+        useState(ScreenUtilities.instance.screenHeight, 'screenHeight');
+
     useEffect(() {
       // Set up a timer to update the color every second
       final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         // Update the background color
         counter.setValue(counter.value + 1);
       });
-      
-      // Set up screen dimension listener
+
+      // // Set up screen dimension listener
       void onDimensionsChanged() {
         screenWidth.setValue(ScreenUtilities.instance.screenWidth);
         screenHeight.setValue(ScreenUtilities.instance.screenHeight);
         developer.log(
-          'Screen dimensions updated in component: ${screenWidth.value} x ${screenHeight.value}',
-          name: 'AnimatedApp'
-        );
+            'Screen dimensions updated in component: ${screenWidth.value} x ${screenHeight.value}',
+            name: 'AnimatedApp');
       }
-      
-      // Register the listener
+
+      // // Register the listener
       ScreenUtilities.instance.addDimensionChangeListener(onDimensionsChanged);
-      
+
       // Clean up when component is unmounted
       return () {
         timer.cancel();
-        ScreenUtilities.instance.removeDimensionChangeListener(onDimensionsChanged);
-        developer.log('Cleaned up timer and screen dimension listener', name: 'AnimatedApp');
+        // ScreenUtilities.instance.removeDimensionChangeListener(onDimensionsChanged);
+        developer.log('Cleaned up timer and screen dimension listener',
+            name: 'AnimatedApp');
       };
     }, dependencies: []);
 
     return UI.View(
-      layout: LayoutProps(
-        // Use the state variables for dimensions
-        height: screenHeight.value,
-        width: screenWidth.value,
-        alignItems: YogaAlign.center,
-        justifyContent: YogaJustifyContent.center,
-      ),
-      style: StyleSheet(backgroundColor: Colors.amber),
-      children: [
-        UI.View(
-          layout: LayoutProps(height: 100, width: 200),
-          style: StyleSheet(
-            backgroundColor: Colors.white,
-            borderRadius: 8,
-          ),
-          children: [
-            UI.Text(
-              content: 'Screen: ${screenWidth.value.toInt()} x ${screenHeight.value.toInt()}\nCounter: ${counter.value}',
-              textProps: TextProps(
-                color: Colors.purpleAccent,
-                fontSize: 20,
-                fontWeight: 'bold',
-              ),
-            ),
-          ],
+        layout: LayoutProps(
+          // Use the state variables for dimensions
+          height: '100%',
+          width: '100%',
+          alignItems: YogaAlign.center,
+          justifyContent: YogaJustifyContent.center,
         ),
-      ]);
+        style: StyleSheet(backgroundColor: Colors.amber),
+        children: [
+          UI.View(
+            layout: LayoutProps(height: 100, width: 200),
+            style: StyleSheet(
+              backgroundColor: Colors.white,
+              borderRadius: 8,
+            ),
+            children: [
+              UI.Text(
+                content:
+                    'Screen: ${screenWidth.value.toInt()} x ${screenHeight.value.toInt()}\nCounter: ${counter.value}',
+                textProps: TextProps(
+                  color: Colors.purpleAccent,
+                  fontSize: 20,
+                  fontWeight: 'bold',
+                ),
+              ),
+            ],
+          ),
+        ]);
   }
 }
