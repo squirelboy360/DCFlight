@@ -80,6 +80,9 @@ class AppDelegate: FlutterAppDelegate {
         // Set up the root with our props
         DCMauiNativeBridgeCoordinator.shared.manuallyCreateRootView(rootContainer, viewId: "root", props: rootProps)
         
+        // IMPORTANT: Register the root view with FFI bridge for direct access
+        DCMauiFFIBridge.shared.registerView(rootContainer, withId: "root")
+        
         print("DC MAUI: Root view registered with ID: root - size: \(rootContainer.bounds)")
         
         // Initialize screen utilities with the Flutter binary messenger

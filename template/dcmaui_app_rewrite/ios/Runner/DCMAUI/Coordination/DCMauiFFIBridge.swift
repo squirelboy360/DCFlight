@@ -19,11 +19,33 @@ import Foundation
         NSLog("DCMauiFFIBridge initialized")
     }
     
+    // MARK: - Public Registration Methods
+    
+    /// Register a pre-existing view with the bridge
+    @objc func registerView(_ view: UIView, withId viewId: String) {
+        NSLog("DCMauiFFIBridge: Manually registering view with ID: \(viewId)")
+        views[viewId] = view
+    }
+    
     // MARK: - FFI Implementation Functions
     
     /// Initialize the framework
     @objc func initialize() -> Bool {
         NSLog("DCMauiFFIBridge: initialize called")
+        
+        // Check if root view exists already
+        if let rootView = views["root"] {
+            NSLog("DCMauiFFIBridge: Found pre-registered root view: \(rootView)")
+            
+            // Ensure the root view is registered with the shadow tree
+            if YogaShadowTree.shared.nodes["root"] == nil {
+                YogaShadowTree.shared.createNode(id: "root", componentType: "View")
+                NSLog("DCMauiFFIBridge: Created root node in shadow tree")
+            }
+        } else {
+            NSLog("DCMauiFFIBridge: Warning - No root view registered yet")
+        }
+        
         return true
     }
     

@@ -54,91 +54,83 @@ class ViewRegistry {
     // Singleton instance
     @objc public static let shared = DCMauiNativeBridgeCoordinator()
     
-    // Root view for all DCMAUI components
-    private var rootView: UIView?
-    
-    // Flutter method channel for event handling
+    // Event channel for communicating with Flutter
     private var eventChannel: FlutterMethodChannel?
     
-    // Local event callback for debugging
+    // Add the event callback property that was missing
     private var eventCallback: ((String, String, [String: Any]) -> Void)?
     
-    // Private constructor to enforce singleton
+    // Private initializer
     private override init() {
         super.init()
-        print("DCMauiNativeBridgeCoordinator initialized")
+        NSLog("DCMauiNativeBridgeCoordinator initialized")
     }
     
-    // Setup method channel for event handling
-    func setupEventChannel(binaryMessenger: FlutterBinaryMessenger) {
-        self.eventChannel = FlutterMethodChannel(name: "com.dcmaui.events", binaryMessenger: binaryMessenger)
+    // Setup event channel
+    @objc public func setupEventChannel(binaryMessenger: FlutterBinaryMessenger) {
+        eventChannel = FlutterMethodChannel(name: "com.dcmaui.events", binaryMessenger: binaryMessenger)
+        NSLog("⚡️ Method channel for events initialized - ALL EVENT HANDLING IS NOW DIRECT")
+    }
+    
+    // Manually create root view
+    @objc public func manuallyCreateRootView(_ view: UIView, viewId: String, props: [String: Any]) {
+        // Register with view registry
+        ViewRegistry.shared.registerView(view, id: viewId, type: "View")
         
-        // Register method handlers for direct event registration without FFI
-        self.eventChannel?.setMethodCallHandler { [weak self] (call, result) in
-            guard let self = self else {
-                result(FlutterError(code: "UNAVAILABLE", message: "Bridge not available", details: nil))
-                return
-            }
-            
-            switch call.method {
-            case "registerEvents":
-                // Direct event registration - NO FFI FALLBACK
-                if let args = call.arguments as? [String: Any],
-                   let viewId = args["viewId"] as? String,
-                   let eventTypes = args["eventTypes"] as? [String] {
-                    
-                    print("🚀 DIRECT EVENT REGISTRATION: \(viewId) for events: \(eventTypes)")
-                    
-                    // Lookup the view and component
-                    if let viewInfo = ViewRegistry.shared.getViewInfo(id: viewId) {
-                        let view = viewInfo.view
-                        let componentType = viewInfo.type
-                        
-                        // Get the component handler and register events
-                        if let handlerType = DCMauiComponentRegistry.shared.getComponentType(for: componentType) {
-                            // Create an instance of the component handler
-                            let handler = handlerType.init()
-                            handler.addEventListeners(to: view, viewId: viewId, eventTypes: eventTypes) { [weak self] vId, evType, evData in
-                                self?.sendEventToDart(viewId: vId, eventName: evType, eventData: evData)
-                            }
-                            result(true)
-                            return
-                        }
-                    }
-                }
-                result(FlutterError(code: "INVALID_ARGS", message: "Invalid arguments or view not found", details: nil))
-                
-            case "unregisterEvents":
-                // Direct event unregistration - NO FFI FALLBACK
-                if let args = call.arguments as? [String: Any],
-                   let viewId = args["viewId"] as? String,
-                   let eventTypes = args["eventTypes"] as? [String] {
-                    
-                    print("🚀 DIRECT EVENT UNREGISTRATION: \(viewId) for events: \(eventTypes)")
-                    
-                    // Lookup the view and component
-                    if let viewInfo = ViewRegistry.shared.getViewInfo(id: viewId) {
-                        let view = viewInfo.view
-                        let componentType = viewInfo.type
-                        
-                        // Get the component handler and unregister events
-                        if let handlerType = DCMauiComponentRegistry.shared.getComponentType(for: componentType) {
-                            // Create an instance of the component handler
-                            let handler = handlerType.init()
-                            handler.removeEventListeners(from: view, viewId: viewId, eventTypes: eventTypes)
-                            result(true)
-                            return
-                        }
-                    }
-                }
-                result(FlutterError(code: "INVALID_ARGS", message: "Invalid arguments or view not found", details: nil))
-                
-            default:
-                result(FlutterMethodNotImplemented)
-            }
+        // Create node in shadow tree
+        YogaShadowTree.shared.createNode(id: viewId, componentType: "View")
+        
+        // Register with layout manager
+        DCMauiLayoutManager.shared.registerView(view, withId: viewId)
+        
+        // Apply initial layout props
+        let layoutProps = extractLayoutProps(from: props)
+        if !layoutProps.isEmpty {
+            DCMauiLayoutManager.shared.updateNodeWithLayoutProps(
+                nodeId: viewId,
+                componentType: "View",
+                props: layoutProps
+            )
         }
         
-        print("⚡️ Method channel for events initialized - ALL EVENT HANDLING IS NOW DIRECT")
+        // Apply initial style props
+        let styleProps = props.filter { !layoutProps.keys.contains($0.key) }
+        if !styleProps.isEmpty {
+            view.applyStyles(props: styleProps)
+        }
+        
+        // Register with FFI bridge too
+        DCMauiFFIBridge.shared.registerView(view, withId: viewId)
+        
+        print("Root view manually created with ID: \(viewId)")
+    }
+    
+    // Extract layout props from props dictionary
+    private func extractLayoutProps(from props: [String: Any]) -> [String: Any] {
+        let layoutPropKeys = [
+            "width", "height", "minWidth", "maxWidth", "minHeight", "maxHeight",
+            "margin", "marginTop", "marginRight", "marginBottom", "marginLeft",
+            "marginHorizontal", "marginVertical",
+            "padding", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+            "paddingHorizontal", "paddingVertical",
+            "left", "top", "right", "bottom", "position",
+            "flexDirection", "justifyContent", "alignItems", "alignSelf", "alignContent",
+            "flexWrap", "flex", "flexGrow", "flexShrink", "flexBasis",
+            "display", "overflow", "direction", "borderWidth"
+        ]
+        
+        return props.filter { layoutPropKeys.contains($0.key) }
+    }
+    
+    // Send event to Flutter
+    @objc public func sendEvent(_ eventName: String, data: [String: Any], viewId: String) {
+        guard let channel = eventChannel else { return }
+        
+        channel.invokeMethod("onEvent", arguments: [
+            "eventType": eventName,
+            "viewId": viewId,
+            "eventData": data
+        ])
     }
     
     // Called by FFI to initialize the native bridge
@@ -275,43 +267,28 @@ class ViewRegistry {
         return 1
     }
     
-    // Set the event callback function
+    // Set event callback function
     func setEventCallback(_ callback: @escaping (String, String, [String: Any]) -> Void) {
         self.eventCallback = callback
     }
 
     // Send events to Dart using method channel
     func sendEventToDart(viewId: String, eventName: String, eventData: [String: Any]) {
-        // Create event data once
-        let event: [String: Any] = [
-            "viewId": viewId,
-            "eventType": eventName,
-            "eventData": eventData
-        ]
-        
-        self.eventChannel?.invokeMethod("onEvent", arguments: event)
-        
-        // Local callback is only for debugging and optional
         if let callback = self.eventCallback {
+            // Use the stored callback if available
             callback(viewId, eventName, eventData)
+        } else {
+            // Fall back to method channel
+            guard let channel = eventChannel else { return }
+            
+            channel.invokeMethod("onEvent", arguments: [
+                "viewId": viewId,
+                "eventType": eventName,
+                "eventData": eventData
+            ])
         }
     }
 
-    // Method for direct view setup without going through C layer
-    func manuallyCreateRootView(_ view: UIView, viewId: String, props: [String: Any]) {
-        // Create the appropriate component type (assuming View)
-        if let componentType = DCMauiComponentRegistry.shared.getComponentType(for: "View") {
-            // Create an instance
-            let component = componentType.init()
-            _ = component.updateView(view, withProps: props)
-            
-            // Store in registry
-            ViewRegistry.shared.registerView(view, id: viewId, type: "View")
-            
-            print("Root view manually created with ID: \(viewId)")
-        }
-    }
-    
     /// Update a view's layout directly with absolute positioning
     func updateViewLayout(viewId: String, left: CGFloat, top: CGFloat, width: CGFloat, height: CGFloat) -> Bool {
         guard let view = ViewRegistry.shared.getView(id: viewId) else {

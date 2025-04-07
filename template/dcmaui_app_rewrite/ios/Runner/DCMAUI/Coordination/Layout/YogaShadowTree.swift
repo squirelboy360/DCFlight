@@ -10,7 +10,7 @@ class YogaShadowTree {
     private var rootNode: YGNodeRef?
     
     // Map of node IDs to yoga nodes
-    private var nodes = [String: YGNodeRef]()
+    internal var nodes = [String: YGNodeRef]()
     
     // Map of child-parent relationships
     private var nodeParents = [String: String]()
@@ -519,6 +519,23 @@ class YogaShadowTree {
         // Make sure node has no children before setting measure function
         if YGNodeGetChildCount(node) == 0 {
             YGNodeSetMeasureFunc(node, measureFunc)
+        }
+    }
+    
+    // Add debugging method to print the node hierarchy
+    func printNodeHierarchy(startingAt nodeId: String = "root", depth: Int = 0) {
+        guard let node = nodes[nodeId] else {
+            print("Node not found: \(nodeId)")
+            return
+        }
+        
+        let indent = String(repeating: "  ", count: depth)
+        print("\(indent)Node: \(nodeId) - Type: \(nodeTypes[nodeId] ?? "unknown") - Children: \(YGNodeGetChildCount(node))")
+        
+        // Find children of this node
+        let childNodeIds = nodeParents.filter { $0.value == nodeId }.map { $0.key }
+        for childId in childNodeIds {
+            printNodeHierarchy(startingAt: childId, depth: depth + 1)
         }
     }
     
