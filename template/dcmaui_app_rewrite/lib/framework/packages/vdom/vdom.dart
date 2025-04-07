@@ -6,8 +6,8 @@ import 'dart:developer' as developer;
 import '../../utilities/screen_utilities.dart';
 import '../../packages/native_bridge/native_bridge.dart';
 import '../../packages/native_bridge/ffi_bridge.dart';
-import '../../packages/yoga/layout_calculator.dart';
-import '../../packages/yoga/yoga_enums.dart';
+import '../../packages/layout/layout_bridge.dart';
+import '../../constants/yoga_enums.dart';
 import '../../constants/layout_properties.dart';
 import 'vdom_node.dart';
 import 'vdom_element.dart';
@@ -64,8 +64,8 @@ class VDom {
       // Register event handler
       _nativeBridge.setEventHandler(_handleNativeEvent);
 
-      // Initialize layout calculator
-      LayoutCalculator.instance.initialize(_nativeBridge);
+      // Initialize layout bridge
+      LayoutBridge.instance.initialize(_nativeBridge);
 
       // Mark as ready
       _readyCompleter.complete();
@@ -188,13 +188,13 @@ class VDom {
     }
 
     // Add to layout tree
-    LayoutCalculator.instance.addNode(viewId, parentId: parentId, index: index);
+    LayoutBridge.instance.addNode(viewId, parentId: parentId, index: index);
 
     // Apply layout props
     if (layoutProps != null) {
       final layoutMap = layoutProps.toMap();
       if (layoutMap.isNotEmpty) {
-        LayoutCalculator.instance.updateNodeLayoutProps(viewId, layoutMap);
+        LayoutBridge.instance.updateNodeLayoutProps(viewId, layoutMap);
       }
     }
 
@@ -223,19 +223,17 @@ class VDom {
         '🔥 Starting layout calculation with dimensions: ${width ?? '100%'} x ${height ?? '100%'}',
         name: 'VDom');
 
-    // Use percentage values instead of explicit dimensions when possible
-    // For the root calculation, we still need some concrete values though
-    double calculationWidth =
-        width ?? ScreenUtilities.instance.screenWidth; // Use infinity to represent 100%
-    double calculationHeight =
-        height ?? ScreenUtilities.instance.screenHeight; // Use infinity to represent 100%
+    // Use actual screen dimensions when no explicit sizes provided
+    double calculationWidth = width ?? ScreenUtilities.instance.screenWidth;
+    double calculationHeight = height ?? ScreenUtilities.instance.screenHeight;
 
-    // Perform layout calculation with percentage support
-    await LayoutCalculator.instance.calculateAndApplyLayout(
+    // In DCMAUI-style architecture, layout calculation is handled natively
+    // so we just trigger it and let the native side handle layout
+    await LayoutBridge.instance.calculateAndApplyLayout(
         calculationWidth, calculationHeight, YogaDirection.ltr);
 
     developer.log(
-        '✅ Layout calculation applied for ${LayoutCalculator.instance.nodeCount} views',
+        '✅ Layout calculation applied for ${LayoutBridge.instance.nodeCount} views',
         name: 'VDom');
 
     // Reset layout dirty flag
@@ -302,7 +300,7 @@ class VDom {
         if (layoutMap.isNotEmpty) {
           developer.log('Updated layout props for node $viewId',
               name: 'ShadowTree');
-          LayoutCalculator.instance.updateNodeLayoutProps(viewId, layoutMap);
+          LayoutBridge.instance.updateNodeLayoutProps(viewId, layoutMap);
         }
       }
 
@@ -598,7 +596,7 @@ class VDom {
   }
 
   /// Detach/delete a view from its parent
-  /// This shouold be helpful in removing those redundant views that stack ontop of currrent view stack 
+  /// This shouold be helpful in removing those redundant views that stack ontop of currrent view stack
   /// when thereb is a hot restart and probaly in the future hot reload via the dart-hot-relaoder package
   Future<bool> detachView(String viewId) async {
     await _nativeBridge.deleteView(viewId);

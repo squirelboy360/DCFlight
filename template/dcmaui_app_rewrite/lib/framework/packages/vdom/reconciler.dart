@@ -1,7 +1,7 @@
 import 'dart:developer' as developer;
-import 'package:dc_test/framework/constants/layout_properties.dart';
+import '../../constants/layout_properties.dart';
+import '../../packages/layout/layout_bridge.dart';
 
-import '../yoga/dart_layout_manager.dart';
 import 'vdom_node.dart';
 import 'vdom_element.dart';
 import 'component_node.dart';
@@ -11,9 +11,6 @@ import 'vdom.dart';
 class Reconciler {
   /// Reference to the VDOM
   final VDom vdom;
-
-  /// Layout manager reference
-  final DartLayoutManager _layoutManager = DartLayoutManager.instance;
 
   /// Constructor
   Reconciler(this.vdom);
@@ -123,8 +120,8 @@ class Reconciler {
       if (layoutProps.isNotEmpty) {
         final viewId = newElement.nativeViewId!;
 
-        // Apply layout props to the Yoga node in Dart
-        _layoutManager.applyFlexboxProps(viewId, layoutProps);
+        // Apply layout props to native
+        LayoutBridge.instance.updateNodeLayoutProps(viewId, layoutProps);
 
         // Mark that we need to recalculate layout
         vdom.markLayoutDirty();

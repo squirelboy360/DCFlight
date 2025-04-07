@@ -1,5 +1,5 @@
 import '../constants/layout_enums.dart';
-import '../packages/yoga/yoga_enums.dart';
+import 'yoga_enums.dart';
 
 /// Helper functions to map between Dart enums and Yoga enums
 class EnumMapper {
