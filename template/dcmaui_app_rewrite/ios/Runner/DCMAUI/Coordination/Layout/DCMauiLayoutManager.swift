@@ -2,6 +2,8 @@ import UIKit
 import yoga
 
 /// Manages layout for DCMAUI components
+/// Note: Primary layout calculations occur on the Dart side
+/// This class primarily handles applying calculated layouts and handling absolute positioning
 class DCMauiLayoutManager {
     // Singleton instance
     static let shared = DCMauiLayoutManager()
@@ -59,6 +61,13 @@ class DCMauiLayoutManager {
                             width: layout.width, height: layout.height)
             }
         }
+    }
+    
+    // MARK: - Style Application
+    
+    /// Apply styles to a view (using the shared UIView extension)
+    func applyStyles(to view: UIView, props: [String: Any]) {
+        view.applyStyles(props: props)
     }
     
     // MARK: - Cleanup

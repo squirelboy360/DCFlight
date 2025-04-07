@@ -23,7 +23,7 @@ class DCMauiViewComponent: NSObject, DCMauiComponent {
             !LayoutProps.all.contains(key)
         }
         
-        // Apply styles
+        // Apply styles directly to view
         if !styleProps.isEmpty {
             view.applyStyles(props: styleProps)
         }

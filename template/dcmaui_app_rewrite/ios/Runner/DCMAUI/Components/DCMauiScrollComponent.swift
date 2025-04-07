@@ -160,8 +160,8 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent, UIScrollViewDelegate {
             scrollView.isScrollEnabled = scrollEnabled
         }
         
-        // Apply non-layout styling
-        DCMauiLayoutManager.shared.applyStyles(to: scrollView, props: props)
+        // Apply non-layout styling - Fix: use the view extension directly instead of through layout manager
+        view.applyStyles(props: props)  // Changed from DCMauiLayoutManager.shared.applyStyles(to: scrollView, props: props)
         
         // Ensure the content view receives background color if specified for ScrollView
         if let backgroundColor = props["backgroundColor"] as? String,
@@ -215,7 +215,7 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent, UIScrollViewDelegate {
                          eventCallback: @escaping (String, String, [String: Any]) -> Void) {
         guard let scrollView = view as? UIScrollView else { return }
         
-        if eventTypes.contains("scroll") {
+        if (eventTypes.contains("scroll")) {
             // Get or create delegate
             let delegate = DCMauiScrollComponent.scrollViewDelegates[scrollView] ?? DCMauiScrollDelegate()
             

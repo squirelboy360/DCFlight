@@ -26,7 +26,7 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
             label.text = text
         }
         
-        // Apply style properties using existing UIView extension
+        // Apply style properties using existing UIView extension directly
         view.applyStyles(props: props)
         
         // Apply text-specific styles
