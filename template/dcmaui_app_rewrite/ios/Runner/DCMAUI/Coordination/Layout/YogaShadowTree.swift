@@ -1,543 +1,564 @@
 import UIKit
 import yoga
 
-/// Manages the Yoga shadow tree for layout calculation
+/// Shadow tree for layout calculations using Yoga
 class YogaShadowTree {
     // Singleton instance
     static let shared = YogaShadowTree()
     
-    // Map of node IDs to YGNodes
+    // Root node of the shadow tree
+    private var rootNode: YGNodeRef?
+    
+    // Map of node IDs to yoga nodes
     private var nodes = [String: YGNodeRef]()
     
-    // Map of node IDs to associated views
-    private var views = [String: UIView]()
+    // Map of child-parent relationships
+    private var nodeParents = [String: String]()
     
-    // Map of node IDs to parent node IDs
-    private var parentNodes = [String: String]()
-    
-    // Map of node IDs to component types
-    private var componentTypes = [String: String]()
-    
-    // Root node IDs
-    private var rootNodeIds = Set<String>()
+    // Map for storing component types
+    private var nodeTypes = [String: String]()
     
     // Private initializer for singleton
     private init() {
-        // Configure Yoga with defaults
-        YGConfigSetPointScaleFactor(YGConfigGetDefault(), Float(UIScreen.main.scale))
-    }
-    
-    // MARK: - Node Management
-    
-    /// Create a node in the shadow tree
-    func createNode(id: String, componentType: String) -> YGNodeRef? {
-        NSLog("Creating shadow node: \(id) of type \(componentType)")
-        guard !nodes.keys.contains(id) else {
-            NSLog("Node \(id) already exists")
-            return nodes[id]
+        // Create root node
+        rootNode = YGNodeNew()
+        
+        // Configure default root properties
+        if let root = rootNode {
+            YGNodeStyleSetDirection(root, YGDirection.LTR)
+            YGNodeStyleSetFlexDirection(root, YGFlexDirection.column)
+            YGNodeStyleSetWidth(root, Float(UIScreen.main.bounds.width))
+            YGNodeStyleSetHeight(root, Float(UIScreen.main.bounds.height))
+            
+            // Store root node
+            nodes["root"] = root
+            nodeTypes["root"] = "View"
         }
         
+        print("YogaShadowTree initialized with root node")
+    }
+    
+    // Create a new node in the shadow tree
+    func createNode(id: String, componentType: String) {
+        print("Creating shadow node: \(id) of type \(componentType)")
+        
+        // Create new node
         let node = YGNodeNew()
+        
+        // Configure default properties based on component type
+        configureNodeDefaults(node, forComponentType: componentType)
+        
+        // Store node
         nodes[id] = node
-        componentTypes[id] = componentType
-        rootNodeIds.insert(id) // Initially assume it's a root until added as child
-        
-        // Set some reasonable defaults
-        YGNodeStyleSetFlexDirection(node, YGFlexDirection.column)
-        YGNodeStyleSetAlignItems(node, YGAlign.stretch)
-        
-        return node
+        nodeTypes[id] = componentType
     }
     
-    /// Remove a node from the shadow tree
-    func removeNode(id: String) {
-        NSLog("Removing shadow node: \(id)")
-        guard let node = nodes[id] else { return }
-        
-        // Remove from roots if applicable
-        rootNodeIds.remove(id)
-        
-        // Remove parent reference
-        parentNodes.removeValue(forKey: id)
-        
-        // If this node is a parent, update its children
-        let childNodeIds = parentNodes.filter { $0.value == id }.keys
-        for childId in childNodeIds {
-            parentNodes.removeValue(forKey: childId)
-            rootNodeIds.insert(childId) // Make children roots
-        }
-        
-        // Free the Yoga node
-        YGNodeFree(node)
-        nodes.removeValue(forKey: id)
-        componentTypes.removeValue(forKey: id)
-        views.removeValue(forKey: id)
-    }
-    
-    /// Check if a node exists
-    func hasNode(id: String) -> Bool {
-        return nodes.keys.contains(id)
-    }
-    
-    /// Get a node by ID
-    func getNode(id: String) -> YGNodeRef? {
-        return nodes[id]
-    }
-    
-    // MARK: - Parent-Child Relationships
-    
-    /// Add a child node to a parent node
-    func addChild(parentId: String, childId: String, index: Int) {
+    // Add a child node to a parent node
+    func addChildNode(parentId: String, childId: String, index: Int? = nil) {
         guard let parentNode = nodes[parentId], let childNode = nodes[childId] else {
-            NSLog("Cannot add child: parent or child node not found")
+            print("Cannot add child: parent or child node not found")
             return
         }
         
-        // Update hierarchy info
-        parentNodes[childId] = parentId
-        rootNodeIds.remove(childId)
+        // First, remove child from any existing parent
+        if let oldParentId = nodeParents[childId], let oldParentNode = nodes[oldParentId] {
+            YGNodeRemoveChild(oldParentNode, childNode)
+        }
         
-        // Add to Yoga tree
-        YGNodeInsertChild(parentNode, childNode, index)
+        // Then add to new parent
+        if let index = index {
+            // Add at specific index
+            if index < Int(YGNodeGetChildCount(parentNode)) {
+                YGNodeInsertChild(parentNode, childNode, UInt32(index))
+            } else {
+                YGNodeInsertChild(parentNode, childNode, UInt32(YGNodeGetChildCount(parentNode)))
+            }
+        } else {
+            // Add at the end
+            YGNodeInsertChild(parentNode, childNode, UInt32(YGNodeGetChildCount(parentNode)))
+        }
         
-        NSLog("Added node \(childId) as child to \(parentId) at index \(index)")
+        // Update parent reference
+        nodeParents[childId] = parentId
     }
     
-    /// Remove a child node from its parent
-    func removeChild(childId: String) {
-        guard let childNode = nodes[childId], let parentId = parentNodes[childId], let parentNode = nodes[parentId] else {
-            return
+    // Remove a node from the shadow tree
+    func removeNode(nodeId: String) {
+        guard let node = nodes[nodeId] else { return }
+        
+        // Remove from parent if any
+        if let parentId = nodeParents[nodeId], let parentNode = nodes[parentId] {
+            YGNodeRemoveChild(parentNode, node)
         }
         
-        // Find the child index
-        let childCount = YGNodeGetChildCount(parentNode)
+        // Clean up children
+        let childCount = YGNodeGetChildCount(node)
         for i in 0..<childCount {
-            if YGNodeGetChild(parentNode, i) == childNode {
-                YGNodeRemoveChild(parentNode, childNode)
-                break
-            }
+            let childNode = YGNodeGetChild(node, 0) // Always remove the first one
+            YGNodeRemoveChild(node, childNode)
         }
         
-        // Update hierarchy info
-        parentNodes.removeValue(forKey: childId)
-        rootNodeIds.insert(childId)
+        // Free memory
+        YGNodeFree(node)
         
-        NSLog("Removed node \(childId) from parent \(parentId)")
+        // Remove references
+        nodes.removeValue(forKey: nodeId)
+        nodeParents.removeValue(forKey: nodeId)
+        nodeTypes.removeValue(forKey: nodeId)
     }
     
-    // MARK: - View Association
-    
-    /// Associate a view with a node
-    func associateView(_ view: UIView, withNodeId nodeId: String, componentType: String, componentInstance: DCMauiComponent) {
-        views[nodeId] = view
-        view.nodeId = nodeId
-        
-        // Notify the component instance
-        componentInstance.viewRegisteredWithShadowTree(view, nodeId: nodeId)
-        
-        NSLog("Associated view with node \(nodeId) of type \(componentType)")
-    }
-    
-    /// Get a view by node ID
-    func getView(forNodeId nodeId: String) -> UIView? {
-        return views[nodeId]
-    }
-    
-    // MARK: - Layout Properties
-    
-    /// Apply layout properties to a node
-    func applyLayoutProps(nodeId: String, props: [String: Any]) {
+    // Update a node's layout properties
+    func updateNodeLayoutProps(nodeId: String, props: [String: Any]) {
         guard let node = nodes[nodeId] else {
-            NSLog("Cannot apply layout props: node \(nodeId) not found")
+            print("Cannot update layout: node not found for ID \(nodeId)")
             return
         }
         
-        NSLog("Applying layout props to node \(nodeId): \(props)")
+        print("Applying layout props to node \(nodeId): \(props)")
         
-        // Basic dimensions
-        applyDimension(node: node, prop: props["width"], dimension: .width)
-        applyDimension(node: node, prop: props["height"], dimension: .height)
-        applyDimension(node: node, prop: props["minWidth"], dimension: .minWidth)
-        applyDimension(node: node, prop: props["minHeight"], dimension: .minHeight)
-        applyDimension(node: node, prop: props["maxWidth"], dimension: .maxWidth)
-        applyDimension(node: node, prop: props["maxHeight"], dimension: .maxHeight)
-        
-        // Margins
-        applyEdgeValue(node: node, prop: props["margin"], edge: YGEdge.all, property: .margin)
-        applyEdgeValue(node: node, prop: props["marginTop"], edge: YGEdge.top, property: .margin)
-        applyEdgeValue(node: node, prop: props["marginRight"], edge: YGEdge.right, property: .margin)
-        applyEdgeValue(node: node, prop: props["marginBottom"], edge: YGEdge.bottom, property: .margin)
-        applyEdgeValue(node: node, prop: props["marginLeft"], edge: YGEdge.left, property: .margin)
-        if let marginHorizontal = props["marginHorizontal"] {
-            applyEdgeValue(node: node, prop: marginHorizontal, edge: YGEdge.horizontal, property: .margin)
-        }
-        if let marginVertical = props["marginVertical"] {
-            applyEdgeValue(node: node, prop: marginVertical, edge: YGEdge.vertical, property: .margin)
+        // Process each property
+        for (key, value) in props {
+            applyLayoutProp(node: node, key: key, value: value)
         }
         
-        // Padding
-        applyEdgeValue(node: node, prop: props["padding"], edge: YGEdge.all, property: .padding)
-        applyEdgeValue(node: node, prop: props["paddingTop"], edge: YGEdge.top, property: .padding)
-        applyEdgeValue(node: node, prop: props["paddingRight"], edge: YGEdge.right, property: .padding)
-        applyEdgeValue(node: node, prop: props["paddingBottom"], edge: YGEdge.bottom, property: .padding)
-        applyEdgeValue(node: node, prop: props["paddingLeft"], edge: YGEdge.left, property: .padding)
-        if let paddingHorizontal = props["paddingHorizontal"] {
-            applyEdgeValue(node: node, prop: paddingHorizontal, edge: YGEdge.horizontal, property: .padding)
-        }
-        if let paddingVertical = props["paddingVertical"] {
-            applyEdgeValue(node: node, prop: paddingVertical, edge: YGEdge.vertical, property: .padding)
-        }
-        
-        // Position
-        applyEdgeValue(node: node, prop: props["left"], edge: YGEdge.left, property: .position)
-        applyEdgeValue(node: node, prop: props["top"], edge: YGEdge.top, property: .position)
-        applyEdgeValue(node: node, prop: props["right"], edge: YGEdge.right, property: .position)
-        applyEdgeValue(node: node, prop: props["bottom"], edge: YGEdge.bottom, property: .position)
-        
-        // Position type
-        if let position = props["position"] as? String {
-            switch position {
-            case "absolute":
-                YGNodeStyleSetPositionType(node, YGPositionType.absolute)
-            default: // relative is default
-                YGNodeStyleSetPositionType(node, YGPositionType.relative)
-            }
-        }
-        
-        // Flex properties
-        if let flex = props["flex"] as? NSNumber {
-            YGNodeStyleSetFlex(node, flex.floatValue)
-        }
-        
-        if let flexGrow = props["flexGrow"] as? NSNumber {
-            YGNodeStyleSetFlexGrow(node, flexGrow.floatValue)
-        }
-        
-        if let flexShrink = props["flexShrink"] as? NSNumber {
-            YGNodeStyleSetFlexShrink(node, flexShrink.floatValue)
-        }
-        
-        applyDimension(node: node, prop: props["flexBasis"], dimension: .flexBasis)
-        
-        // Flex direction
-        if let flexDirection = props["flexDirection"] as? String {
-            switch flexDirection {
-            case "row":
-                YGNodeStyleSetFlexDirection(node, YGFlexDirection.row)
-            case "rowReverse":
-                YGNodeStyleSetFlexDirection(node, YGFlexDirection.rowReverse)
-            case "column":
-                YGNodeStyleSetFlexDirection(node, YGFlexDirection.column)
-            case "columnReverse":
-                YGNodeStyleSetFlexDirection(node, YGFlexDirection.columnReverse)
-            default:
-                break
-            }
-        }
-        
-        // Justify content
-        if let justifyContent = props["justifyContent"] as? String {
-            switch justifyContent {
-            case "flexStart":
-                YGNodeStyleSetJustifyContent(node, YGJustify.flexStart)
-            case "center":
-                YGNodeStyleSetJustifyContent(node, YGJustify.center)
-            case "flexEnd":
-                YGNodeStyleSetJustifyContent(node, YGJustify.flexEnd)
-            case "spaceBetween":
-                YGNodeStyleSetJustifyContent(node, YGJustify.spaceBetween)
-            case "spaceAround":
-                YGNodeStyleSetJustifyContent(node, YGJustify.spaceAround)
-            case "spaceEvenly":
-                YGNodeStyleSetJustifyContent(node, YGJustify.spaceEvenly)
-            default:
-                break
-            }
-        }
-        
-        // Align items
-        if let alignItems = props["alignItems"] as? String {
-            switch alignItems {
-            case "flexStart":
-                YGNodeStyleSetAlignItems(node, YGAlign.flexStart)
-            case "center":
-                YGNodeStyleSetAlignItems(node, YGAlign.center)
-            case "flexEnd":
-                YGNodeStyleSetAlignItems(node, YGAlign.flexEnd)
-            case "stretch":
-                YGNodeStyleSetAlignItems(node, YGAlign.stretch)
-            case "baseline":
-                YGNodeStyleSetAlignItems(node, YGAlign.baseline)
-            default:
-                break
-            }
-        }
-        
-        // Align self
-        if let alignSelf = props["alignSelf"] as? String {
-            switch alignSelf {
-            case "auto":
-                YGNodeStyleSetAlignSelf(node, YGAlign.auto)
-            case "flexStart":
-                YGNodeStyleSetAlignSelf(node, YGAlign.flexStart)
-            case "center":
-                YGNodeStyleSetAlignSelf(node, YGAlign.center)
-            case "flexEnd":
-                YGNodeStyleSetAlignSelf(node, YGAlign.flexEnd)
-            case "stretch":
-                YGNodeStyleSetAlignSelf(node, YGAlign.stretch)
-            case "baseline":
-                YGNodeStyleSetAlignSelf(node, YGAlign.baseline)
-            default:
-                break
-            }
-        }
-        
-        // Align content
-        if let alignContent = props["alignContent"] as? String {
-            switch alignContent {
-            case "flexStart":
-                YGNodeStyleSetAlignContent(node, YGAlign.flexStart)
-            case "center":
-                YGNodeStyleSetAlignContent(node, YGAlign.center)
-            case "flexEnd":
-                YGNodeStyleSetAlignContent(node, YGAlign.flexEnd)
-            case "stretch":
-                YGNodeStyleSetAlignContent(node, YGAlign.stretch)
-            case "spaceBetween":
-                YGNodeStyleSetAlignContent(node, YGAlign.spaceBetween)
-            case "spaceAround":
-                YGNodeStyleSetAlignContent(node, YGAlign.spaceAround)
-            default:
-                break
-            }
-        }
-        
-        // Flex wrap
-        if let flexWrap = props["flexWrap"] as? String {
-            switch flexWrap {
-            case "wrap":
-                YGNodeStyleSetFlexWrap(node, YGWrap.wrap)
-            case "nowrap":
-                YGNodeStyleSetFlexWrap(node, YGWrap.noWrap)
-            case "wrapReverse":
-                YGNodeStyleSetFlexWrap(node, YGWrap.wrapReverse)
-            default:
-                break
-            }
-        }
-        
-        // Display
-        if let display = props["display"] as? String {
-            switch display {
-            case "none":
-                YGNodeStyleSetDisplay(node, YGDisplay.none)
-            default: // flex is default
-                YGNodeStyleSetDisplay(node, YGDisplay.flex)
-            }
-        }
-        
-        // Overflow
-        if let overflow = props["overflow"] as? String {
-            switch overflow {
-            case "hidden":
-                YGNodeStyleSetOverflow(node, YGOverflow.hidden)
-            case "scroll":
-                YGNodeStyleSetOverflow(node, YGOverflow.scroll)
-            default: // visible is default
-                YGNodeStyleSetOverflow(node, YGOverflow.visible)
-            }
-        }
-        
-        // Mark node as dirty
-        YGNodeMarkDirty(node)
-        
-        // Notify that layout needs to be recalculated
-        DCMauiLayoutManager.shared.setNeedsLayout()
+        // Do not mark nodes as dirty - Yoga will handle this automatically
+        // during the next layout calculation
     }
     
-    // MARK: - Layout Calculation
-    
-    /// Calculate layout for all root nodes
-    func calculateLayout(width: Float, height: Float) {
-        NSLog("Calculating layout for \(rootNodeIds.count) root nodes with dimensions: \(width)x\(height)")
+    // Calculate layout for the shadow tree
+    func calculateLayout(width: CGFloat, height: CGFloat, direction: YGDirection = YGDirection.LTR) {
+        guard let root = rootNode else { return }
         
-        for rootNodeId in rootNodeIds {
-            guard let rootNode = nodes[rootNodeId] else { continue }
-            
-            // Calculate layout with LTR direction
-            YGNodeCalculateLayout(rootNode, width, height, YGDirection.LTR)
-            
-            // Apply layout to views
-            applyLayoutToView(nodeId: rootNodeId)
-        }
+        print("Calculating layout for \(nodes.count) root nodes with dimensions: \(width)x\(height)")
+        
+        // Set root dimensions
+        YGNodeStyleSetWidth(root, Float(width))
+        YGNodeStyleSetHeight(root, Float(height))
+        
+        // Calculate layout
+        YGNodeCalculateLayout(root, Float(width), Float(height), direction)
+        
+        print("Layout calculation completed for \(width)x\(height)")
     }
     
-    /// Apply calculated layout to view and its children
-    private func applyLayoutToView(nodeId: String) {
-        guard let node = nodes[nodeId], let view = views[nodeId],
-              let componentType = componentTypes[nodeId] else { return }
-        
-        // Get component instance from registry
-        guard let componentInstance = DCMauiComponentRegistry.shared.getComponentType(for: componentType) else {
-            NSLog("Component not found for type: \(componentType)")
-            return
-        }
-        
-        // Create component instance
-        let instance = componentInstance.init()
+    // Get layout for a node after calculation
+    func getNodeLayout(nodeId: String) -> CGRect? {
+        guard let node = nodes[nodeId] else { return nil }
         
         // Get layout values
-        let layout = YGNodeLayout(
-            left: CGFloat(YGNodeLayoutGetLeft(node)),
-            top: CGFloat(YGNodeLayoutGetTop(node)),
-            width: CGFloat(YGNodeLayoutGetWidth(node)),
-            height: CGFloat(YGNodeLayoutGetHeight(node))
-        )
+        let left = CGFloat(YGNodeLayoutGetLeft(node))
+        let top = CGFloat(YGNodeLayoutGetTop(node))
+        let width = CGFloat(YGNodeLayoutGetWidth(node))
+        let height = CGFloat(YGNodeLayoutGetHeight(node))
         
-        // Apply layout to view using component's implementation
-        instance.applyLayout(view, layout: layout)
-        
-        NSLog("Applied layout to \(nodeId): \(layout)")
-        
-        // Apply layout to children
-        let childCount = YGNodeGetChildCount(node)
-        
-        for i in 0..<childCount {
-            let childNode = YGNodeGetChild(node, i)
-            
-            // Find child ID from node
-            if let childId = nodes.first(where: { $0.value == childNode })?.key {
-                applyLayoutToView(nodeId: childId)
+        return CGRect(x: left, y: top, width: width, height: height)
+    }
+    
+    // Apply a layout property to a node
+    private func applyLayoutProp(node: YGNodeRef, key: String, value: Any) {
+        switch key {
+        case "width":
+            if let width = convertToFloat(value) {
+                YGNodeStyleSetWidth(node, width)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetWidthPercent(node, percentValue)
             }
-        }
-    }
-    
-    // MARK: - Helper Methods
-    
-    /// Helper enum for dimension types
-    private enum DimensionType {
-        case width
-        case height
-        case minWidth
-        case minHeight
-        case maxWidth
-        case maxHeight
-        case flexBasis
-    }
-    
-    /// Helper enum for edge property types
-    private enum EdgePropertyType {
-        case margin
-        case padding
-        case position
-        case border
-    }
-    
-    /// Helper to apply dimension values (handles points, percents, and auto)
-    private func applyDimension(node: YGNodeRef, prop: Any?, dimension: DimensionType) {
-        guard let prop = prop else { return }
-        
-        if let number = prop as? NSNumber {
-            // Apply as points
-            let value = number.floatValue
-            
-            switch dimension {
-            case .width:
-                YGNodeStyleSetWidth(node, value)
-            case .height:
-                YGNodeStyleSetHeight(node, value)
-            case .minWidth:
-                YGNodeStyleSetMinWidth(node, value)
-            case .minHeight:
-                YGNodeStyleSetMinHeight(node, value)
-            case .maxWidth:
-                YGNodeStyleSetMaxWidth(node, value)
-            case .maxHeight:
-                YGNodeStyleSetMaxHeight(node, value)
-            case .flexBasis:
-                YGNodeStyleSetFlexBasis(node, value)
+        case "height":
+            if let height = convertToFloat(value) {
+                YGNodeStyleSetHeight(node, height)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetHeightPercent(node, percentValue)
             }
-        } else if let string = prop as? String {
-            if string == "auto" {
-                // Apply as auto
-                switch dimension {
-                case .width:
-                    YGNodeStyleSetWidthAuto(node)
-                case .height:
-                    YGNodeStyleSetHeightAuto(node)
-                case .flexBasis:
-                    YGNodeStyleSetFlexBasisAuto(node)
+        case "minWidth":
+            if let minWidth = convertToFloat(value) {
+                YGNodeStyleSetMinWidth(node, minWidth)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetMinWidthPercent(node, percentValue)
+            }
+        case "maxWidth":
+            if let maxWidth = convertToFloat(value) {
+                YGNodeStyleSetMaxWidth(node, maxWidth)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetMaxWidthPercent(node, percentValue)
+            }
+        case "minHeight":
+            if let minHeight = convertToFloat(value) {
+                YGNodeStyleSetMinHeight(node, minHeight)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetMinHeightPercent(node, percentValue)
+            }
+        case "maxHeight":
+            if let maxHeight = convertToFloat(value) {
+                YGNodeStyleSetMaxHeight(node, maxHeight)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetMaxHeightPercent(node, percentValue)
+            }
+        case "margin":
+            if let margin = convertToFloat(value) {
+                YGNodeStyleSetMargin(node, YGEdge.all, margin)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetMarginPercent(node, YGEdge.all, percentValue)
+            }
+        case "marginTop":
+            if let marginTop = convertToFloat(value) {
+                YGNodeStyleSetMargin(node, YGEdge.top, marginTop)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetMarginPercent(node, YGEdge.top, percentValue)
+            }
+        case "marginRight":
+            if let marginRight = convertToFloat(value) {
+                YGNodeStyleSetMargin(node, YGEdge.right, marginRight)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetMarginPercent(node, YGEdge.right, percentValue)
+            }
+        case "marginBottom":
+            if let marginBottom = convertToFloat(value) {
+                YGNodeStyleSetMargin(node, YGEdge.bottom, marginBottom)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetMarginPercent(node, YGEdge.bottom, percentValue)
+            }
+        case "marginLeft":
+            if let marginLeft = convertToFloat(value) {
+                YGNodeStyleSetMargin(node, YGEdge.left, marginLeft)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetMarginPercent(node, YGEdge.left, percentValue)
+            }
+        case "padding":
+            if let padding = convertToFloat(value) {
+                YGNodeStyleSetPadding(node, YGEdge.all, padding)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetPaddingPercent(node, YGEdge.all, percentValue)
+            }
+        case "paddingTop":
+            if let paddingTop = convertToFloat(value) {
+                YGNodeStyleSetPadding(node, YGEdge.top, paddingTop)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetPaddingPercent(node, YGEdge.top, percentValue)
+            }
+        case "paddingRight":
+            if let paddingRight = convertToFloat(value) {
+                YGNodeStyleSetPadding(node, YGEdge.right, paddingRight)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetPaddingPercent(node, YGEdge.right, percentValue)
+            }
+        case "paddingBottom":
+            if let paddingBottom = convertToFloat(value) {
+                YGNodeStyleSetPadding(node, YGEdge.bottom, paddingBottom)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetPaddingPercent(node, YGEdge.bottom, percentValue)
+            }
+        case "paddingLeft":
+            if let paddingLeft = convertToFloat(value) {
+                YGNodeStyleSetPadding(node, YGEdge.left, paddingLeft)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetPaddingPercent(node, YGEdge.left, percentValue)
+            }
+        case "position":
+            if let position = value as? String {
+                switch position {
+                case "absolute":
+                    YGNodeStyleSetPositionType(node, YGPositionType.absolute)
+                case "relative":
+                    YGNodeStyleSetPositionType(node, YGPositionType.relative)
                 default:
-                    // No auto option for min/max dimensions
                     break
                 }
-            } else if string.hasSuffix("%") {
-                // Apply as percentage
-                if let percentString = string.dropLast().description as NSString? {
-                    let percent = percentString.floatValue
-                    
-                    switch dimension {
-                    case .width:
-                        YGNodeStyleSetWidthPercent(node, percent)
-                    case .height:
-                        YGNodeStyleSetHeightPercent(node, percent)
-                    case .minWidth:
-                        YGNodeStyleSetMinWidthPercent(node, percent)
-                    case .minHeight:
-                        YGNodeStyleSetMinHeightPercent(node, percent)
-                    case .maxWidth:
-                        YGNodeStyleSetMaxWidthPercent(node, percent)
-                    case .maxHeight:
-                        YGNodeStyleSetMaxHeightPercent(node, percent)
-                    case .flexBasis:
-                        YGNodeStyleSetFlexBasisPercent(node, percent)
-                    }
+            }
+        case "left":
+            if let left = convertToFloat(value) {
+                YGNodeStyleSetPosition(node, YGEdge.left, left)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetPositionPercent(node, YGEdge.left, percentValue)
+            }
+        case "top":
+            if let top = convertToFloat(value) {
+                YGNodeStyleSetPosition(node, YGEdge.top, top)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetPositionPercent(node, YGEdge.top, percentValue)
+            }
+        case "right":
+            if let right = convertToFloat(value) {
+                YGNodeStyleSetPosition(node, YGEdge.right, right)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetPositionPercent(node, YGEdge.right, percentValue)
+            }
+        case "bottom":
+            if let bottom = convertToFloat(value) {
+                YGNodeStyleSetPosition(node, YGEdge.bottom, bottom)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetPositionPercent(node, YGEdge.bottom, percentValue)
+            }
+        case "flexDirection":
+            if let direction = value as? String {
+                switch direction {
+                case "row":
+                    YGNodeStyleSetFlexDirection(node, YGFlexDirection.row)
+                case "column":
+                    YGNodeStyleSetFlexDirection(node, YGFlexDirection.column)
+                case "rowReverse":
+                    YGNodeStyleSetFlexDirection(node, YGFlexDirection.rowReverse)
+                case "columnReverse":
+                    YGNodeStyleSetFlexDirection(node, YGFlexDirection.columnReverse)
+                default:
+                    break
                 }
             }
+        case "justifyContent":
+            if let justify = value as? String {
+                switch justify {
+                case "flexStart":
+                    YGNodeStyleSetJustifyContent(node, YGJustify.flexStart)
+                case "center":
+                    YGNodeStyleSetJustifyContent(node, YGJustify.center)
+                case "flexEnd":
+                    YGNodeStyleSetJustifyContent(node, YGJustify.flexEnd)
+                case "spaceBetween":
+                    YGNodeStyleSetJustifyContent(node, YGJustify.spaceBetween)
+                case "spaceAround":
+                    YGNodeStyleSetJustifyContent(node, YGJustify.spaceAround)
+                case "spaceEvenly":
+                    YGNodeStyleSetJustifyContent(node, YGJustify.spaceEvenly)
+                default:
+                    break
+                }
+            }
+        case "alignItems":
+            if let align = value as? String {
+                switch align {
+                case "auto":
+                    YGNodeStyleSetAlignItems(node, YGAlign.auto)
+                case "flexStart":
+                    YGNodeStyleSetAlignItems(node, YGAlign.flexStart)
+                case "center":
+                    YGNodeStyleSetAlignItems(node, YGAlign.center)
+                case "flexEnd":
+                    YGNodeStyleSetAlignItems(node, YGAlign.flexEnd)
+                case "stretch":
+                    YGNodeStyleSetAlignItems(node, YGAlign.stretch)
+                case "baseline":
+                    YGNodeStyleSetAlignItems(node, YGAlign.baseline)
+                case "spaceBetween":
+                    YGNodeStyleSetAlignItems(node, YGAlign.spaceBetween)
+                case "spaceAround":
+                    YGNodeStyleSetAlignItems(node, YGAlign.spaceAround)
+                default:
+                    break
+                }
+            }
+        case "alignSelf":
+            if let align = value as? String {
+                switch align {
+                case "auto":
+                    YGNodeStyleSetAlignSelf(node, YGAlign.auto)
+                case "flexStart":
+                    YGNodeStyleSetAlignSelf(node, YGAlign.flexStart)
+                case "center":
+                    YGNodeStyleSetAlignSelf(node, YGAlign.center)
+                case "flexEnd":
+                    YGNodeStyleSetAlignSelf(node, YGAlign.flexEnd)
+                case "stretch":
+                    YGNodeStyleSetAlignSelf(node, YGAlign.stretch)
+                case "baseline":
+                    YGNodeStyleSetAlignSelf(node, YGAlign.baseline)
+                case "spaceBetween":
+                    YGNodeStyleSetAlignSelf(node, YGAlign.spaceBetween)
+                case "spaceAround":
+                    YGNodeStyleSetAlignSelf(node, YGAlign.spaceAround)
+                default:
+                    break
+                }
+            }
+        case "flexWrap":
+            if let wrap = value as? String {
+                switch wrap {
+                case "nowrap":
+                    YGNodeStyleSetFlexWrap(node, YGWrap.noWrap)
+                case "wrap":
+                    YGNodeStyleSetFlexWrap(node, YGWrap.wrap)
+                case "wrapReverse":
+                    YGNodeStyleSetFlexWrap(node, YGWrap.wrapReverse)
+                default:
+                    break
+                }
+            }
+        case "flex":
+            if let flex = convertToFloat(value) {
+                YGNodeStyleSetFlex(node, flex)
+            }
+        case "flexGrow":
+            if let flexGrow = convertToFloat(value) {
+                YGNodeStyleSetFlexGrow(node, flexGrow)
+            }
+        case "flexShrink":
+            if let flexShrink = convertToFloat(value) {
+                YGNodeStyleSetFlexShrink(node, flexShrink)
+            }
+        case "flexBasis":
+            if let flexBasis = convertToFloat(value) {
+                YGNodeStyleSetFlexBasis(node, flexBasis)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetFlexBasisPercent(node, percentValue)
+            }
+        case "display":
+            if let display = value as? String {
+                switch display {
+                case "flex":
+                    YGNodeStyleSetDisplay(node, YGDisplay.flex)
+                case "none":
+                    YGNodeStyleSetDisplay(node, YGDisplay.none)
+                default:
+                    break
+                }
+            }
+        case "overflow":
+            if let overflow = value as? String {
+                switch overflow {
+                case "visible":
+                    YGNodeStyleSetOverflow(node, YGOverflow.visible)
+                case "hidden":
+                    YGNodeStyleSetOverflow(node, YGOverflow.hidden)
+                case "scroll":
+                    YGNodeStyleSetOverflow(node, YGOverflow.scroll)
+                default:
+                    break
+                }
+            }
+        case "direction":
+            if let direction = value as? String {
+                switch direction {
+                case "inherit":
+                    YGNodeStyleSetDirection(node, YGDirection.inherit)
+                case "ltr":
+                    YGNodeStyleSetDirection(node, YGDirection.LTR)
+                case "rtl":
+                    YGNodeStyleSetDirection(node, YGDirection.RTL)
+                default:
+                    break
+                }
+            }
+        case "borderWidth":
+            if let borderWidth = convertToFloat(value) {
+                YGNodeStyleSetBorder(node, YGEdge.all, borderWidth)
+            }
+        default:
+            break
         }
     }
     
-    /// Helper to apply edge values (margin, padding, position)
-    private func applyEdgeValue(node: YGNodeRef, prop: Any?, edge: YGEdge, property: EdgePropertyType) {
-        guard let prop = prop else { return }
-        
-        if let number = prop as? NSNumber {
-            // Apply as points
-            let value = number.floatValue
-            
-            switch property {
-            case .margin:
-                YGNodeStyleSetMargin(node, edge, value)
-            case .padding:
-                YGNodeStyleSetPadding(node, edge, value)
-            case .position:
-                YGNodeStyleSetPosition(node, edge, value)
-            case .border:
-                YGNodeStyleSetBorder(node, edge, value)
-            }
-        } else if let string = prop as? String {
-            if string == "auto" && property == .margin {
-                // Auto only available for margin
-                YGNodeStyleSetMarginAuto(node, edge)
-            } else if string.hasSuffix("%") {
-                // Apply as percentage
-                if let percentString = string.dropLast().description as NSString? {
-                    let percent = percentString.floatValue
-                    
-                    switch property {
-                    case .margin:
-                        YGNodeStyleSetMarginPercent(node, edge, percent)
-                    case .padding:
-                        YGNodeStyleSetPaddingPercent(node, edge, percent)
-                    case .position:
-                        YGNodeStyleSetPositionPercent(node, edge, percent)
-                    case .border:
-                        // No percentage option for border
-                        break
-                    }
-                }
-            }
+    // Helper to convert input values to Float
+    private func convertToFloat(_ value: Any) -> Float? {
+        if let num = value as? Float {
+            return num
+        } else if let num = value as? Double {
+            return Float(num)
+        } else if let num = value as? Int {
+            return Float(num)
+        } else if let num = value as? CGFloat {
+            return Float(num)
+        } else if let str = value as? String, let num = Float(str) {
+            return num
         }
+        return nil
+    }
+    
+    // Set default properties based on component type
+    private func configureNodeDefaults(_ node: YGNodeRef, forComponentType componentType: String) {
+        // Set common defaults
+        YGNodeStyleSetFlexDirection(node, YGFlexDirection.column)
+        
+        // Set component-specific defaults
+        switch componentType {
+        case "Text":
+            // Texts are leaf nodes by default
+            YGNodeStyleSetFlexShrink(node, 1.0)
+            
+        case "Image":
+            // Images are also leaf nodes
+            YGNodeStyleSetAlignSelf(node, YGAlign.flexStart)
+            
+        case "ScrollView":
+            // ScrollViews have special layout behavior
+            YGNodeStyleSetOverflow(node, YGOverflow.scroll)
+            YGNodeStyleSetFlexGrow(node, 1.0)
+            
+        default:
+            // Default container behavior
+            break
+        }
+    }
+    
+    // Set a custom measure function for nodes that need to self-measure
+    func setCustomMeasureFunction(nodeId: String, measureFunc: @escaping YGMeasureFunc) {
+        guard let node = nodes[nodeId] else { return }
+        
+        // Make sure node has no children before setting measure function
+        if YGNodeGetChildCount(node) == 0 {
+            YGNodeSetMeasureFunc(node, measureFunc)
+        }
+    }
+    
+    // Cleanup
+    deinit {
+        // Free all nodes
+        for (_, node) in nodes {
+            YGNodeFree(node)
+        }
+    }
+}
+
+// Layout Manager extension for DCMauiLayoutManager
+extension DCMauiLayoutManager {
+    // Register view with layout system
+    func registerView(_ view: UIView, withNodeId nodeId: String, componentType: String, componentInstance: DCMauiComponent) {
+        // First, register the view for direct access
+        registerView(view, withId: nodeId)
+        
+        // Associate the view with its Yoga node
+        print("Associated view with node \(nodeId) of type \(componentType)")
+        
+        // Set up special handling for nodes that need to self-measure
+        if componentType == "Text" {
+            // Don't actually set a measure function, but mark it specially
+            view.accessibilityIdentifier = "text_\(nodeId)"
+        }
+        
+        // Let the component know it's registered
+        componentInstance.viewRegisteredWithShadowTree(view, nodeId: nodeId)
+    }
+    
+    // Add a child node to a parent in the layout tree
+    func addChildNode(parentId: String, childId: String, index: Int) {
+        YogaShadowTree.shared.addChildNode(parentId: parentId, childId: childId, index: index)
+    }
+    
+    // Remove a node from the layout tree
+    func removeNode(nodeId: String) {
+        YogaShadowTree.shared.removeNode(nodeId: nodeId)
+    }
+    
+    // Update a node's layout properties
+    func updateNodeWithLayoutProps(nodeId: String, componentType: String, props: [String: Any]) {
+        YogaShadowTree.shared.updateNodeLayoutProps(nodeId: nodeId, props: props)
     }
 }
