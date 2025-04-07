@@ -180,14 +180,18 @@ class ShadowNode {
 
     // Margin
     if (props.containsKey('margin')) _setMargin(YogaEdge.all, props['margin']);
-    if (props.containsKey('marginTop'))
+    if (props.containsKey('marginTop')) {
       _setMargin(YogaEdge.top, props['marginTop']);
-    if (props.containsKey('marginRight'))
+    }
+    if (props.containsKey('marginRight')) {
       _setMargin(YogaEdge.right, props['marginRight']);
-    if (props.containsKey('marginBottom'))
+    }
+    if (props.containsKey('marginBottom')) {
       _setMargin(YogaEdge.bottom, props['marginBottom']);
-    if (props.containsKey('marginLeft'))
+    }
+    if (props.containsKey('marginLeft')) {
       _setMargin(YogaEdge.left, props['marginLeft']);
+    }
     if (props.containsKey('marginHorizontal')) {
       _setMargin(YogaEdge.horizontal, props['marginHorizontal']);
     }
@@ -196,16 +200,21 @@ class ShadowNode {
     }
 
     // Padding
-    if (props.containsKey('padding'))
+    if (props.containsKey('padding')) {
       _setPadding(YogaEdge.all, props['padding']);
-    if (props.containsKey('paddingTop'))
+    }
+    if (props.containsKey('paddingTop')) {
       _setPadding(YogaEdge.top, props['paddingTop']);
-    if (props.containsKey('paddingRight'))
+    }
+    if (props.containsKey('paddingRight')) {
       _setPadding(YogaEdge.right, props['paddingRight']);
-    if (props.containsKey('paddingBottom'))
+    }
+    if (props.containsKey('paddingBottom')) {
       _setPadding(YogaEdge.bottom, props['paddingBottom']);
-    if (props.containsKey('paddingLeft'))
+    }
+    if (props.containsKey('paddingLeft')) {
       _setPadding(YogaEdge.left, props['paddingLeft']);
+    }
     if (props.containsKey('paddingHorizontal')) {
       _setPadding(YogaEdge.horizontal, props['paddingHorizontal']);
     }
@@ -216,10 +225,12 @@ class ShadowNode {
     // Position
     if (props.containsKey('left')) _setPosition(YogaEdge.left, props['left']);
     if (props.containsKey('top')) _setPosition(YogaEdge.top, props['top']);
-    if (props.containsKey('right'))
+    if (props.containsKey('right')) {
       _setPosition(YogaEdge.right, props['right']);
-    if (props.containsKey('bottom'))
+    }
+    if (props.containsKey('bottom')) {
       _setPosition(YogaEdge.bottom, props['bottom']);
+    }
 
     // Position type
     if (props.containsKey('position')) {

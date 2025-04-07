@@ -226,9 +226,9 @@ class VDom {
     // Use percentage values instead of explicit dimensions when possible
     // For the root calculation, we still need some concrete values though
     double calculationWidth =
-        width ?? double.infinity; // Use infinity to represent 100%
+        width ?? ScreenUtilities.instance.screenWidth; // Use infinity to represent 100%
     double calculationHeight =
-        height ?? double.infinity; // Use infinity to represent 100%
+        height ?? ScreenUtilities.instance.screenHeight; // Use infinity to represent 100%
 
     // Perform layout calculation with percentage support
     await LayoutCalculator.instance.calculateAndApplyLayout(
