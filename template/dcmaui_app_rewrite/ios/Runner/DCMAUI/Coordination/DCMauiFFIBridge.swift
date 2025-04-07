@@ -29,7 +29,9 @@ import Foundation
     
     /// Create a view with properties
     @objc func createView(viewId: String, viewType: String, propsJson: String) -> Bool {
-        NSLog("DCMauiFFIBridge: createView called for \(viewId) of type \(viewType)")
+        NSLog("DCMauiFFIBridge: createView called for \(viewId) of type \(viewType)");
+        NSLog("DCMauiFFIBridge: With details \(propsJson)")
+        
         
         var success = false
         

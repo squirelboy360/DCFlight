@@ -1,6 +1,5 @@
 import 'dart:developer' as developer;
 import '../../constants/layout_properties.dart';
-import '../../packages/layout/layout_bridge.dart';
 
 import 'vdom_node.dart';
 import 'vdom_element.dart';
@@ -83,51 +82,28 @@ class Reconciler {
 
       // Find changed props with generic diffing - excluding layout props
       final changedProps = <String, dynamic>{};
-      final layoutProps = <String, dynamic>{};
 
-      // Separate layout props from other props
+      // Check for props that have changed or been added
       for (final entry in newElement.props.entries) {
         final key = entry.key;
         final value = entry.value;
 
-        if (_isLayoutProp(key)) {
-          // If it's a layout prop and changed, add to layout props
-          if (!oldElement.props.containsKey(key) ||
-              oldElement.props[key] != value) {
-            layoutProps[key] = value;
-          }
-        } else {
-          // If it's a non-layout prop and changed, add to changed props
-          if (!oldElement.props.containsKey(key) ||
-              oldElement.props[key] != value) {
-            changedProps[key] = value;
-          }
+        // If prop has changed or is new
+        if (!oldElement.props.containsKey(key) ||
+            oldElement.props[key] != value) {
+          changedProps[key] = value;
         }
       }
 
       // Check for removed props
       for (final key in oldElement.props.keys) {
         if (!newElement.props.containsKey(key)) {
-          // Layout props don't need to be explicitly removed since we'll recalculate
-          if (!_isLayoutProp(key)) {
-            // Set to null to indicate removal (handled by native bridge)
-            changedProps[key] = null;
-          }
+          // Set to null to indicate removal (handled by native bridge)
+          changedProps[key] = null;
         }
       }
 
-      // If we have layout prop changes, update the Yoga node
-      if (layoutProps.isNotEmpty) {
-        final viewId = newElement.nativeViewId!;
-
-        // Apply layout props to native
-        LayoutBridge.instance.updateNodeLayoutProps(viewId, layoutProps);
-
-        // Mark that we need to recalculate layout
-        vdom.markLayoutDirty();
-      }
-
-      // Update non-layout props directly if there are changes
+      // Update props directly if there are changes
       if (changedProps.isNotEmpty) {
         // Preserve event handlers
         oldElement.props.forEach((key, value) {
@@ -139,6 +115,11 @@ class Reconciler {
         });
 
         await vdom.updateView(oldElement.nativeViewId!, changedProps);
+
+        // Mark layout as dirty if any layout props have changed
+        if (changedProps.keys.any((key) => _isLayoutProp(key))) {
+          vdom.markLayoutDirty();
+        }
       }
 
       // Now reconcile children

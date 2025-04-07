@@ -6,7 +6,6 @@ import 'dart:developer' as developer;
 import '../../utilities/screen_utilities.dart';
 import '../../packages/native_bridge/native_bridge.dart';
 import '../../packages/native_bridge/ffi_bridge.dart';
-import '../../packages/layout/layout_bridge.dart';
 import '../../constants/yoga_enums.dart';
 import '../../constants/layout_properties.dart';
 import 'vdom_node.dart';
@@ -63,9 +62,6 @@ class VDom {
 
       // Register event handler
       _nativeBridge.setEventHandler(_handleNativeEvent);
-
-      // Initialize layout bridge
-      LayoutBridge.instance.initialize(_nativeBridge);
 
       // Mark as ready
       _readyCompleter.complete();
@@ -187,17 +183,6 @@ class VDom {
       return null;
     }
 
-    // Add to layout tree
-    LayoutBridge.instance.addNode(viewId, parentId: parentId, index: index);
-
-    // Apply layout props
-    if (layoutProps != null) {
-      final layoutMap = layoutProps.toMap();
-      if (layoutMap.isNotEmpty) {
-        LayoutBridge.instance.updateNodeLayoutProps(viewId, layoutMap);
-      }
-    }
-
     // If parent is specified, attach to parent
     if (parentId != null) {
       await attachView(viewId, parentId, index ?? 0);
@@ -223,17 +208,11 @@ class VDom {
         '🔥 Starting layout calculation with dimensions: ${width ?? '100%'} x ${height ?? '100%'}',
         name: 'VDom');
 
-    // Use actual screen dimensions when no explicit sizes provided
-    double calculationWidth = width ?? ScreenUtilities.instance.screenWidth;
-    double calculationHeight = height ?? ScreenUtilities.instance.screenHeight;
-
-    // In DCMAUI-style architecture, layout calculation is handled natively
-    // so we just trigger it and let the native side handle layout
-    await LayoutBridge.instance.calculateAndApplyLayout(
-        calculationWidth, calculationHeight, YogaDirection.ltr);
+    // Layout is handled automatically by the native side when props change
+    // This method exists for API compatibility but does not need to do anything
 
     developer.log(
-        '✅ Layout calculation applied for ${LayoutBridge.instance.nodeCount} views',
+        '✅ Layout calculation triggered - native side will handle layout',
         name: 'VDom');
 
     // Reset layout dirty flag
@@ -291,20 +270,7 @@ class VDom {
       developer.log('Found component node, updating UI for ${oldElement.type}',
           name: 'VDom');
 
-      // Extract layout props
-      final layoutProps = _extractLayoutProps(newElement.props);
-
-      // Update layout props if needed
-      if (layoutProps != null) {
-        final layoutMap = layoutProps.toMap();
-        if (layoutMap.isNotEmpty) {
-          developer.log('Updated layout props for node $viewId',
-              name: 'ShadowTree');
-          LayoutBridge.instance.updateNodeLayoutProps(viewId, layoutMap);
-        }
-      }
-
-      // Update the view props
+      // Update the view props - no need to separate layout props, the native side handles it
       await updateView(viewId, newElement.props);
     }
   }
@@ -326,7 +292,7 @@ class VDom {
     return null;
   }
 
-  /// Extract layout props from all props
+   /// Extract layout props from all props
   LayoutProps? _extractLayoutProps(Map<String, dynamic> props) {
     // Check if any layout properties exist
     final hasLayoutProps =
@@ -596,8 +562,6 @@ class VDom {
   }
 
   /// Detach/delete a view from its parent
-  /// This shouold be helpful in removing those redundant views that stack ontop of currrent view stack
-  /// when thereb is a hot restart and probaly in the future hot reload via the dart-hot-relaoder package
   Future<bool> detachView(String viewId) async {
     await _nativeBridge.deleteView(viewId);
     return true;
