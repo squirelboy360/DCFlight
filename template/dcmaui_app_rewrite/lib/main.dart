@@ -79,7 +79,6 @@ class AnimatedAppComponent extends StatefulComponent {
             name: 'AnimatedApp');
       }
 
-      // // Register the listener
       ScreenUtilities.instance.addDimensionChangeListener(onDimensionsChanged);
 
       // Clean up when component is unmounted

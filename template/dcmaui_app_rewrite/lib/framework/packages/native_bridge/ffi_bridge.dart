@@ -128,9 +128,18 @@ class FFINativeBridge implements NativeBridge {
       String viewId, String type, Map<String, dynamic> props) async {
     try {
       developer.log('Creating view via FFI: $viewId, $type', name: 'FFI');
+      // ADD THIS DETAILED LOGGING:
+      developer.log('DETAILED PROPS BEING SENT: ${jsonEncode(props)}',
+          name: 'FFI_PROPS');
+
       return using((arena) {
         // Preprocess props to handle special types before encoding to JSON
         final processedProps = _preprocessProps(props);
+
+        // ADD THIS DETAILED LOGGING:
+        developer.log(
+            'PROCESSED PROPS BEING SENT: ${jsonEncode(processedProps)}',
+            name: 'FFI_PROPS');
 
         final viewIdPointer = viewId.toNativeUtf8(allocator: arena);
         final typePointer = type.toNativeUtf8(allocator: arena);
@@ -153,12 +162,22 @@ class FFINativeBridge implements NativeBridge {
     developer.log('FFI updateView: viewId=$viewId, props=$propPatches',
         name: 'FFI');
 
+    // ADD THIS DETAILED LOGGING:
+    developer.log(
+        'DETAILED UPDATE PROPS BEING SENT: ${jsonEncode(propPatches)}',
+        name: 'FFI_PROPS');
+
     return using((arena) {
       final viewIdPointer = viewId.toNativeUtf8(allocator: arena);
 
       // Process props for updates
       final processedProps = _preprocessProps(propPatches);
       final propsJson = jsonEncode(processedProps);
+
+      // ADD THIS DETAILED LOGGING:
+      developer.log(
+          'PROCESSED UPDATE PROPS BEING SENT: ${jsonEncode(processedProps)}',
+          name: 'FFI_PROPS');
 
       developer.log('FFI updateView sending JSON: $propsJson', name: 'FFI');
 
@@ -263,9 +282,10 @@ class FFINativeBridge implements NativeBridge {
   Future<bool> updateViewLayout(String viewId, double left, double top,
       double width, double height) async {
     try {
+      // ADD THIS DETAILED LOGGING:
       developer.log(
-          '🔄 FFI: Updating view layout: $viewId - ($left, $top, $width, $height)',
-          name: 'FFINativeBridge');
+          '🔄 LAYOUT UPDATE: $viewId - EXACT VALUES: left=$left, top=$top, width=$width, height=$height',
+          name: 'FFI_LAYOUT');
 
       final viewIdPtr = viewId.toNativeUtf8();
       final result =
@@ -273,8 +293,8 @@ class FFINativeBridge implements NativeBridge {
       calloc.free(viewIdPtr);
 
       developer.log(
-          '${result != 0 ? '✅' : '❌'} FFI: Update view layout result: $result',
-          name: 'FFINativeBridge');
+          '${result != 0 ? '✅' : '❌'} FFI layout result: $result for view: $viewId',
+          name: 'FFI_LAYOUT');
       return result != 0;
     } catch (e, stack) {
       developer.log('❌ FFI: Error updating view layout: $e',
@@ -315,6 +335,10 @@ class FFINativeBridge implements NativeBridge {
   Map<String, dynamic> _preprocessProps(Map<String, dynamic> props) {
     final processedProps = <String, dynamic>{};
 
+    // ADD THIS DETAILED LOGGING:
+    developer.log('PREPROCESSING PROPS: ${props.keys.join(", ")}',
+        name: 'FFI_PROPS');
+
     props.forEach((key, value) {
       if (value is Function) {
         // Handle event handlers
@@ -328,9 +352,14 @@ class FFINativeBridge implements NativeBridge {
         // Convert Color objects to hex strings with alpha
         processedProps[key] =
             '#${value.value.toRadixString(16).padLeft(8, '0')}';
+        developer.log('Converting color prop $key to: ${processedProps[key]}',
+            name: 'FFI_PROPS');
       } else if (value == double.infinity) {
         // Convert infinity to 100% string for percentage sizing
         processedProps[key] = '100%';
+        developer.log(
+            'Converting infinity prop $key to: ${processedProps[key]}',
+            name: 'FFI_PROPS');
       } else if (value is String &&
           (value.endsWith('%') || value.startsWith('#'))) {
         // Pass percentage strings and color strings through directly
@@ -344,8 +373,14 @@ class FFINativeBridge implements NativeBridge {
         // Make sure numeric values go through as doubles for consistent handling
         if (value is num) {
           processedProps[key] = value.toDouble();
+          developer.log(
+              'Converting numeric layout prop $key to double: ${processedProps[key]}',
+              name: 'FFI_PROPS');
         } else {
           processedProps[key] = value;
+          developer.log(
+              'Layout prop $key kept as is: $value (${value.runtimeType})',
+              name: 'FFI_PROPS');
         }
       } else if (value != null) {
         processedProps[key] = value;

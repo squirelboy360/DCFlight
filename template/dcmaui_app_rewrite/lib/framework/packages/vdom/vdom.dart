@@ -633,38 +633,6 @@ class VDom {
     return "root"; // Fallback to root if no parent found
   }
 
-  /// Update an element
-  Future<void> _updateElement(
-      VDomElement oldElement, VDomElement newElement) async {
-    // For now, just update props
-    final viewId = _findViewIdForNode(oldElement);
-
-    if (viewId != null) {
-      developer.log('Found component node, updating UI for ${oldElement.type}',
-          name: 'VDom');
-
-      // Update the view props - no need to separate layout props, the native side handles it
-      await updateView(viewId, newElement.props);
-    }
-  }
-
-  /// Find view ID for a node
-  String? _findViewIdForNode(VDomNode node) {
-    // Direct lookup for elements
-    for (final entry in _nodesByViewId.entries) {
-      if (entry.value == node) {
-        return entry.key;
-      }
-    }
-
-    // For component nodes, look up by content view ID
-    if (node is ComponentNode && node.contentViewId != null) {
-      return node.contentViewId;
-    }
-
-    return null;
-  }
-
   /// Extract layout props from all props
   LayoutProps? _extractLayoutProps(Map<String, dynamic> props) {
     // Check if any layout properties exist

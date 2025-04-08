@@ -54,6 +54,9 @@ import Foundation
         NSLog("DCMauiFFIBridge: createView called for \(viewId) of type \(viewType)")
         NSLog("DCMauiFFIBridge: With details \(propsJson)")
         
+        // ADD DETAILED LOGGING
+        NSLog("🔍 RECEIVED WIDTH/HEIGHT: \(self.extractDimensionsFromProps(propsJson))")
+        
         var success = false
         
         // Parse props JSON
@@ -62,6 +65,9 @@ import Foundation
             NSLog("Failed to parse props JSON: \(propsJson)")
             return false
         }
+        
+        // ADD DETAILED LOGGING
+        self.logLayoutProps(props)
         
         // Execute on main queue
         if Thread.isMainThread {
@@ -80,8 +86,43 @@ import Foundation
         return success
     }
     
+    // ADD THIS HELPER METHOD
+    private func extractDimensionsFromProps(_ propsJson: String) -> (width: Any?, height: Any?) {
+        guard let propsData = propsJson.data(using: .utf8),
+              let props = try? JSONSerialization.jsonObject(with: propsData, options: []) as? [String: Any] else {
+            return (nil, nil)
+        }
+        
+        return (props["width"], props["height"])
+    }
+    
+    // ADD THIS HELPER METHOD
+    private func logLayoutProps(_ props: [String: Any]) {
+        let layoutProps = ["width", "height", "minWidth", "maxWidth", "minHeight", "maxHeight",
+                           "margin", "marginTop", "marginRight", "marginBottom", "marginLeft",
+                           "padding", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+                           "left", "top", "right", "bottom", "flex", "flexDirection", 
+                           "alignItems", "justifyContent"]
+        
+        var foundLayoutProps = [String: Any]()
+        for key in layoutProps {
+            if let value = props[key] {
+                foundLayoutProps[key] = value
+            }
+        }
+        
+        if !foundLayoutProps.isEmpty {
+            NSLog("📐 LAYOUT PROPS: \(foundLayoutProps)")
+        } else {
+            NSLog("⚠️ NO LAYOUT PROPS FOUND")
+        }
+    }
+    
     /// Helper method to create view on main thread
     private func createViewOnMainThread(viewId: String, viewType: String, props: [String: Any]) -> Bool {
+        // ADD DETAILED LOGGING
+        NSLog("⚙️ Creating view on main thread: \(viewId), props: \(props["width"] ?? "nil") x \(props["height"] ?? "nil")")
+        
         // Create the view through the component registry
         guard let componentType = DCMauiComponentRegistry.shared.getComponentType(for: viewType) else {
             NSLog("Component not found for type: \(viewType)")
@@ -106,6 +147,9 @@ import Foundation
         // Apply layout props if any
         let layoutProps = self.extractLayoutProps(from: props)
         if !layoutProps.isEmpty {
+            // ADD DETAILED LOGGING
+            NSLog("📊 EXTRACTED LAYOUT PROPS: \(layoutProps)")
+            
             DCMauiLayoutManager.shared.updateNodeWithLayoutProps(
                 nodeId: viewId,
                 componentType: viewType,
@@ -335,6 +379,7 @@ import Foundation
     /// Apply layout to a view directly (legacy method for backward compatibility)
     @objc func updateViewLayout(viewId: String, left: Float, top: Float, width: Float, height: Float) -> Bool {
         NSLog("DCMauiFFIBridge: updateViewLayout called for \(viewId)")
+        NSLog("🎯 EXACT LAYOUT VALUES: left=\(left), top=\(top), width=\(width), height=\(height)")
         
         var success = false
         
@@ -361,6 +406,9 @@ import Foundation
             return false
         }
         
+        // Check view's current frame BEFORE updating
+        NSLog("📏 BEFORE LAYOUT: View \(viewId) frame is \(view.frame)")
+        
         // Apply layout directly (for backward compatibility only)
         view.frame = CGRect(
             x: CGFloat(left),
@@ -368,6 +416,9 @@ import Foundation
             width: CGFloat(width),
             height: CGFloat(height)
         )
+        
+        // Check view's updated frame AFTER updating
+        NSLog("📏 AFTER LAYOUT: View \(viewId) frame is now \(view.frame)")
         
         return true
     }

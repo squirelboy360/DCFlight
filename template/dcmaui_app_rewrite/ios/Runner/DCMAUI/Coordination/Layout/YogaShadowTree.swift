@@ -539,6 +539,54 @@ class YogaShadowTree {
         }
     }
     
+    // Recursively apply layout to a node and its children
+    private func applyLayoutToViewsRecursively(nodeId: String) {
+        guard let node = nodes[nodeId] else { return }
+        
+        // Get layout values directly from Yoga node
+        let left = CGFloat(YGNodeLayoutGetLeft(node))
+        let top = CGFloat(YGNodeLayoutGetTop(node))
+        let width = CGFloat(YGNodeLayoutGetWidth(node))
+        let height = CGFloat(YGNodeLayoutGetHeight(node))
+        
+        // ADD THIS DETAILED LOGGING
+        print("🌟 YOGA VALUES FOR \(nodeId): left=\(left), top=\(top), width=\(width), height=\(height)")
+        
+        // Check for NaN values which can crash the app
+        let safeLeft = left.isNaN ? 0 : left
+        let safeTop = top.isNaN ? 0 : top
+        let safeWidth = width.isNaN ? 0 : width
+        let safeHeight = height.isNaN ? 0 : height
+        
+        // ADD THIS DETAILED LOGGING
+        print("🌟 YOGA VALUES AFTER NAN CHECK: left=\(safeLeft), top=\(safeTop), width=\(safeWidth), height=\(safeHeight)")
+        
+        // Debug log before applying layout
+        print("🔧 Applying layout to \(nodeId): (\(safeLeft), \(safeTop), \(safeWidth), \(safeHeight))")
+        
+        // Apply layout to this view through layout manager
+        DCMauiLayoutManager.shared.applyLayout(
+            to: nodeId, 
+            left: safeLeft, 
+            top: safeTop, 
+            width: safeWidth, 
+            height: safeHeight
+        )
+        
+        // ADD THIS DETAILED LOGGING
+        if let view = DCMauiLayoutManager.shared.getView(withId: nodeId) {
+            print("📐 AFTER APPLY: View \(nodeId) frame is now \(view.frame)")
+        } else {
+            print("⚠️ View \(nodeId) not found in layout manager")
+        }
+        
+        // Apply layout to all children
+        let childNodeIds = nodeParents.filter { $0.value == nodeId }.map { $0.key }
+        for childId in childNodeIds {
+            applyLayoutToViewsRecursively(nodeId: childId)
+        }
+    }
+    
     // Cleanup
     deinit {
         // Free all nodes
