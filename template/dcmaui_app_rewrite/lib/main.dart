@@ -62,34 +62,6 @@ class AnimatedAppComponent extends StatefulComponent {
     final screenHeight =
         useState(ScreenUtilities.instance.screenHeight, 'screenHeight');
 
-    useEffect(() {
-      // Set up a timer to update the color every second
-      final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        // Update the background color
-        counter.setValue(counter.value + 1);
-        developer.log('Counter updated: ${counter.value}', name: 'AnimatedApp');
-      });
-
-      // // Set up screen dimension listener
-      void onDimensionsChanged() {
-        screenWidth.setValue(ScreenUtilities.instance.screenWidth);
-        screenHeight.setValue(ScreenUtilities.instance.screenHeight);
-        developer.log(
-            'Screen dimensions updated in component: ${screenWidth.value} x ${screenHeight.value}',
-            name: 'AnimatedApp');
-      }
-
-      ScreenUtilities.instance.addDimensionChangeListener(onDimensionsChanged);
-
-      // Clean up when component is unmounted
-      return () {
-        timer.cancel();
-        // ScreenUtilities.instance.removeDimensionChangeListener(onDimensionsChanged);
-        developer.log('Cleaned up timer and screen dimension listener',
-            name: 'AnimatedApp');
-      };
-    }, dependencies: []);
-
     return UI.View(
         layout: LayoutProps(
           // Use the state variables for dimensions
