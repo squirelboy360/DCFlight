@@ -67,6 +67,7 @@ class AnimatedAppComponent extends StatefulComponent {
       final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         // Update the background color
         counter.setValue(counter.value + 1);
+        developer.log('Counter updated: ${counter.value}', name: 'AnimatedApp');
       });
 
       // // Set up screen dimension listener
@@ -93,8 +94,10 @@ class AnimatedAppComponent extends StatefulComponent {
     return UI.View(
         layout: LayoutProps(
           // Use the state variables for dimensions
-          height: '100%',
-          width: '100%',
+          height: ScreenUtilities.instance.screenHeight,
+          width: ScreenUtilities.instance.screenWidth,
+          // width: '100%',
+          // height:'100%',
           alignItems: YogaAlign.center,
           justifyContent: YogaJustifyContent.center,
         ),
