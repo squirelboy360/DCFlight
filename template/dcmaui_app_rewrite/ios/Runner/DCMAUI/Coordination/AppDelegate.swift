@@ -48,37 +48,13 @@ class AppDelegate: FlutterAppDelegate {
     private func setupDCMauiNativeBridge(rootView: UIView) {
         // Set up the root container view - FULL SIZE
         let rootContainer = UIView(frame: rootView.bounds)
-        rootContainer.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        rootContainer.backgroundColor = .white
-        rootContainer.translatesAutoresizingMaskIntoConstraints = false
+        rootContainer.backgroundColor = .systemBlue
+       
         rootView.addSubview(rootContainer)
         
-        // Add constraints to ensure full size
-        NSLayoutConstraint.activate([
-            rootContainer.leadingAnchor.constraint(equalTo: rootView.leadingAnchor),
-            rootContainer.trailingAnchor.constraint(equalTo: rootView.trailingAnchor),
-            rootContainer.topAnchor.constraint(equalTo: rootView.topAnchor),
-            rootContainer.bottomAnchor.constraint(equalTo: rootView.bottomAnchor)
-        ])
-        
-        // Get actual screen dimensions
-        let screenWidth = UIScreen.main.bounds.width
-        let screenHeight = UIScreen.main.bounds.height
-        
-        print("🔍 Screen dimensions: \(screenWidth) x \(screenHeight)")
-        
-        // Create Root view with initial props - using screen dimensions
-        let rootProps: [String: Any] = [
-            "backgroundColor": "#FFFFFF",
-            "width": screenWidth,
-            "height": screenHeight,
-            "flexDirection": "column",
-            "alignItems": "stretch",
-            "justifyContent": "flexStart"
-        ]
-        
+
         // Set up the root with our props
-        DCMauiNativeBridgeCoordinator.shared.manuallyCreateRootView(rootContainer, viewId: "root", props: rootProps)
+        DCMauiNativeBridgeCoordinator.shared.manuallyCreateRootView(rootContainer, viewId: "root", props: ["flex":1])
         
         // IMPORTANT: Register the root view with FFI bridge for direct access
         DCMauiFFIBridge.shared.registerView(rootContainer, withId: "root")

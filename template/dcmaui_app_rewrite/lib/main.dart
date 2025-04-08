@@ -103,7 +103,7 @@ class AnimatedAppComponent extends StatefulComponent {
           UI.View(
             layout: LayoutProps(height: 100, width: 200),
             style: StyleSheet(
-              backgroundColor: Colors.white,
+              backgroundColor: Colors.red,
               borderRadius: 8,
             ),
             children: [
