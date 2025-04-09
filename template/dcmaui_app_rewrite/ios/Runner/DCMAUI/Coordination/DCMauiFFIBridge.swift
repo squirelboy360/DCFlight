@@ -138,7 +138,25 @@ import Foundation
         // ADD DETAILED LOGGING
         NSLog("⚙️ Creating view on main thread: \(viewId), props: \(props["width"] ?? "nil") x \(props["height"] ?? "nil")")
         
-        // Create the view through the component registry
+        // IMPORTANT: Create a copy of props to avoid modifying the original
+        var viewProps = props
+        
+        // REMOVE THIS BLOCK - DO NOT OVERRIDE DIMENSIONS FROM DART
+        /*
+        // Override width/height with screen dimensions if not explicitly set
+        if viewProps["width"] == nil {
+            viewProps["width"] = UIScreen.main.bounds.width
+        }
+        
+        if viewProps["height"] == nil {
+            viewProps["height"] = UIScreen.main.bounds.height
+        }
+        */
+        
+        // Set logging to verify we're using the original dimensions
+        NSLog("🚨 DART DIMENSIONS PRESERVED: \(viewProps["width"] ?? "nil") x \(viewProps["height"] ?? "nil")")
+        
+        // Create the component instance
         guard let componentType = DCMauiComponentRegistry.shared.getComponentType(for: viewType) else {
             NSLog("Component not found for type: \(viewType)")
             
@@ -152,7 +170,7 @@ import Foundation
         let componentInstance = componentType.init()
         
         // Create view
-        let view = componentInstance.createView(props: props)
+        let view = componentInstance.createView(props: viewProps) // Use the copied props without screen size overrides
         
         // Store view reference
         self.views[viewId] = view
@@ -167,7 +185,7 @@ import Foundation
         trackSyncStatus(nodeId: viewId, operation: "create_view", success: true)
         
         // Apply layout props if any
-        let layoutProps = self.extractLayoutProps(from: props)
+        let layoutProps = self.extractLayoutProps(from: viewProps) // Use the copied props
         if !layoutProps.isEmpty {
             // ADD DETAILED LOGGING
             NSLog("📊 EXTRACTED LAYOUT PROPS: \(layoutProps)")
@@ -181,7 +199,7 @@ import Foundation
         
         return true
     }
-    
+
     // NEW: Track node synchronization status
     private func trackSyncStatus(nodeId: String, operation: String, success: Bool, syncId: String = UUID().uuidString, errorMessage: String? = nil) {
         let timestamp = Date().timeIntervalSince1970

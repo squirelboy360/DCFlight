@@ -51,7 +51,10 @@ extension DCMauiComponent {
     
     func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
         // Default implementation - store node ID on the view
-        view.nodeId = nodeId
+        objc_setAssociatedObject(view, 
+                               UnsafeRawPointer(bitPattern: "nodeId".hashValue)!, 
+                               nodeId, 
+                               .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
     }
     
     // Default implementation for addEventListeners - do nothing by default
@@ -66,18 +69,17 @@ extension DCMauiComponent {
     }
 }
 
-// Extension to UIView to store node ID
+// This extension is renamed to avoid conflict with the one in LayoutDebugVisualizer.swift
 extension UIView {
-    private struct AssociatedKeys {
-        static var nodeId = "dcmaui_nodeId"
+    // Use direct objc_getAssociatedObject instead of property to avoid conflicts
+    func getNodeId() -> String? {
+        return objc_getAssociatedObject(self, UnsafeRawPointer(bitPattern: "nodeId".hashValue)!) as? String
     }
     
-    var nodeId: String? {
-        get {
-            return objc_getAssociatedObject(self, &AssociatedKeys.nodeId) as? String
-        }
-        set {
-            objc_setAssociatedObject(self, &AssociatedKeys.nodeId, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-        }
+    func setNodeId(_ nodeId: String?) {
+        objc_setAssociatedObject(self, 
+                              UnsafeRawPointer(bitPattern: "nodeId".hashValue)!, 
+                              nodeId, 
+                              .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
     }
 }

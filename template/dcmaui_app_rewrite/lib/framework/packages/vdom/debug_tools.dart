@@ -1,212 +1,76 @@
 import 'dart:async';
 import 'dart:developer' as developer;
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
-import '../../packages/native_bridge/native_bridge.dart';
+import '../native_bridge/native_bridge.dart';
 import 'vdom.dart';
-import 'vdom_node.dart';
-import 'component_node.dart';
-import 'vdom_element.dart';
-import 'fragment.dart';
 
-/// Debugging tools for the Virtual DOM
+/// Tools for debugging the VDOM
 class VDomDebugTools {
-  /// The VDom instance to debug
-  final VDom _vdom;
+  /// Reference to the VDOM
+  final VDom vdom;
 
-  /// The native bridge for communication
+  /// Reference to the native bridge
   final NativeBridge _nativeBridge;
 
-  /// Whether debug visualization is enabled
-  bool _debugVisualizationEnabled = false;
-
-  /// Create a VDomDebugTools instance
-  VDomDebugTools(this._vdom, this._nativeBridge) {
+  /// Constructor
+  VDomDebugTools(this.vdom, this._nativeBridge) {
     developer.log('VDomDebugTools initialized', name: 'VDom');
   }
 
-  /// Enable or disable debug visualization
-  Future<void> setDebugVisualizationEnabled(bool enabled) async {
-    _debugVisualizationEnabled = enabled;
-
-    // Send command to native side
-    await _nativeBridge
-        .invokeMethod('setDebugVisualizationEnabled', {'enabled': enabled});
-
-    developer.log('Debug visualization ${enabled ? 'enabled' : 'disabled'}',
-        name: 'VDom');
+  /// Enable or disable visual debug mode
+  Future<bool> setVisualDebugEnabled(bool enabled) async {
+    return await _nativeBridge.setVisualDebugEnabled(enabled);
   }
 
-  /// Check if debug visualization is enabled
-  bool get isDebugVisualizationEnabled => _debugVisualizationEnabled;
-
-  /// Generate a tree representation of the current VDOM
-  Map<String, dynamic> generateVDomTree() {
-    final rootNode = _vdom.rootComponentNode;
-    if (rootNode == null) {
-      return {'error': 'Root node is null'};
-    }
-
-    return _generateNodeTree(rootNode);
+  /// Get node hierarchy as JSON
+  Future<Map<String, dynamic>> getNodeHierarchy(
+      {required String nodeId}) async {
+    return await vdom.getNativeNodeHierarchy(nodeId: nodeId);
   }
 
-  /// Generate tree representation for a specific node
-  Map<String, dynamic> _generateNodeTree(VDomNode rootNode) {
-    final children = <Map<String, dynamic>>[];
-
-    // Process each child based on node type
-    if (rootNode is VDomElement) {
-      // For VDomElement, use its children property
-      for (final child in rootNode.children) {
-        final childTree = _generateNodeTree(child);
-        if (!childTree.containsKey('error')) {
-          children.add(childTree);
-        }
-      }
-    } else if (rootNode is ComponentNode && rootNode.renderedNode != null) {
-      // For ComponentNode, use its renderedNode
-      final childTree = _generateNodeTree(rootNode.renderedNode!);
-      if (!childTree.containsKey('error')) {
-        children.add(childTree);
-      }
-    } else if (rootNode is Fragment) {
-      // For Fragment, process its children
-      for (final child in rootNode.children) {
-        final childTree = _generateNodeTree(child);
-        if (!childTree.containsKey('error')) {
-          children.add(childTree);
-        }
-      }
-    }
-
-    final result = <String, dynamic>{
-      'id': rootNode.nativeViewId ?? 'unknown',
-      'type': rootNode is ComponentNode
-          ? 'ComponentNode'
-          : rootNode.runtimeType.toString(),
-      'children': children,
-    };
-
-    return result;
+  /// Print the current performance metrics
+  void logPerformanceMetrics() {
+    final metrics = vdom.getPerformanceData();
+    developer.log('Performance metrics: $metrics', name: 'VDom');
   }
 
-  /// Compare VDOM and native trees to find inconsistencies
-  Future<Map<String, dynamic>> compareVDomAndNativeTrees() async {
-    // Generate VDOM tree
-    final vdomTree = generateVDomTree();
-
-    // Get native tree
-    final nativeTree = await _vdom.getNativeNodeHierarchy(
-        nodeId: _vdom.rootComponentNode?.nativeViewId ?? 'root');
-
-    // Compare trees
-    final mismatches = <String>{};
-    _compareTreesRecursively(
-        vdomTree, nativeTree as Map<String, dynamic>, mismatches);
-
-    return {
-      'matches': mismatches.isEmpty,
-      'mismatches': mismatches.toList(),
-      'vdomTree': vdomTree,
-      'nativeTree': nativeTree,
-    };
+  /// Validate the node hierarchy
+  Future<bool> validateNodeHierarchy({String? rootId}) async {
+    // Changed return type to bool
+    return await vdom.synchronizeNodeHierarchy(rootId: rootId);
   }
 
-  /// Recursively compare trees to find mismatches
-  void _compareTreesRecursively(Map<String, dynamic> vdomNode,
-      Map<String, dynamic> nativeNode, Set<String> mismatches) {
-    // Compare node IDs
-    final vdomId = vdomNode['id'] as String;
-    final nativeId = nativeNode['id'] as String;
+  /// Find mismatches between Dart and native hierarchies
+  Future<List<String>> findHierarchyMismatches() async {
+    final mismatches = <String>[];
 
-    if (vdomId != nativeId) {
-      mismatches.add('Node ID mismatch: VDOM=$vdomId, Native=$nativeId');
+    // Check the root component
+    if (vdom.rootComponentNode == null ||
+        vdom.rootComponentNode?.nativeViewId == null) {
+      mismatches.add('Root component is null or has no native view ID');
+      return mismatches;
     }
 
-    // Compare children
-    final vdomChildren = vdomNode['children'] as List<dynamic>;
-    final nativeChildren = nativeNode['children'] as List<dynamic>;
+    final rootId = vdom.rootComponentNode!.nativeViewId!;
 
-    if (vdomChildren.length != nativeChildren.length) {
-      mismatches.add(
-          'Children count mismatch for $vdomId: VDOM=${vdomChildren.length}, Native=${nativeChildren.length}');
+    // Get native hierarchy - use the result without assigning to unused variable
+    await getNodeHierarchy(nodeId: rootId);
+
+    // Get validation results
+    final isValid = await validateNodeHierarchy(rootId: rootId);
+
+    if (!isValid) {
+      mismatches.add('Validation failed - hierarchy mismatch detected');
     }
 
-    // Compare children recursively
-    final minChildCount = vdomChildren.length < nativeChildren.length
-        ? vdomChildren.length
-        : nativeChildren.length;
-
-    for (var i = 0; i < minChildCount; i++) {
-      _compareTreesRecursively(vdomChildren[i] as Map<String, dynamic>,
-          nativeChildren[i] as Map<String, dynamic>, mismatches);
-    }
+    return mismatches;
   }
 
-  /// Take a layout snapshot for debugging
-  Future<bool> takeLayoutSnapshot() async {
-    try {
-      await _nativeBridge.invokeMethod('takeLayoutSnapshot', {});
-      return true;
-    } catch (e) {
-      developer.log('Failed to take layout snapshot: $e', name: 'VDom');
-      return false;
+  /// Debug logging helper
+  void logDebugInfo(String message) {
+    if (kDebugMode) {
+      developer.log('🔍 DEBUG: $message', name: 'VDom');
     }
-  }
-
-  /// Generate a detailed layout report
-  Future<String> generateLayoutReport() async {
-    try {
-      final result =
-          await _nativeBridge.invokeMethod('generateLayoutReport', {});
-      return result as String;
-    } catch (e) {
-      developer.log('Failed to generate layout report: $e', name: 'VDom');
-      return 'Error generating layout report: $e';
-    }
-  }
-
-  /// Sync node hierarchies with verbose logging
-  Future<Map<String, dynamic>> syncNodeHierarchies(
-      {bool verbose = false}) async {
-    if (verbose) {
-      developer.log('Starting verbose node hierarchy sync', name: 'VDomDebug');
-    }
-
-    // Generate VDOM tree
-    final vdomTree = generateVDomTree();
-
-    if (verbose) {
-      developer.log('VDOM Tree: ${jsonEncode(vdomTree)}', name: 'VDomDebug');
-    }
-
-    // Sync with native
-    final result = await _vdom.synchronizeNodeHierarchy(
-        rootId: _vdom.rootComponentNode?.nativeViewId ?? 'root');
-
-    if (verbose) {
-      developer.log('Sync result: $result', name: 'VDomDebug');
-    }
-
-    // Get native tree after sync
-    final nativeTree = await _vdom.getNativeNodeHierarchy(
-        nodeId: _vdom.rootComponentNode?.nativeViewId ?? 'root');
-
-    if (verbose) {
-      developer.log('Native Tree after sync: ${jsonEncode(nativeTree)}',
-          name: 'VDomDebug');
-    }
-
-    return {
-      'success': result,
-      'vdomTree': vdomTree,
-      'nativeTree': nativeTree,
-    };
-  }
-
-  /// Get performance metrics
-  Map<String, dynamic> getPerformanceMetrics() {
-    return _vdom.getPerformanceData();
   }
 }

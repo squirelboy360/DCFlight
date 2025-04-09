@@ -381,38 +381,32 @@ class FFINativeBridge implements NativeBridge {
   }
 
   @override
-  Future<Map<String, dynamic>> syncNodeHierarchy(
-      {required String rootId, required Map<String, dynamic> nodeTree}) async {
+  Future<Map<String, dynamic>> syncNodeHierarchy({
+    required String rootId,
+    required String nodeTree,
+  }) async {
     try {
-      developer.log('🔄 Syncing node hierarchy', name: 'FFI_SYNC');
+      // Convert the Dart node tree to JSON string for FFI
+      final Pointer<Utf8> rootIdPtr = rootId.toNativeUtf8();
+      final Pointer<Utf8> nodeTreePtr = nodeTree.toNativeUtf8();
 
-      return using((arena) {
-        final rootIdPtr = rootId.toNativeUtf8(allocator: arena);
-        final nodeTreeJson = jsonEncode(nodeTree);
-        final nodeTreeJsonPtr = nodeTreeJson.toNativeUtf8(allocator: arena);
+      // Call the native function
+      final resultPtr = _syncNodeHierarchy(rootIdPtr, nodeTreePtr);
 
-        final resultPtr = _syncNodeHierarchy(rootIdPtr, nodeTreeJsonPtr);
+      // Parse the result
+      final resultJson = resultPtr.toDartString();
+      calloc.free(rootIdPtr);
+      calloc.free(nodeTreePtr);
 
-        if (resultPtr.address == 0) {
-          return {'success': false, 'error': 'Failed to sync node hierarchy'};
-        }
-
-        final resultString = resultPtr.toDartString();
-        calloc.free(resultPtr);
-
-        try {
-          final Map<String, dynamic> result = jsonDecode(resultString);
-          developer.log('✅ Node hierarchy sync complete: ${result['success']}',
-              name: 'FFI_SYNC');
-          return result;
-        } catch (e) {
-          developer.log('❌ Failed to parse sync result: $e', name: 'FFI_SYNC');
-          return {'success': false, 'error': 'Failed to parse sync result: $e'};
-        }
-      });
-    } catch (e, stack) {
-      developer.log('❌ Exception in syncNodeHierarchy: $e',
-          name: 'FFI_SYNC', error: e, stackTrace: stack);
+      // Parse JSON result into Map
+      final result = jsonDecode(resultJson);
+      if (result is Map<String, dynamic>) {
+        return result;
+      } else {
+        return {'success': false, 'error': 'Invalid response format'};
+      }
+    } catch (e) {
+      print("[FFI] Error during node hierarchy sync: $e");
       return {'success': false, 'error': e.toString()};
     }
   }
@@ -421,36 +415,23 @@ class FFINativeBridge implements NativeBridge {
   Future<Map<String, dynamic>> getNodeHierarchy(
       {required String nodeId}) async {
     try {
-      developer.log('🔍 Getting node hierarchy for: $nodeId', name: 'FFI_SYNC');
+      // Use FFI to get hierarchy, not method channel
+      final Pointer<Utf8> nodeIdPtr = nodeId.toNativeUtf8();
+      final resultPtr = _getNodeHierarchy(nodeIdPtr);
 
-      return using((arena) {
-        final nodeIdPtr = nodeId.toNativeUtf8(allocator: arena);
+      final resultJson = resultPtr.toDartString();
+      calloc.free(nodeIdPtr);
 
-        final resultPtr = _getNodeHierarchy(nodeIdPtr);
-
-        if (resultPtr.address == 0) {
-          return {'success': false, 'error': 'Failed to get node hierarchy'};
-        }
-
-        final resultString = resultPtr.toDartString();
-        calloc.free(resultPtr);
-
-        try {
-          final Map<String, dynamic> result = jsonDecode(resultString);
-          return {'success': true, 'hierarchy': result};
-        } catch (e) {
-          developer.log('❌ Failed to parse hierarchy result: $e',
-              name: 'FFI_SYNC');
-          return {
-            'success': false,
-            'error': 'Failed to parse hierarchy result: $e'
-          };
-        }
-      });
-    } catch (e, stack) {
-      developer.log('❌ Exception in getNodeHierarchy: $e',
-          name: 'FFI_SYNC', error: e, stackTrace: stack);
-      return {'success': false, 'error': e.toString()};
+      // Parse JSON result into Map
+      final result = jsonDecode(resultJson);
+      if (result is Map<String, dynamic>) {
+        return result;
+      } else {
+        return {'error': 'Invalid response format'};
+      }
+    } catch (e) {
+      print("[FFI] Error getting node hierarchy: $e");
+      return {'error': e.toString()};
     }
   }
 
@@ -592,5 +573,19 @@ class FFINativeBridge implements NativeBridge {
     _pendingBatchUpdates.clear();
 
     return true;
+  }
+
+  // Implement the new methods for debug features
+  @override
+  Future<bool> setVisualDebugEnabled(bool enabled) async {
+    try {
+      // Use invokeMethod from the base class instead
+      final result =
+          await invokeMethod('setVisualDebugEnabled', {'enabled': enabled});
+      return result == true;
+    } catch (e) {
+      print("[FFI] Error enabling visual debugging: $e");
+      return false;
+    }
   }
 }

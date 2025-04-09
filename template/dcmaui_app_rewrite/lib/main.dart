@@ -62,13 +62,12 @@ class AnimatedAppComponent extends StatefulComponent {
     final screenHeight =
         useState(ScreenUtilities.instance.screenHeight, 'screenHeight');
 
+    // FIXED: Change to use 100% width/height for parent container instead of fixed values
     return UI.View(
         layout: LayoutProps(
-          // Use the state variables for dimensions
-          height: 500,
-          width: 200,
-          // width: '100%',
-          // height:'100%',
+          // Use full screen percentage-based layout
+          width: '100%', // Changed from fixed 200 to percentage
+          height: '100%', // Changed from fixed 500 to percentage
           alignItems: YogaAlign.center,
           justifyContent: YogaJustifyContent.center,
         ),

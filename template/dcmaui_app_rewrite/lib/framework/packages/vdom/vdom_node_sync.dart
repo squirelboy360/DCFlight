@@ -1,231 +1,119 @@
 import 'dart:async';
-import 'dart:developer' as developer;
 import 'dart:convert';
+import 'dart:developer' as developer;
 
 import '../native_bridge/native_bridge.dart';
 import 'vdom.dart';
 import 'vdom_node.dart';
-import 'component_node.dart';
 import 'vdom_element.dart';
-import 'fragment.dart';
 
-/// Class responsible for synchronizing the VDOM hierarchy between Dart and native
+/// Class responsible for synchronizing node hierarchies between Dart and native
 class VDomNodeSync {
-  /// Reference to the VDom
-  final VDom _vdom;
+  /// Reference to the VDOM
+  final VDom vdom;
 
-  /// Native bridge for communication
+  /// Native bridge for UI operations
   final NativeBridge _nativeBridge;
 
-  /// Flag to track if synchronization is in progress
-  bool _isSyncInProgress = false;
+  /// Last synchronization results
+  Map<String, dynamic>? _lastSyncResults;
 
-  /// Map of node synchronization states
-  final Map<String, _NodeSyncState> _nodeSyncStates = {};
+  /// Constructor
+  VDomNodeSync(this.vdom, this._nativeBridge);
 
-  /// Create a VDomNodeSync instance
-  VDomNodeSync(this._vdom, this._nativeBridge);
-
-  /// Check if we need to sync based on current state and threshold
-  bool needsSync(String nodeId) {
-    if (_isSyncInProgress) return false;
-
-    final state = _nodeSyncStates[nodeId];
-    if (state == null) return true;
-
-    // Check if sync is recent enough
-    final now = DateTime.now().millisecondsSinceEpoch;
-    return now - state.lastSyncTime > 5000; // 5 seconds threshold
-  }
-
-  /// Mark a node as needing sync
-  void markNeedSync(String nodeId) {
-    final now = DateTime.now().millisecondsSinceEpoch;
-    _nodeSyncStates[nodeId] = _NodeSyncState(
-      nodeId: nodeId,
-      lastSyncTime: now,
-      lastOperationType: 'manual_mark',
-      syncStatus: SyncStatus.needsSync,
-    );
-  }
-
-  /// Synchronize the VDOM hierarchy with the native side
+  /// Synchronize the node hierarchy between Dart and native
   Future<bool> synchronizeHierarchy({required String rootId}) async {
-    if (_isSyncInProgress) {
-      developer.log('⚠️ Sync already in progress', name: 'VDomNodeSync');
-      return false;
-    }
+    developer.log('Synchronizing node hierarchy from root: $rootId',
+        name: 'NodeSync');
 
-    _isSyncInProgress = true;
     try {
-      developer.log('🔄 Starting node hierarchy sync', name: 'VDomNodeSync');
+      // Get the Dart-side hierarchy representation
+      final hierarchy = _buildNodeTree(vdom.findNodeById(rootId));
 
-      // Find the root node
-      VDomNode? rootNode;
-      if (rootId == 'root' && _vdom.rootComponentNode != null) {
-        rootNode = _vdom.rootComponentNode;
-      } else {
-        // Search for node by ID
-        rootNode = _vdom.findNodeById(rootId);
-      }
-
-      if (rootNode == null) {
-        developer.log('❌ Root node not found for sync: $rootId',
-            name: 'VDomNodeSync');
+      if (hierarchy.isEmpty) {
+        developer.log('Failed to build node tree for root: $rootId',
+            name: 'NodeSync');
         return false;
       }
 
-      // Generate tree representation for sync
-      final nodeTree = _generateNodeTree(rootNode);
-
-      // Send to native for verification and repair
+      // Get the native-side hierarchy and compare
       final result = await _nativeBridge.syncNodeHierarchy(
-        rootId: rootId,
-        nodeTree: nodeTree,
-      );
+          rootId: rootId,
+          nodeTree: jsonEncode(hierarchy)); // Fixed parameter name
 
-      final success = result['success'] == true;
+      // Store last results
+      _lastSyncResults = result;
 
-      if (success) {
+      if (result['success'] == true) {
         developer.log(
-            '✅ Sync successful - checked: ${result['nodesChecked']}, '
-            'mismatched: ${result['nodesMismatched']}, repaired: ${result['nodesRepaired']}',
-            name: 'VDomNodeSync');
-
-        // Update sync states for all nodes in the tree
-        _updateSyncStates(rootNode, SyncStatus.synced);
+            'Hierarchy synchronization successful: Checked ${result['nodesChecked']} nodes, fixed ${result['nodesRepaired']} issues',
+            name: 'NodeSync');
+        return true;
       } else {
-        developer.log('❌ Sync failed: ${result['error']}',
-            name: 'VDomNodeSync');
-        _updateSyncStates(rootNode, SyncStatus.error);
+        developer.log('Hierarchy synchronization failed: ${result['error']}',
+            name: 'NodeSync');
+        return false;
       }
-
-      return success;
-    } catch (e, stack) {
-      developer.log('❌ Exception during sync: $e',
-          name: 'VDomNodeSync', error: e, stackTrace: stack);
+    } catch (e) {
+      developer.log('Error during hierarchy synchronization: $e',
+          name: 'NodeSync', error: e);
       return false;
-    } finally {
-      _isSyncInProgress = false;
     }
   }
 
-  /// Generate a tree representation of the current VDOM for a specific root node
-  Map<String, dynamic> _generateNodeTree(VDomNode rootNode) {
-    final result = <String, dynamic>{
-      'id': rootNode.nativeViewId ?? 'unknown',
-      'type': rootNode is ComponentNode
-          ? 'ComponentNode'
-          : rootNode.runtimeType.toString(),
-      'children': <Map<String, dynamic>>[],
-    };
-
-    // Process children
-    if (rootNode is VDomElement) {
-      for (final child in rootNode.children) {
-        final childTree = _generateNodeTree(child);
-        (result['children'] as List<Map<String, dynamic>>).add(childTree);
-      }
-    } else if (rootNode is ComponentNode && rootNode.renderedNode != null) {
-      final childTree = _generateNodeTree(rootNode.renderedNode!);
-      (result['children'] as List<Map<String, dynamic>>).add(childTree);
-    } else if (rootNode is Fragment) {
-      for (final child in rootNode.children) {
-        final childTree = _generateNodeTree(child);
-        (result['children'] as List<Map<String, dynamic>>).add(childTree);
-      }
-    }
-
-    return result;
-  }
-
-  /// Get details about the native node hierarchy for a specific node
+  /// Get the native node hierarchy
   Future<Map<String, dynamic>> getNativeHierarchy(String nodeId) async {
     try {
       final result = await _nativeBridge.getNodeHierarchy(nodeId: nodeId);
-      if (result['success'] == true) {
-        return result['hierarchy'] as Map<String, dynamic>;
-      } else {
-        developer.log('❌ Failed to get native hierarchy: ${result['error']}',
-            name: 'VDomNodeSync');
-        return {'error': result['error']};
-      }
+      return result;
     } catch (e) {
-      developer.log('❌ Exception getting native hierarchy: $e',
-          name: 'VDomNodeSync');
+      developer.log('Error getting native hierarchy: $e',
+          name: 'NodeSync', error: e);
       return {'error': e.toString()};
     }
   }
 
-  /// Update sync states recursively
-  void _updateSyncStates(VDomNode node, SyncStatus status) {
-    if (node.nativeViewId != null) {
-      _nodeSyncStates[node.nativeViewId!] = _NodeSyncState(
-        nodeId: node.nativeViewId!,
-        lastSyncTime: DateTime.now().millisecondsSinceEpoch,
-        lastOperationType: 'hierarchy_sync',
-        syncStatus: status,
-      );
+  /// Build a tree representation of the node hierarchy
+  Map<String, dynamic> _buildNodeTree(VDomNode? node) {
+    if (node == null) {
+      return {};
     }
 
-    // Update children based on node type
-    List<VDomNode> children = [];
+    // Get basic node info
+    final nodeId = node.nativeViewId;
+    if (nodeId == null) {
+      return {};
+    }
+
+    // Build children array
+    final children = <Map<String, dynamic>>[];
+
     if (node is VDomElement) {
-      children = node.children;
-    } else if (node is ComponentNode && node.renderedNode != null) {
-      children = [node.renderedNode!];
-    } else if (node is Fragment) {
-      children = node.children;
+      for (var child in node.children) {
+        final childTree = _buildNodeTree(child);
+        if (childTree.isNotEmpty) {
+          children.add(childTree);
+        }
+      }
     }
 
-    for (final child in children) {
-      _updateSyncStates(child, status);
+    // Return node representation
+    return {
+      'id': nodeId,
+      'type': _getNodeType(node),
+      'children': children,
+    };
+  }
+
+  /// Get node type string
+  String _getNodeType(VDomNode node) {
+    if (node is VDomElement) {
+      return node.type;
+    } else {
+      return node.runtimeType.toString();
     }
   }
 
-  /// Log the current sync states (for debugging)
-  void logSyncStates() {
-    developer.log('📊 Current sync states:', name: 'VDomNodeSync');
-    for (final entry in _nodeSyncStates.entries) {
-      developer.log('  - ${entry.key}: ${entry.value.syncStatus}',
-          name: 'VDomNodeSync');
-    }
-  }
-}
-
-/// Node synchronization state
-class _NodeSyncState {
-  /// Node ID
-  final String nodeId;
-
-  /// Last sync time in milliseconds
-  final int lastSyncTime;
-
-  /// Last operation type
-  final String lastOperationType;
-
-  /// Sync status
-  final SyncStatus syncStatus;
-
-  _NodeSyncState({
-    required this.nodeId,
-    required this.lastSyncTime,
-    required this.lastOperationType,
-    required this.syncStatus,
-  });
-}
-
-/// Synchronization status enum
-enum SyncStatus {
-  /// Node needs synchronization
-  needsSync,
-
-  /// Node is synchronized
-  synced,
-
-  /// Error during synchronization
-  error,
-
-  /// Node is being synchronized
-  inProgress,
+  /// Get last sync results
+  Map<String, dynamic>? get lastSyncResults => _lastSyncResults;
 }

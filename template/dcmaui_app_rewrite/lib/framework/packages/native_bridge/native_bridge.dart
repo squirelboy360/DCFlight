@@ -48,8 +48,10 @@ abstract class NativeBridge {
       {required double screenWidth, required double screenHeight});
 
   /// Synchronize node hierarchy between Dart and native
-  Future<Map<String, dynamic>> syncNodeHierarchy(
-      {required String rootId, required Map<String, dynamic> nodeTree});
+  Future<Map<String, dynamic>> syncNodeHierarchy({
+    required String rootId,
+    required String nodeTree,
+  });
 
   /// Get the native node hierarchy starting from a specific node
   Future<Map<String, dynamic>> getNodeHierarchy({required String nodeId});
@@ -66,6 +68,9 @@ abstract class NativeBridge {
 
   /// Cancel a batch update
   Future<bool> cancelBatchUpdate();
+
+  /// Enable or disable visual debugging
+  Future<bool> setVisualDebugEnabled(bool enabled);
 }
 
 /// Factory for creating platform-specific native bridges
