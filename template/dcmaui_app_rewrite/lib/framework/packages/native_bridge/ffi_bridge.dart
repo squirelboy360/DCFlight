@@ -14,6 +14,15 @@ typedef CalculateLayoutNative = Int8 Function(
 typedef CalculateLayoutDart = int Function(
     double screenWidth, double screenHeight);
 
+// NEW: Typedefs for node hierarchy sync functions
+typedef SyncNodeHierarchyNative = Pointer<Utf8> Function(
+    Pointer<Utf8> rootId, Pointer<Utf8> nodeTreeJson);
+typedef SyncNodeHierarchyDart = Pointer<Utf8> Function(
+    Pointer<Utf8> rootId, Pointer<Utf8> nodeTreeJson);
+
+typedef GetNodeHierarchyNative = Pointer<Utf8> Function(Pointer<Utf8> nodeId);
+typedef GetNodeHierarchyDart = Pointer<Utf8> Function(Pointer<Utf8> nodeId);
+
 /// FFI-based implementation of NativeBridge for iOS/macOS
 class FFINativeBridge implements NativeBridge {
   late final DynamicLibrary _nativeLib;
@@ -35,6 +44,14 @@ class FFINativeBridge implements NativeBridge {
 
   // Add the calculate layout function pointer
   late final CalculateLayoutDart _calculateLayoutNative;
+
+  // Add the node hierarchy functions
+  late final SyncNodeHierarchyDart _syncNodeHierarchy;
+  late final GetNodeHierarchyDart _getNodeHierarchy;
+
+  // Add batch update state
+  bool _batchUpdateInProgress = false;
+  final List<Map<String, dynamic>> _pendingBatchUpdates = [];
 
   // Event callback
   Function(String viewId, String eventType, Map<String, dynamic> eventData)?
@@ -92,6 +109,14 @@ class FFINativeBridge implements NativeBridge {
         _nativeLib.lookupFunction<CalculateLayoutNative, CalculateLayoutDart>(
             'dcmaui_calculate_layout');
 
+    // Initialize the node hierarchy sync functions
+    _syncNodeHierarchy = _nativeLib.lookupFunction<SyncNodeHierarchyNative,
+        SyncNodeHierarchyDart>('dcmaui_sync_node_hierarchy');
+
+    _getNodeHierarchy =
+        _nativeLib.lookupFunction<GetNodeHierarchyNative, GetNodeHierarchyDart>(
+            'dcmaui_get_node_hierarchy');
+
     // Set up method channel for handling events
     _setupMethodChannelEventHandling();
   }
@@ -136,6 +161,17 @@ class FFINativeBridge implements NativeBridge {
   @override
   Future<bool> createView(
       String viewId, String type, Map<String, dynamic> props) async {
+    // Track operation for batch updates if needed
+    if (_batchUpdateInProgress) {
+      _pendingBatchUpdates.add({
+        'operation': 'createView',
+        'viewId': viewId,
+        'viewType': type,
+        'props': props,
+      });
+      return true;
+    }
+
     try {
       developer.log('Creating view via FFI: $viewId, $type', name: 'FFI');
       // ADD THIS DETAILED LOGGING:
@@ -169,6 +205,16 @@ class FFINativeBridge implements NativeBridge {
   @override
   Future<bool> updateView(
       String viewId, Map<String, dynamic> propPatches) async {
+    // Track operation for batch updates if needed
+    if (_batchUpdateInProgress) {
+      _pendingBatchUpdates.add({
+        'operation': 'updateView',
+        'viewId': viewId,
+        'props': propPatches,
+      });
+      return true;
+    }
+
     developer.log('FFI updateView: viewId=$viewId, props=$propPatches',
         name: 'FFI');
 
@@ -335,6 +381,80 @@ class FFINativeBridge implements NativeBridge {
   }
 
   @override
+  Future<Map<String, dynamic>> syncNodeHierarchy(
+      {required String rootId, required Map<String, dynamic> nodeTree}) async {
+    try {
+      developer.log('🔄 Syncing node hierarchy', name: 'FFI_SYNC');
+
+      return using((arena) {
+        final rootIdPtr = rootId.toNativeUtf8(allocator: arena);
+        final nodeTreeJson = jsonEncode(nodeTree);
+        final nodeTreeJsonPtr = nodeTreeJson.toNativeUtf8(allocator: arena);
+
+        final resultPtr = _syncNodeHierarchy(rootIdPtr, nodeTreeJsonPtr);
+
+        if (resultPtr.address == 0) {
+          return {'success': false, 'error': 'Failed to sync node hierarchy'};
+        }
+
+        final resultString = resultPtr.toDartString();
+        calloc.free(resultPtr);
+
+        try {
+          final Map<String, dynamic> result = jsonDecode(resultString);
+          developer.log('✅ Node hierarchy sync complete: ${result['success']}',
+              name: 'FFI_SYNC');
+          return result;
+        } catch (e) {
+          developer.log('❌ Failed to parse sync result: $e', name: 'FFI_SYNC');
+          return {'success': false, 'error': 'Failed to parse sync result: $e'};
+        }
+      });
+    } catch (e, stack) {
+      developer.log('❌ Exception in syncNodeHierarchy: $e',
+          name: 'FFI_SYNC', error: e, stackTrace: stack);
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> getNodeHierarchy(
+      {required String nodeId}) async {
+    try {
+      developer.log('🔍 Getting node hierarchy for: $nodeId', name: 'FFI_SYNC');
+
+      return using((arena) {
+        final nodeIdPtr = nodeId.toNativeUtf8(allocator: arena);
+
+        final resultPtr = _getNodeHierarchy(nodeIdPtr);
+
+        if (resultPtr.address == 0) {
+          return {'success': false, 'error': 'Failed to get node hierarchy'};
+        }
+
+        final resultString = resultPtr.toDartString();
+        calloc.free(resultPtr);
+
+        try {
+          final Map<String, dynamic> result = jsonDecode(resultString);
+          return {'success': true, 'hierarchy': result};
+        } catch (e) {
+          developer.log('❌ Failed to parse hierarchy result: $e',
+              name: 'FFI_SYNC');
+          return {
+            'success': false,
+            'error': 'Failed to parse hierarchy result: $e'
+          };
+        }
+      });
+    } catch (e, stack) {
+      developer.log('❌ Exception in getNodeHierarchy: $e',
+          name: 'FFI_SYNC', error: e, stackTrace: stack);
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  @override
   Future<Map<String, double>> measureText(
       String viewId, String text, Map<String, dynamic> textAttributes) async {
     developer.log('FFI measureText: viewId=$viewId, text=$text', name: 'FFI');
@@ -419,5 +539,58 @@ class FFINativeBridge implements NativeBridge {
     });
 
     return processedProps;
+  }
+
+  @override
+  Future<dynamic> invokeMethod(String method,
+      [Map<String, dynamic>? arguments]) async {
+    // Create a method channel if needed
+    final methodChannel = MethodChannel('com.dcmaui.bridge');
+
+    try {
+      return await methodChannel.invokeMethod(method, arguments);
+    } catch (e) {
+      print('Error invoking method $method: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<bool> startBatchUpdate() async {
+    if (_batchUpdateInProgress) {
+      return false;
+    }
+
+    _batchUpdateInProgress = true;
+    _pendingBatchUpdates.clear();
+    return true;
+  }
+
+  @override
+  Future<bool> commitBatchUpdate() async {
+    if (!_batchUpdateInProgress) {
+      return false;
+    }
+
+    final success = await invokeMethod('commitBatchUpdate', {
+      'updates': _pendingBatchUpdates,
+    });
+
+    _batchUpdateInProgress = false;
+    _pendingBatchUpdates.clear();
+
+    return success == true;
+  }
+
+  @override
+  Future<bool> cancelBatchUpdate() async {
+    if (!_batchUpdateInProgress) {
+      return false;
+    }
+
+    _batchUpdateInProgress = false;
+    _pendingBatchUpdates.clear();
+
+    return true;
   }
 }

@@ -16,6 +16,8 @@ import 'reconciler.dart';
 import 'context.dart';
 import 'fragment.dart';
 import 'error_boundary.dart';
+import 'vdom_node_sync.dart';
+import 'debug_tools.dart'; // Add this import
 
 /// Performance monitoring for VDOM operations
 class PerformanceMonitor {
@@ -173,6 +175,12 @@ class VDom {
   // This is a placeholder for future use in case current layout arch is revised
   bool _layoutDirty = false;
 
+  /// Node synchronization manager
+  late final VDomNodeSync _nodeSync;
+
+  /// Debug tools for VDOM
+  late final VDomDebugTools debugTools;
+
   /// Create a new VDom instance
   VDom() {
     _initialize();
@@ -198,6 +206,12 @@ class VDom {
 
       // Create reconciler
       _reconciler = Reconciler(this);
+
+      // Initialize node sync
+      _nodeSync = VDomNodeSync(this, _nativeBridge);
+
+      // Initialize debug tools
+      debugTools = VDomDebugTools(this, _nativeBridge);
 
       // Mark as ready
       _readyCompleter.complete();
@@ -331,6 +345,14 @@ class VDom {
       } else if (node is VDomElement) {
         return await _renderElementToNative(node,
             parentId: parentId, index: index);
+      }
+
+      // After rendering, schedule a sync if this is a significant node
+      if (node is ComponentNode && node.component.typeName == 'App') {
+        // This is the root app component, schedule a sync
+        Future.delayed(Duration(milliseconds: 500), () {
+          _nodeSync.synchronizeHierarchy(rootId: node.nativeViewId ?? 'root');
+        });
       }
 
       return null;
@@ -620,8 +642,17 @@ class VDom {
     // Reconcile nodes
     if (oldRenderedNode != null) {
       _performanceMonitor.startTimer('reconcile');
-      _reconciler.reconcile(oldRenderedNode, newRenderedNode);
+      await _reconciler.reconcile(oldRenderedNode, newRenderedNode);
       _performanceMonitor.endTimer('reconcile');
+
+      // Schedule a hierarchy sync after significant changes
+      if (component.typeName == 'App' ||
+          component.typeName.contains('Screen')) {
+        Future.delayed(Duration(milliseconds: 300), () {
+          _nodeSync.synchronizeHierarchy(
+              rootId: componentNode.nativeViewId ?? 'root');
+        });
+      }
     } else if (componentNode.contentViewId != null) {
       // If no previous node but we have a content view ID, this might be a special case
       // Handle by re-rendering to native
@@ -998,5 +1029,54 @@ class VDom {
   /// Reset performance metrics
   void resetPerformanceMetrics() {
     _performanceMonitor.reset();
+  }
+
+  /// Find a node by ID
+  VDomNode? findNodeById(String id) {
+    // Check direct mapping
+    final node = _nodesByViewId[id];
+    if (node != null) return node;
+
+    // If not found directly, do a tree search starting from root
+    if (rootComponentNode != null) {
+      return _findNodeInSubtree(rootComponentNode!, id);
+    }
+
+    return null;
+  }
+
+  /// Helper to find node in a subtree
+  VDomNode? _findNodeInSubtree(VDomNode node, String id) {
+    if (node.nativeViewId == id) return node;
+
+    // Use type-specific access to children
+    List<VDomNode> children = [];
+    if (node is VDomElement) {
+      children = node.children;
+    } else if (node is ComponentNode && node.renderedNode != null) {
+      // For ComponentNode, add its rendered node as a "child"
+      children = [node.renderedNode!];
+    } else if (node is Fragment) {
+      children = node.children;
+    }
+
+    for (final child in children) {
+      final result = _findNodeInSubtree(child, id);
+      if (result != null) return result;
+    }
+
+    return null;
+  }
+
+  /// Synchronize node hierarchy
+  Future<bool> synchronizeNodeHierarchy({String? rootId}) async {
+    final rootNodeId = rootId ?? (rootComponentNode?.nativeViewId ?? 'root');
+    return await _nodeSync.synchronizeHierarchy(rootId: rootNodeId);
+  }
+
+  /// Get native node hierarchy
+  Future<Map<String, dynamic>> getNativeNodeHierarchy(
+      {required String nodeId}) async {
+    return await _nodeSync.getNativeHierarchy(nodeId);
   }
 }

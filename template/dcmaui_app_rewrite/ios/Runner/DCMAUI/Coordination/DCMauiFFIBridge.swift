@@ -13,6 +13,21 @@ import Foundation
     // Dictionary to hold view references
     private var views = [String: UIView]()
     
+    // NEW: Track node operation status for synchronization with Dart side
+    private struct NodeSyncStatus {
+        var lastOperation: String
+        var timestamp: TimeInterval
+        var success: Bool
+        var syncId: String    // Used to match operations between Dart and native side
+        var errorMessage: String?
+    }
+    
+    // NEW: Node status tracking dictionary
+    private var nodeSyncStatuses = [String: NodeSyncStatus]()
+    
+    // NEW: Timestamp for last sync operation
+    private var lastSyncTimestamp: TimeInterval = 0
+    
     // Private initializer for singleton
     private override init() {
         super.init()
@@ -126,6 +141,10 @@ import Foundation
         // Create the view through the component registry
         guard let componentType = DCMauiComponentRegistry.shared.getComponentType(for: viewType) else {
             NSLog("Component not found for type: \(viewType)")
+            
+            // NEW: Track sync failure
+            trackSyncStatus(nodeId: viewId, operation: "create_view", success: false, 
+                          errorMessage: "Component type not found: \(viewType)")
             return false
         }
         
@@ -144,6 +163,9 @@ import Foundation
         // Register view with layout system
         DCMauiLayoutManager.shared.registerView(view, withNodeId: viewId, componentType: viewType, componentInstance: componentInstance)
         
+        // NEW: Track successful node creation
+        trackSyncStatus(nodeId: viewId, operation: "create_view", success: true)
+        
         // Apply layout props if any
         let layoutProps = self.extractLayoutProps(from: props)
         if !layoutProps.isEmpty {
@@ -158,6 +180,60 @@ import Foundation
         }
         
         return true
+    }
+    
+    // NEW: Track node synchronization status
+    private func trackSyncStatus(nodeId: String, operation: String, success: Bool, syncId: String = UUID().uuidString, errorMessage: String? = nil) {
+        let timestamp = Date().timeIntervalSince1970
+        nodeSyncStatuses[nodeId] = NodeSyncStatus(
+            lastOperation: operation,
+            timestamp: timestamp,
+            success: success,
+            syncId: syncId,
+            errorMessage: errorMessage
+        )
+        lastSyncTimestamp = timestamp
+        
+        if !success {
+            NSLog("⚠️ Node sync error: \(nodeId) - \(operation) failed: \(errorMessage ?? "Unknown error")")
+        } else {
+            NSLog("✅ Node sync: \(nodeId) - \(operation) succeeded")
+        }
+    }
+    
+    // NEW: Get sync status for a node
+    func getSyncStatus(nodeId: String) -> [String: Any]? {
+        guard let status = nodeSyncStatuses[nodeId] else {
+            return nil
+        }
+        
+        return [
+            "lastOperation": status.lastOperation,
+            "timestamp": status.timestamp,
+            "success": status.success,
+            "syncId": status.syncId,
+            "errorMessage": status.errorMessage ?? NSNull()
+        ]
+    }
+    
+    // NEW: Check if node exists in both Dart and native
+    func verifyNodeConsistency(nodeId: String) -> Bool {
+        // Check if view exists
+        let viewExists = views[nodeId] != nil
+        
+        // Check if yoga node exists
+        let yogaNodeExists = YogaShadowTree.shared.nodes[nodeId] != nil
+        
+        // Check if node is registered with layout manager
+        let layoutNodeExists = DCMauiLayoutManager.shared.getView(withId: nodeId) != nil
+        
+        let consistent = viewExists && yogaNodeExists && layoutNodeExists
+        
+        if !consistent {
+            NSLog("🔍 Node consistency check failed for \(nodeId): view=\(viewExists), yoga=\(yogaNodeExists), layout=\(layoutNodeExists)")
+        }
+        
+        return consistent
     }
     
     /// Update a view's properties
@@ -261,6 +337,10 @@ import Foundation
             semaphore.wait()
         }
         
+        // NEW: Track deletion operation
+        trackSyncStatus(nodeId: viewId, operation: "delete_view", success: success, 
+                       errorMessage: success ? nil : "Failed to delete view")
+        
         return success
     }
     
@@ -310,6 +390,10 @@ import Foundation
         // Get the views
         guard let childView = self.views[childId], let parentView = self.views[parentId] else {
             NSLog("Child or parent view not found")
+            
+            // NEW: Track attachment failure
+            let errorMsg = "Child or parent view not found: child=\(self.views[childId] != nil), parent=\(self.views[parentId] != nil)"
+            trackSyncStatus(nodeId: childId, operation: "attach_view", success: false, errorMessage: errorMsg)
             return false
         }
         
@@ -318,6 +402,9 @@ import Foundation
         
         // Update shadow tree
         DCMauiLayoutManager.shared.addChildNode(parentId: parentId, childId: childId, index: index)
+        
+        // NEW: Track successful attachment
+        trackSyncStatus(nodeId: childId, operation: "attach_view", success: true)
         
         return true
     }
@@ -506,6 +593,36 @@ import Foundation
         return "{\"width\":\(size.width),\"height\":\(size.height)}"
     }
     
+    // NEW: Sync method exposed to Dart to verify node hierarchy consistency
+    @objc func syncNodeHierarchy(rootId: String, nodeTreeJson: String) -> String {
+        NSLog("🔄 Syncing node hierarchy from root: \(rootId)")
+        
+        guard let nodeTreeData = nodeTreeJson.data(using: .utf8),
+              let nodeTree = try? JSONSerialization.jsonObject(with: nodeTreeData) as? [String: Any] else {
+            return "{\"success\":false,\"error\":\"Invalid node tree JSON\"}"
+        }
+        
+        // Process the hierarchy - implemented in YogaShadowTree
+        let syncResults = YogaShadowTree.shared.validateAndRepairHierarchy(nodeTree: nodeTree, rootId: rootId)
+        
+        // Create detailed result response
+        let resultDict: [String: Any] = [
+            "success": syncResults.success,
+            "error": syncResults.errorMessage ?? NSNull(),
+            "nodesChecked": syncResults.nodesChecked,
+            "nodesMismatched": syncResults.nodesMismatched,
+            "nodesRepaired": syncResults.nodesRepaired,
+            "timestamp": Date().timeIntervalSince1970
+        ]
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: resultDict, options: []),
+              let jsonString = String(data: jsonData, encoding: .utf8) else {
+            return "{\"success\":false,\"error\":\"Failed to serialize sync results\"}"
+        }
+        
+        return jsonString
+    }
+    
     // MARK: - Helper Methods
     
     /// Extract layout properties from props dictionary
@@ -636,4 +753,35 @@ public func dcmaui_calculate_layout_impl(
         screenWidth: CGFloat(screen_width),
         screenHeight: CGFloat(screen_height)
     ) ? 1 : 0
+}
+
+// NEW: Add node hierarchy sync FFI function
+@_cdecl("dcmaui_sync_node_hierarchy_impl")
+public func dcmaui_sync_node_hierarchy_impl(
+    root_id: UnsafePointer<CChar>,
+    node_tree_json: UnsafePointer<CChar>
+) -> UnsafePointer<CChar> {
+    let rootId = String(cString: root_id)
+    let nodeTreeJson = String(cString: node_tree_json)
+    
+    let result = DCMauiFFIBridge.shared.syncNodeHierarchy(rootId: rootId, nodeTreeJson: nodeTreeJson)
+    
+    // Convert to C string
+    let resultCStr = strdup(result)
+    return UnsafePointer(resultCStr!)
+}
+
+// NEW: Add implementation for get_node_hierarchy
+@_cdecl("dcmaui_get_node_hierarchy_impl")
+public func dcmaui_get_node_hierarchy_impl(
+    node_id: UnsafePointer<CChar>
+) -> UnsafePointer<CChar> {
+    let nodeId = String(cString: node_id)
+    
+    // Get hierarchy as JSON from YogaShadowTree
+    let hierarchyJson = YogaShadowTree.shared.getHierarchyAsJson(startingAt: nodeId)
+    
+    // Convert to C string that can be returned to Dart
+    let resultCStr = strdup(hierarchyJson)
+    return UnsafePointer(resultCStr!)
 }

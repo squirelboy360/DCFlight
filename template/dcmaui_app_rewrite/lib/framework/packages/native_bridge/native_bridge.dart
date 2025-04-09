@@ -46,6 +46,26 @@ abstract class NativeBridge {
   /// Calculate layout for the entire UI tree
   Future<bool> calculateLayout(
       {required double screenWidth, required double screenHeight});
+
+  /// Synchronize node hierarchy between Dart and native
+  Future<Map<String, dynamic>> syncNodeHierarchy(
+      {required String rootId, required Map<String, dynamic> nodeTree});
+
+  /// Get the native node hierarchy starting from a specific node
+  Future<Map<String, dynamic>> getNodeHierarchy({required String nodeId});
+
+  /// Invoke a method on the native side
+  Future<dynamic> invokeMethod(String method,
+      [Map<String, dynamic>? arguments]);
+
+  /// Start a batch update
+  Future<bool> startBatchUpdate();
+
+  /// Commit a batch update
+  Future<bool> commitBatchUpdate();
+
+  /// Cancel a batch update
+  Future<bool> cancelBatchUpdate();
 }
 
 /// Factory for creating platform-specific native bridges
