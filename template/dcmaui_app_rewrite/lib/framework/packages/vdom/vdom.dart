@@ -528,8 +528,8 @@ class VDom {
     final screenWidth = width ?? ScreenUtilities.instance.screenWidth;
     final screenHeight = height ?? ScreenUtilities.instance.screenHeight;
 
-    // Delegate layout calculation completely to the native side
-    // instead of calculating in Dart
+    // SIMPLIFIED: Delegate EVERYTHING to native side
+    // Remove any Dart-side layout calculations completely
     _performanceMonitor.startTimer('native_layout_calculation');
 
     // Send command to native to calculate and apply layout
@@ -540,7 +540,7 @@ class VDom {
 
     if (!success) {
       developer.log('⚠️ Native layout calculation failed', name: 'VDom');
-      // Fall back to default behavior if native calculation fails
+      // No fallback - native side is now the only source of truth for layout
     }
 
     _performanceMonitor.endTimer('native_layout_calculation');

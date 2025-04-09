@@ -464,23 +464,66 @@ class YogaShadowTree {
         return CGRect(x: left, y: top, width: width, height: height)
     }
     
-    // Apply a layout property to a node
+    // Apply a layout property to a node - ENHANCED percentage handling
     private func applyLayoutProp(node: YGNodeRef, key: String, value: Any) {
         switch key {
         case "width":
             if let width = convertToFloat(value) {
                 YGNodeStyleSetWidth(node, width)
+                // Clear percentage-based flag if using absolute points
+                if let viewId = getViewIdForNode(node),
+                   let view = DCMauiLayoutManager.shared.getView(withId: viewId) {
+                    objc_setAssociatedObject(view,
+                        UnsafeRawPointer(bitPattern: "hasPercentageWidth".hashValue)!,
+                        false, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                }
             } else if let strValue = value as? String, strValue.hasSuffix("%"), 
                      let percentValue = Float(strValue.dropLast()) {
+                // ENHANCED: Store percentage value for responsive recalculation
+                if let viewId = getViewIdForNode(node),
+                   let view = DCMauiLayoutManager.shared.getView(withId: viewId) {
+                    // Mark view as using percentage-based width
+                    objc_setAssociatedObject(view,
+                        UnsafeRawPointer(bitPattern: "hasPercentageWidth".hashValue)!,
+                        true, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                    
+                    // Store the percentage value
+                    objc_setAssociatedObject(view,
+                        UnsafeRawPointer(bitPattern: "percentageWidthValue".hashValue)!,
+                        CGFloat(percentValue), .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                }
+                
                 YGNodeStyleSetWidthPercent(node, percentValue)
             }
         case "height":
             if let height = convertToFloat(value) {
                 YGNodeStyleSetHeight(node, height)
+                // Clear percentage-based flag if using absolute points
+                if let viewId = getViewIdForNode(node),
+                   let view = DCMauiLayoutManager.shared.getView(withId: viewId) {
+                    objc_setAssociatedObject(view,
+                        UnsafeRawPointer(bitPattern: "hasPercentageHeight".hashValue)!,
+                        false, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                }
             } else if let strValue = value as? String, strValue.hasSuffix("%"), 
                      let percentValue = Float(strValue.dropLast()) {
+                // ENHANCED: Store percentage value for responsive recalculation
+                if let viewId = getViewIdForNode(node),
+                   let view = DCMauiLayoutManager.shared.getView(withId: viewId) {
+                    // Mark view as using percentage-based height
+                    objc_setAssociatedObject(view,
+                        UnsafeRawPointer(bitPattern: "hasPercentageHeight".hashValue)!,
+                        true, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                    
+                    // Store the percentage value
+                    objc_setAssociatedObject(view,
+                        UnsafeRawPointer(bitPattern: "percentageHeightValue".hashValue)!,
+                        CGFloat(percentValue), .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                }
+                
                 YGNodeStyleSetHeightPercent(node, percentValue)
             }
+            
         case "minWidth":
             if let minWidth = convertToFloat(value) {
                 YGNodeStyleSetMinWidth(node, minWidth)
@@ -772,8 +815,21 @@ class YogaShadowTree {
                 YGNodeStyleSetBorder(node, YGEdge.all, borderWidth)
             }
         default:
-            break
+            // Unknown property - log for debugging
+            print("⚠️ Unknown layout property: \(key) with value: \(value)")
         }
+    }
+    
+    // NEW: Add helper to find view ID for a node
+    private func getViewIdForNode(_ node: YGNodeRef) -> String? {
+        return nodes.first(where: { $0.value == node })?.key
+    }
+    
+    // ADDED: Function to respond to screen orientation changes
+    func handleScreenOrientationChange(screenWidth: CGFloat, screenHeight: CGFloat) {
+        // Recalculate layout with new screen dimensions
+        print("📱 Screen orientation changed. Recalculating layouts: \(screenWidth)×\(screenHeight)")
+        calculateAndApplyLayout(width: screenWidth, height: screenHeight)
     }
     
     // Helper to convert input values to Float
@@ -878,7 +934,7 @@ class YogaShadowTree {
                 nodesRepaired: &nodesRepaired
             )
             
-            if !result {
+            if (!result) {
                 return (false, "Failed to repair node hierarchy", nodesChecked, nodesMismatched, nodesRepaired)
             }
             

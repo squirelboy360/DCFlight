@@ -408,4 +408,38 @@ class LayoutProps {
   static bool isLayoutProperty(String propName) {
     return all.contains(propName);
   }
+
+  /// Parse a dimension value that could be a number or percentage string
+  static dynamic parseDimensionValue(dynamic value) {
+    if (value == null) return null;
+
+    // If it's already a number, return it directly
+    if (value is num) return value.toDouble();
+
+    // Handle percentage strings
+    if (value is String && value.endsWith('%')) {
+      return value; // Keep percentage strings as-is for native handling
+    }
+
+    // Try to parse as a number
+    if (value is String) {
+      try {
+        return double.parse(value);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    return null;
+  }
+
+  /// Convert dimension to percentage string
+  static String toPercentage(double value) {
+    return '${value.toString()}%';
+  }
+
+  /// Check if dimension is percentage
+  static bool isPercentage(dynamic value) {
+    return value is String && value.endsWith('%');
+  }
 }
