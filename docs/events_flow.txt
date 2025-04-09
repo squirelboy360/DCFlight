@@ -1,0 +1,101 @@
+┌───────────────────────────────────────────┐              ┌────────────────────────────────────┐
+│               DART SIDE                   │              │            NATIVE SIDE             │
+└───────────────────────────────────────────┘              └────────────────────────────────────┘
+
+┌───────────────┐                                          ┌────────────────────┐
+│   Component   │                                          │    Native View     │
+│ with onPress  │                                          │    (UIButton)      │
+└───────┬───────┘                                          └─────────┬──────────┘
+        │                                                            │
+        │ 1. Register Event                                          │
+        ▼                                                            │
+┌───────────────┐         2. FFI Call                      ┌─────────▼──────────┐
+│  VDom adds    │────────────────────────────────────────▶ │ DCMauiFFIBridge    │
+│  event handler│                                          │ createView/update  │
+└───────┬───────┘                                          └─────────┬──────────┘
+        │                                                            │
+        │                                                            │ 3. Add Event Listeners
+        │                                                            ▼
+        │                                                  ┌─────────────────────┐
+        │                                                  │ Component.addEvent- │
+        │                                                  │ Listeners method    │
+        │                                                  └─────────┬───────────┘
+        │                                                            │
+        │                                                            │ 4. Register UIControl actions
+        │                                                            ▼
+        │                                                  ┌─────────────────────┐
+        │                                                  │ UIButton.addTarget  │
+        │                                                  │ for .touchUpInside  │
+        │                                                  └─────────┬───────────┘
+        │                                                            │
+        │                                                            │ 5. User interacts with view
+        │                                                            ▼
+        │                                                  ┌─────────────────────┐
+        │                                                  │ Native UI Event     │
+        │                                                  │ (tap/touch/etc)     │
+        │                                                  └─────────┬───────────┘
+        │                                                            │
+        │                                                            │ 6. Event triggers handler
+        │                                                            ▼
+        │                                                  ┌─────────────────────┐
+        │                                                  │ Component handler   │
+        │                                                  │ method is called    │
+        │                                                  └─────────┬───────────┘
+        │                                                            │
+        │                                                            │ 7. Prepare event data
+        │                                                            ▼
+        │                                                  ┌─────────────────────┐
+        │                                                  │ Format native event │
+        │                                                  │ for Dart (JSON)     │
+        │                                                  └─────────┬───────────┘
+        │                                                            │
+        │                            8. FFI Event Callback           │
+        │                  ◀─────────────────────────────────────────┘
+        │
+        │
+        ▼
+┌─────────────────┐
+│ VDom processes  │
+│ native event    │
+└────────┬────────┘
+         │
+         │ 9. Call registered handler
+         ▼
+┌─────────────────┐
+│ Dart onPress    │
+│ handler executes│
+└─────────────────┘
+         │
+         │ 10. Update component state
+         ▼
+┌─────────────────┐         11. Trigger UI update
+│ Component state │─────────────────────────────────────────────────┐
+│ is modified     │                                                 │
+└─────────────────┘                                                 │
+                                                                    │
+                                                                    ▼
+┌─────────────────┐                                       ┌─────────────────────┐
+│ VDom reconciles │         12. FFI Call                  │ DCMauiFFIBridge     │
+│ UI changes      │──────────────────────────────────────▶│ updateView          │
+└─────────────────┘                                       └─────────────────────┘
+
+                        EVENT FLOW SPECIFICATIONS
+
+1. REGISTRATION: Events like "press" are registered during component creation
+   via props (e.g., onPress: () => {...})
+
+2. LISTENER SETUP: When a component with event handlers is created, native view 
+   is configured with appropriate event listeners through UIControl actions
+
+3. EVENT DISPATCH: Native events get formatted with standard data structure 
+   including:
+   - viewId: ID of the view that generated the event
+   - eventType: Type of event (e.g., "press", "change", "scroll")
+   - eventData: JSON object with event details (position, state, etc.)
+
+4. EVENT BATCHING: High-frequency events like "scroll" are throttled using
+   configurable intervals to prevent overloading the Dart side
+
+5. BIDIRECTIONAL EVENTS: Events can flow in both directions:
+   - Native → Dart: UI events (press, scroll, etc.)
+   - Dart → Native: Custom commands or synthetic events
