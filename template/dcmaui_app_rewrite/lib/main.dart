@@ -65,8 +65,8 @@ class AnimatedAppComponent extends StatefulComponent {
     return UI.View(
         layout: LayoutProps(
           // Use the state variables for dimensions
-          height: ScreenUtilities.instance.screenHeight,
-          width: ScreenUtilities.instance.screenWidth,
+          height: 500,
+          width: 200,
           // width: '100%',
           // height:'100%',
           alignItems: YogaAlign.center,
