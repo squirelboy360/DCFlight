@@ -32,13 +32,8 @@ class DCMauiLayoutManager {
     func getView(withId viewId: String) -> UIView? {
         return viewRegistry[viewId]
     }
-    
-    // MARK: - Layout Application
-    
-    // Remove this duplicate method completely - we only want the one from the extension
-    // func applyLayout(to viewId: String, left: CGFloat, top: CGFloat, width: CGFloat, height: CGFloat) -> Bool {
-    //    // Duplicate method removed to avoid ambiguity
-    // }
+
+
     
     // MARK: - Absolute Layout Management
     

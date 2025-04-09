@@ -133,7 +133,7 @@ class YogaShadowTree {
     func calculateLayout(width: CGFloat, height: CGFloat, direction: YGDirection = YGDirection.LTR) {
         guard let root = rootNode else { return }
         
-        print("Calculating layout for \(nodes.count) root nodes with dimensions: \(width)x\(height)")
+        print("🔢 Starting native layout calculation with dimensions: \(width)x\(height)")
         
         // Set root dimensions
         YGNodeStyleSetWidth(root, Float(width))
@@ -142,7 +142,68 @@ class YogaShadowTree {
         // Calculate layout
         YGNodeCalculateLayout(root, Float(width), Float(height), direction)
         
-        print("Layout calculation completed for \(width)x\(height)")
+        print("✅ Native layout calculation completed")
+        
+        // Apply calculated layout to views - this step was previously handled by Dart side
+        // Now we automatically apply layout to all views after calculation
+        if let rootId = nodes.first(where: { $0.value == root })?.key {
+            applyLayoutToViewsRecursively(nodeId: rootId)
+        } else {
+            print("⚠️ Warning: Could not find root node ID in node map")
+            if nodes.count > 0 {
+                print("🔍 Attempting to apply layout to all known nodes...")
+                for (nodeId, _) in nodes {
+                    if nodeId != "root" { // Skip the dummy root
+                        applyLayoutToViewsRecursively(nodeId: nodeId)
+                    }
+                }
+            }
+        }
+        
+        print("🎯 Layout applied to all views in hierarchy")
+    }
+    
+    // Enhanced version to apply layout to all views recursively
+    private func applyLayoutToViewsRecursively(nodeId: String) {
+        guard let node = nodes[nodeId] else { return }
+        
+        // Get layout values directly from Yoga node
+        let left = CGFloat(YGNodeLayoutGetLeft(node))
+        let top = CGFloat(YGNodeLayoutGetTop(node))
+        let width = CGFloat(YGNodeLayoutGetWidth(node))
+        let height = CGFloat(YGNodeLayoutGetHeight(node))
+        
+        print("📐 Node \(nodeId) layout: (\(left), \(top), \(width), \(height))")
+        
+        // Check for NaN values which can crash the app
+        let safeLeft = left.isNaN ? 0 : left
+        let safeTop = top.isNaN ? 0 : top
+        let safeWidth = width.isNaN ? 0 : width
+        let safeHeight = height.isNaN ? 0 : height
+        
+        // Apply layout to this view through layout manager
+        DCMauiLayoutManager.shared.applyLayout(
+            to: nodeId, 
+            left: safeLeft, 
+            top: safeTop, 
+            width: safeWidth, 
+            height: safeHeight
+        )
+        
+        // Apply layout to all children
+        let childNodeIds = nodeParents.filter { $0.value == nodeId }.map { $0.key }
+        for childId in childNodeIds {
+            applyLayoutToViewsRecursively(nodeId: childId)
+        }
+    }
+    
+    // Add new method to handle complete layout calculation and application in one call
+    // This is called from FFI bridge when Dart side requests layout calculation
+    func calculateAndApplyLayout(width: CGFloat, height: CGFloat) -> Bool {
+        print("🚀 Complete layout calculation and application started")
+        calculateLayout(width: width, height: height)
+        print("✅ Complete layout calculation and application finished")
+        return true
     }
     
     // Get layout for a node after calculation
@@ -539,53 +600,7 @@ class YogaShadowTree {
         }
     }
     
-    // Recursively apply layout to a node and its children
-    private func applyLayoutToViewsRecursively(nodeId: String) {
-        guard let node = nodes[nodeId] else { return }
-        
-        // Get layout values directly from Yoga node
-        let left = CGFloat(YGNodeLayoutGetLeft(node))
-        let top = CGFloat(YGNodeLayoutGetTop(node))
-        let width = CGFloat(YGNodeLayoutGetWidth(node))
-        let height = CGFloat(YGNodeLayoutGetHeight(node))
-        
-        // ADD THIS DETAILED LOGGING
-        print("🌟 YOGA VALUES FOR \(nodeId): left=\(left), top=\(top), width=\(width), height=\(height)")
-        
-        // Check for NaN values which can crash the app
-        let safeLeft = left.isNaN ? 0 : left
-        let safeTop = top.isNaN ? 0 : top
-        let safeWidth = width.isNaN ? 0 : width
-        let safeHeight = height.isNaN ? 0 : height
-        
-        // ADD THIS DETAILED LOGGING
-        print("🌟 YOGA VALUES AFTER NAN CHECK: left=\(safeLeft), top=\(safeTop), width=\(safeWidth), height=\(safeHeight)")
-        
-        // Debug log before applying layout
-        print("🔧 Applying layout to \(nodeId): (\(safeLeft), \(safeTop), \(safeWidth), \(safeHeight))")
-        
-        // Apply layout to this view through layout manager
-        DCMauiLayoutManager.shared.applyLayout(
-            to: nodeId, 
-            left: safeLeft, 
-            top: safeTop, 
-            width: safeWidth, 
-            height: safeHeight
-        )
-        
-        // ADD THIS DETAILED LOGGING
-        if let view = DCMauiLayoutManager.shared.getView(withId: nodeId) {
-            print("📐 AFTER APPLY: View \(nodeId) frame is now \(view.frame)")
-        } else {
-            print("⚠️ View \(nodeId) not found in layout manager")
-        }
-        
-        // Apply layout to all children
-        let childNodeIds = nodeParents.filter { $0.value == nodeId }.map { $0.key }
-        for childId in childNodeIds {
-            applyLayoutToViewsRecursively(nodeId: childId)
-        }
-    }
+  
     
     // Cleanup
     deinit {

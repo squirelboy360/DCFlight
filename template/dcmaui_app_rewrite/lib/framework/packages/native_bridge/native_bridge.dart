@@ -42,6 +42,10 @@ abstract class NativeBridge {
   /// Request native text measurement
   Future<Map<String, double>> measureText(
       String viewId, String text, Map<String, dynamic> textAttributes);
+
+  /// Calculate layout for the entire UI tree
+  Future<bool> calculateLayout(
+      {required double screenWidth, required double screenHeight});
 }
 
 /// Factory for creating platform-specific native bridges

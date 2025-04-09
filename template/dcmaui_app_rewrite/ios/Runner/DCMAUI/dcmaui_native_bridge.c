@@ -9,6 +9,7 @@ extern int8_t dcmaui_attach_view_impl(const char* child_id, const char* parent_i
 extern int8_t dcmaui_set_children_impl(const char* view_id, const char* children_json);
 extern int8_t dcmaui_update_view_layout_impl(const char* view_id, float left, float top, float width, float height);
 extern const char* dcmaui_measure_text_impl(const char* view_id, const char* text, const char* attributes_json);
+extern int8_t dcmaui_calculate_layout_impl(float screen_width, float screen_height);
 
 int8_t dcmaui_initialize(void) {
     return dcmaui_initialize_impl();
@@ -40,5 +41,9 @@ int8_t dcmaui_update_view_layout(const char* view_id, float left, float top, flo
 
 const char* dcmaui_measure_text(const char* view_id, const char* text, const char* attributes_json) {
     return dcmaui_measure_text_impl(view_id, text, attributes_json);
+}
+
+int8_t dcmaui_calculate_layout(float screen_width, float screen_height) {
+    return dcmaui_calculate_layout_impl(screen_width, screen_height);
 }
 

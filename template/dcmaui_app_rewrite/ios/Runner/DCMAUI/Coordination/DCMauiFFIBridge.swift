@@ -423,6 +423,33 @@ import Foundation
         return true
     }
     
+    /// Calculate layout for the entire tree
+    @objc func calculateLayout(screenWidth: CGFloat, screenHeight: CGFloat) -> Bool {
+        NSLog("DCMauiFFIBridge: calculateLayout called with dimensions: \(screenWidth)x\(screenHeight)")
+        
+        var success = false
+        
+        // Execute on main thread safely
+        if Thread.isMainThread {
+            success = calculateLayoutOnMainThread(screenWidth: screenWidth, screenHeight: screenHeight)
+        } else {
+            let semaphore = DispatchSemaphore(value: 0)
+            mainQueue.async {
+                success = self.calculateLayoutOnMainThread(screenWidth: screenWidth, screenHeight: screenHeight)
+                semaphore.signal()
+            }
+            semaphore.wait()
+        }
+        
+        return success
+    }
+    
+    /// Helper method to calculate layout on main thread
+    private func calculateLayoutOnMainThread(screenWidth: CGFloat, screenHeight: CGFloat) -> Bool {
+        // Use the shadow tree to calculate and apply layout
+        return YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
+    }
+    
     /// Measure text
     @objc func measureText(viewId: String, text: String, attributesJson: String) -> String {
         NSLog("DCMauiFFIBridge: measureText called for \(viewId)")
@@ -598,4 +625,15 @@ public func dcmaui_measure_text_impl(
     // Convert to C string
     let resultCStr = strdup(result)
     return UnsafePointer(resultCStr!)
+}
+
+@_cdecl("dcmaui_calculate_layout_impl")
+public func dcmaui_calculate_layout_impl(
+    screen_width: Float,
+    screen_height: Float
+) -> Int8 {
+    return DCMauiFFIBridge.shared.calculateLayout(
+        screenWidth: CGFloat(screen_width),
+        screenHeight: CGFloat(screen_height)
+    ) ? 1 : 0
 }

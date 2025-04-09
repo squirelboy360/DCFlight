@@ -32,6 +32,9 @@ int8_t dcmaui_update_view_layout(const char* view_id, float left, float top, flo
 // Measure text
 const char* dcmaui_measure_text(const char* view_id, const char* text, const char* attributes_json);
 
+// Calculate layout for the entire UI tree
+int8_t dcmaui_calculate_layout(float screen_width, float screen_height);
+
 #ifdef __cplusplus
 }
 #endif

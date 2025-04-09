@@ -3,6 +3,8 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 
+import 'package:dc_test/framework/utilities/screen_utilities.dart';
+
 import '../../packages/native_bridge/native_bridge.dart';
 import '../../constants/yoga_enums.dart';
 import '../../constants/layout_properties.dart';
@@ -500,11 +502,28 @@ class VDom {
         '🔥 Starting layout calculation with dimensions: ${width ?? '100%'} x ${height ?? '100%'}',
         name: 'VDom');
 
-    // Layout is handled automatically by the native side when props change
-    // This method exists for API compatibility but does not need to do anything
+    // Get screen dimensions if not provided
+    final screenWidth = width ?? ScreenUtilities.instance.screenWidth;
+    final screenHeight = height ?? ScreenUtilities.instance.screenHeight;
 
-    developer.log(
-        '✅ Layout calculation triggered - native side will handle layout',
+    // Delegate layout calculation completely to the native side
+    // instead of calculating in Dart
+    _performanceMonitor.startTimer('native_layout_calculation');
+
+    // Send command to native to calculate and apply layout
+    final success = await _nativeBridge.calculateLayout(
+      screenWidth: screenWidth,
+      screenHeight: screenHeight,
+    );
+
+    if (!success) {
+      developer.log('⚠️ Native layout calculation failed', name: 'VDom');
+      // Fall back to default behavior if native calculation fails
+    }
+
+    _performanceMonitor.endTimer('native_layout_calculation');
+
+    developer.log('✅ Layout calculation delegated to native side',
         name: 'VDom');
 
     // Reset layout dirty flag

@@ -8,6 +8,12 @@ import 'package:flutter/services.dart';
 import 'native_bridge.dart';
 import 'dart:developer' as developer;
 
+// Define typedefs at the top level, not inside the class
+typedef CalculateLayoutNative = Int8 Function(
+    Float screenWidth, Float screenHeight);
+typedef CalculateLayoutDart = int Function(
+    double screenWidth, double screenHeight);
+
 /// FFI-based implementation of NativeBridge for iOS/macOS
 class FFINativeBridge implements NativeBridge {
   late final DynamicLibrary _nativeLib;
@@ -27,7 +33,8 @@ class FFINativeBridge implements NativeBridge {
   late final Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>)
       _measureText;
 
-  // Event functions are removed from FFI completely
+  // Add the calculate layout function pointer
+  late final CalculateLayoutDart _calculateLayoutNative;
 
   // Event callback
   Function(String viewId, String eventType, Map<String, dynamic> eventData)?
@@ -80,7 +87,10 @@ class FFINativeBridge implements NativeBridge {
         Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>,
             Pointer<Utf8>)>('dcmaui_measure_text');
 
-    // Event listener functions completely removed from FFI
+    // Initialize the calculate layout function
+    _calculateLayoutNative =
+        _nativeLib.lookupFunction<CalculateLayoutNative, CalculateLayoutDart>(
+            'dcmaui_calculate_layout');
 
     // Set up method channel for handling events
     _setupMethodChannelEventHandling();
@@ -195,7 +205,7 @@ class FFINativeBridge implements NativeBridge {
       final viewIdPointer = viewId.toNativeUtf8(allocator: arena);
 
       final result = _deleteView(viewIdPointer);
-      return result != 0; // Change from == 1 to != 0
+      return result != 0;
     });
   }
 
@@ -206,7 +216,7 @@ class FFINativeBridge implements NativeBridge {
       final parentIdPointer = parentId.toNativeUtf8(allocator: arena);
 
       final result = _attachView(childIdPointer, parentIdPointer, index);
-      return result != 0; // Change from == 1 to != 0
+      return result != 0;
     });
   }
 
@@ -218,7 +228,7 @@ class FFINativeBridge implements NativeBridge {
       final childrenPointer = childrenJson.toNativeUtf8(allocator: arena);
 
       final result = _setChildren(viewIdPointer, childrenPointer);
-      return result != 0; // Change from == 1 to != 0
+      return result != 0;
     });
   }
 
@@ -298,6 +308,27 @@ class FFINativeBridge implements NativeBridge {
       return result != 0;
     } catch (e, stack) {
       developer.log('❌ FFI: Error updating view layout: $e',
+          name: 'FFINativeBridge', error: e, stackTrace: stack);
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> calculateLayout(
+      {required double screenWidth, required double screenHeight}) async {
+    try {
+      developer.log(
+          '🔄 Calculating layout via FFI: screenWidth=$screenWidth, screenHeight=$screenHeight',
+          name: 'FFI_LAYOUT');
+
+      final result = _calculateLayoutNative(screenWidth, screenHeight);
+
+      developer.log(
+          '${result != 0 ? '✅' : '❌'} FFI calculate layout result: $result',
+          name: 'FFI_LAYOUT');
+      return result != 0;
+    } catch (e, stack) {
+      developer.log('❌ FFI: Error calculating layout: $e',
           name: 'FFINativeBridge', error: e, stackTrace: stack);
       return false;
     }
