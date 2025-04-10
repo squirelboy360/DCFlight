@@ -328,16 +328,58 @@ class YogaShadowTree {
     
     // ENHANCED: Calculate and apply layout in one call with better performance monitoring
     func calculateAndApplyLayout(width: CGFloat, height: CGFloat) -> Bool {
-        print("🚀 Complete layout calculation and application started")
+        print("🚀 Complete layout calculation and application started for dimensions: \(width)×\(height)")
         
         let startTime = Date().timeIntervalSince1970
         
-        // Basic sanity check for dimensions
-        let usableWidth = width > 0 ? width : UIScreen.main.bounds.width
-        let usableHeight = height > 0 ? height : UIScreen.main.bounds.height
+        // CRITICAL FIX: Make sure root node exists before proceeding
+        guard let root = nodes["root"] else {
+            print("⚠️ ERROR: Root node not found. Cannot calculate layout")
+            return false
+        }
         
-        // Do the calculation
-        calculateLayout(width: usableWidth, height: usableHeight)
+        // CRITICAL FIX: Reset any cached layout data to ensure fresh calculation
+        // Use Float.nan instead of YGUndefined - this is the correct constant for Yoga's undefined value
+        YGNodeCalculateLayout(root, Float.nan, Float.nan, YGDirection.LTR)
+        
+        // CRITICAL FIX: Set proper width and height on root
+        YGNodeStyleSetWidth(root, Float(width))
+        YGNodeStyleSetHeight(root, Float(height))
+        
+        print("📏 ROOT NODE DIMENSIONS SET: \(width)×\(height)")
+        
+        // Calculate layout with proper dimensions
+        YGNodeCalculateLayout(root, Float(width), Float(height), YGDirection.LTR)
+        
+        // DEBUG: Check what the calculated root layout is
+        let rootWidth = YGNodeLayoutGetWidth(root)
+        let rootHeight = YGNodeLayoutGetHeight(root)
+        print("📐 ROOT LAYOUT CALCULATED: \(rootWidth)×\(rootHeight)")
+        
+        // CRITICAL FIX: Force immediate application of layout to all views in a specific order
+        // Starting from root which must exist
+        let allNodeIds = nodes.keys.sorted()
+        
+        print("🔄 Applying layout to \(allNodeIds.count) nodes...")
+        
+        // CRITICAL FIX: Process nodes in parent-first order to ensure proper positioning
+        var processedNodes = Set<String>()
+        
+        // First apply to root node
+        if let rootLayout = getNodeLayout(nodeId: "root") {
+            applyLayoutToView(viewId: "root", frame: rootLayout)
+            processedNodes.insert("root")
+            print("✅ Applied layout to root: \(rootLayout)")
+        }
+        
+        // Process remaining nodes
+        for nodeId in allNodeIds {
+            if !processedNodes.contains(nodeId), let layout = getNodeLayout(nodeId: nodeId) {
+                applyLayoutToView(viewId: nodeId, frame: layout)
+                processedNodes.insert(nodeId)
+                print("✅ Applied layout to node \(nodeId): \(layout)")
+            }
+        }
         
         // Performance reporting
         let endTime = Date().timeIntervalSince1970
@@ -351,6 +393,20 @@ class YogaShadowTree {
         }
         
         return true
+    }
+    
+    // ADD THIS MISSING METHOD: Helper to apply layout to a view by ID
+    private func applyLayoutToView(viewId: String, frame: CGRect) {
+        // Delegate to the layout manager which has access to the views
+        DispatchQueue.main.async {
+            DCMauiLayoutManager.shared.applyLayout(
+                to: viewId, 
+                left: frame.origin.x, 
+                top: frame.origin.y, 
+                width: frame.width, 
+                height: frame.height
+            )
+        }
     }
     
     // NEW: Enable or disable layout debugging
