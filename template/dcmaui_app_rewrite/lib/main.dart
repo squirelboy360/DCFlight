@@ -67,15 +67,13 @@ class DCMauiDemoApp extends StatefulComponent {
       // Create a timer that updates the animated value
       final timer = Timer.periodic(Duration(milliseconds: 50), (_) {
         final newValue = (animatedValue.value + 0.02) % 1.0;
-
-        // FIX: Use setState to update hook value instead of direct assignment
         animatedValue.setValue(newValue);
         developer.log('Animated value updated: $newValue', name: 'Animation');
       });
 
       // Return cleanup function
       return () => timer.cancel();
-    }, dependencies: []); // FIX: Use const list to avoid extra_positional_arguments error
+    }, dependencies: []);
 
     // Menu animation value based on isMenuOpen state
     final menuSlideValue = isMenuOpen.value ? 0.0 : -250.0;
@@ -141,10 +139,9 @@ class DCMauiDemoApp extends StatefulComponent {
                   height: '100%',
                 ),
                 style: StyleSheet(
-                  backgroundColor: Colors.black
-                      .withOpacity(0.5), // Using Colors.black with opacity
+                  backgroundColor: Colors.black.withOpacity(0.5),
                 ),
-                events: {'onPress': () => isMenuOpen.setValue(false)},
+                // REMOVED: events property since View doesn't support them natively
               )
             : UI.View(layout: LayoutProps()),
 
@@ -160,7 +157,6 @@ class DCMauiDemoApp extends StatefulComponent {
           style: StyleSheet(
             backgroundColor: Colors.white,
             shadowColor: Colors.black,
-            // FIX: Use shadowOffsetX and shadowOffsetY instead of shadowOffset
             shadowOffsetX: 2,
             shadowOffsetY: 0,
             shadowOpacity: 0.3,
@@ -187,7 +183,6 @@ class DCMauiDemoApp extends StatefulComponent {
       style: StyleSheet(
         backgroundColor: Colors.blue,
         shadowColor: Colors.black,
-        // FIX: Use shadowOffsetX and shadowOffsetY instead of shadowOffset
         shadowOffsetX: 0,
         shadowOffsetY: 2,
         shadowOpacity: 0.2,
@@ -220,7 +215,7 @@ class DCMauiDemoApp extends StatefulComponent {
           ),
           style: StyleSheet(),
           textProps: TextProps(
-            color: Colors.white, // FIX: This is fine - TextProps accepts Color
+            color: Colors.white,
             fontSize: 20,
             fontWeight: "bold",
           ),
@@ -242,10 +237,8 @@ class DCMauiDemoApp extends StatefulComponent {
       ),
       style: StyleSheet(
         backgroundColor: Colors.white,
-        // FIX: Use borderWidth instead of borderTopWidth
         borderWidth: 1,
-        borderColor:
-            Colors.grey.shade200, // Using Colors.grey.shade200 instead of hex
+        borderColor: Colors.grey.shade200,
       ),
       children: [
         renderTabButton(
@@ -277,6 +270,7 @@ class DCMauiDemoApp extends StatefulComponent {
     required bool isSelected,
     required Function onPress,
   }) {
+    // For tab buttons, we use a View with a Button inside since the View doesn't support events
     return UI.View(
       layout: LayoutProps(
         width: 80,
@@ -285,8 +279,22 @@ class DCMauiDemoApp extends StatefulComponent {
         alignItems: YogaAlign.center,
       ),
       style: StyleSheet(),
-      events: {'onPress': onPress},
       children: [
+        UI.Button(
+          layout: LayoutProps(
+            width: '100%',
+            height: '100%',
+            justifyContent: YogaJustifyContent.center,
+            alignItems: YogaAlign.center,
+          ),
+          style: StyleSheet(
+            backgroundColor: Colors.transparent,
+          ),
+          buttonProps: ButtonProps(
+            title: "",
+          ),
+          onPress: () => onPress(),
+        ),
         UI.Text(
           content: icon,
           layout: LayoutProps(),
@@ -332,8 +340,7 @@ class DCMauiDemoApp extends StatefulComponent {
         width: '100%',
       ),
       style: StyleSheet(
-        backgroundColor:
-            Colors.grey.shade100, // Using Colors.grey.shade100 instead of hex
+        backgroundColor: Colors.grey.shade100,
       ),
       scrollViewProps: ScrollViewProps(
         showsVerticalScrollIndicator: true,
@@ -378,22 +385,18 @@ class DCMauiDemoApp extends StatefulComponent {
         // Animated card
         UI.View(
           layout: LayoutProps(
-            width: 300,
-            height: 200,
+            width: 300 * cardScale, // Apply scale animation directly
+            height: 200 * cardScale, // Apply scale animation directly
             marginBottom: 20,
             alignSelf: YogaAlign.center,
             justifyContent: YogaJustifyContent.center,
             alignItems: YogaAlign.center,
-            // FIX: Remove duplicate width/height properties
-            // width: 300 * cardScale,
-            // height: 200 * cardScale,
           ),
           style: StyleSheet(
             backgroundColor: cardColor,
             borderRadius: 12,
             transform: cardRotation,
             shadowColor: Colors.black,
-            // FIX: Use shadowOffsetX and shadowOffsetY instead of shadowOffset
             shadowOffsetX: 0,
             shadowOffsetY: 4,
             shadowOpacity: 0.3,
@@ -491,7 +494,6 @@ class DCMauiDemoApp extends StatefulComponent {
         backgroundColor: Colors.white,
         borderRadius: 8,
         shadowColor: Colors.black,
-        // FIX: Use shadowOffsetX and shadowOffsetY instead of shadowOffset
         shadowOffsetX: 0,
         shadowOffsetY: 2,
         shadowOpacity: 0.1,
@@ -641,7 +643,6 @@ class DCMauiDemoApp extends StatefulComponent {
         backgroundColor: Colors.white,
         borderRadius: 8,
         shadowColor: Colors.black,
-        // FIX: Use shadowOffsetX and shadowOffsetY instead of shadowOffset
         shadowOffsetX: 0,
         shadowOffsetY: 2,
         shadowOpacity: 0.1,
@@ -834,6 +835,9 @@ class DCMauiDemoApp extends StatefulComponent {
                 titleColor: Colors.white,
                 fontSize: 16,
               ),
+              onPress: () {
+                developer.log('Edit profile button pressed', name: 'UI');
+              },
             ),
           ],
         ),
@@ -936,7 +940,6 @@ class DCMauiDemoApp extends StatefulComponent {
         backgroundColor: Colors.white,
         borderRadius: 8,
         shadowColor: Colors.black,
-        // FIX: Use shadowOffsetX and shadowOffsetY instead of shadowOffset
         shadowOffsetX: 0,
         shadowOffsetY: 1,
         shadowOpacity: 0.1,
@@ -1011,7 +1014,6 @@ class DCMauiDemoApp extends StatefulComponent {
             marginBottom: 20,
           ),
           style: StyleSheet(
-            // FIX: Use borderWidth instead of borderBottomWidth
             borderWidth: 1,
             borderColor: Colors.grey.shade200,
           ),
@@ -1046,34 +1048,53 @@ class DCMauiDemoApp extends StatefulComponent {
           ],
         ),
 
-        // Menu items
-        renderMenuItem(icon: "🏠", title: "Home"),
-        renderMenuItem(icon: "🖼️", title: "Gallery"),
-        renderMenuItem(icon: "👤", title: "Profile"),
-        renderMenuItem(icon: "⚙️", title: "Settings"),
-        renderMenuItem(icon: "❓", title: "Help & Support"),
-        renderMenuItem(icon: "ℹ️", title: "About"),
+        // Menu items - each needs a button for interactivity
+        renderMenuItemWithButton(icon: "🏠", title: "Home"),
+        renderMenuItemWithButton(icon: "🖼️", title: "Gallery"),
+        renderMenuItemWithButton(icon: "👤", title: "Profile"),
+        renderMenuItemWithButton(icon: "⚙️", title: "Settings"),
+        renderMenuItemWithButton(icon: "❓", title: "Help & Support"),
+        renderMenuItemWithButton(icon: "ℹ️", title: "About"),
       ],
     );
   }
 
-  // Menu item
-  VDomNode renderMenuItem({required String icon, required String title}) {
+  // Menu item with a button for proper event handling
+  VDomNode renderMenuItemWithButton(
+      {required String icon, required String title}) {
     return UI.View(
       layout: LayoutProps(
         width: '100%',
+        height: 50,
         flexDirection: YogaFlexDirection.row,
         alignItems: YogaAlign.center,
-        padding: 16,
       ),
       style: StyleSheet(),
-      events: {'onPress': () => {}}, // Empty handler for demo
       children: [
+        // The button fills the view but is transparent
+        UI.Button(
+          layout: LayoutProps(
+            position: YogaPositionType.absolute,
+            width: '100%',
+            height: '100%',
+          ),
+          style: StyleSheet(
+            backgroundColor: Colors.transparent,
+          ),
+          buttonProps: ButtonProps(
+            title: "",
+          ),
+          onPress: () {
+            developer.log('Menu item pressed: $title', name: 'UI');
+          },
+        ),
+        // Icon and title displayed over the button
         UI.Text(
           content: icon,
           layout: LayoutProps(
             width: 24,
             height: 24,
+            marginLeft: 16,
             marginRight: 16,
           ),
           style: StyleSheet(),

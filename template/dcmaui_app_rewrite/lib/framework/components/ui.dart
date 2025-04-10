@@ -18,7 +18,7 @@ class UI {
     ViewProps? viewProps,
     List<VDomNode> children = const [],
     String? key,
-    Map<String, dynamic>? events,
+    // Map<String, dynamic>? events,
   }) {
     // Merge props from both layout and style
     final propsMap = <String, dynamic>{};
@@ -36,11 +36,6 @@ class UI {
       propsMap.addAll(viewProps.toMap());
     }
 
-    // Add event handlers
-    if (events != null) {
-      propsMap.addAll(events);
-    }
-
     return VDomElement(
       type: 'View',
       key: key,
@@ -56,7 +51,7 @@ class UI {
     StyleSheet? style,
     TextProps? textProps,
     String? key,
-    Map<String, dynamic>? events,
+    // Map<String, dynamic>? events,
   }) {
     // Merge props from layout, style, and text-specific props
     final propsMap = <String, dynamic>{};
@@ -81,10 +76,6 @@ class UI {
       propsMap.addAll(textProps.toMap());
     }
 
-    // Add event handlers
-    if (events != null) {
-      propsMap.addAll(events);
-    }
 
     return VDomElement(
       type: 'Text',
