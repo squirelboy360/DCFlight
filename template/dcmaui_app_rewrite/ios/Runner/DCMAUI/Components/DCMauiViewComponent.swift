@@ -17,18 +17,11 @@ class DCMauiViewComponent: NSObject, DCMauiComponent {
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        // FIXED: Use common approach for all components:
+    
         // Apply styles directly via the extension
         view.applyStyles(props: props)
         
-        // CRITICAL FIX: Add debug border if needed
-        #if DEBUG
-        if ProcessInfo.processInfo.environment["DCMAUI_DEBUG_VIEW_BORDERS"] == "1" || 
-           UserDefaults.standard.bool(forKey: "DCMauiDebugViewBorders") {
-            view.layer.borderWidth = 1
-            view.layer.borderColor = UIColor.red.cgColor
-        }
-        #endif
+      
         
         return true
     }
@@ -42,8 +35,6 @@ class DCMauiViewComponent: NSObject, DCMauiComponent {
     }
     
     func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
-        view.nodeId = nodeId
-        
         // CRITICAL FIX: Set accessibility identifier for easier debugging
         view.accessibilityIdentifier = nodeId
     }

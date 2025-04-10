@@ -407,10 +407,6 @@ class YogaShadowTree {
                 rootView.setNeedsLayout()
                 rootView.layoutIfNeeded()
                 print("🔄 Forced layout of root view: \(rootView.frame)")
-                
-                // Add debug border to root for visibility
-                rootView.layer.borderColor = UIColor.green.cgColor
-                rootView.layer.borderWidth = 2
             }
         }
         
