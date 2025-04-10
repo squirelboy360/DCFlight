@@ -20,7 +20,7 @@ class DCMauiViewComponent: NSObject, DCMauiComponent {
         // Extract style-related properties
         let styleProps = props.filter { key, _ in
             // Filter for style properties (not layout)
-            !LayoutProps.all.contains(key)
+            !SupportedLayoutsProps.supportedLayoutProps.contains(key)
         }
         
         // Apply styles directly to view
@@ -31,7 +31,14 @@ class DCMauiViewComponent: NSObject, DCMauiComponent {
         // CRITICAL FIX: Apply background color directly if specified
         if let backgroundColor = props["backgroundColor"] as? String {
             print("🎨 Setting background color directly: \(backgroundColor)")
-            view.backgroundColor = ColorUtilities.color(fromHexString: backgroundColor)
+            
+            // CRITICAL FIX: Special handling for transparent colors
+            if ColorUtilities.isTransparent(backgroundColor) {
+                print("🔍 Applying transparent background")
+                view.backgroundColor = .clear
+            } else {
+                view.backgroundColor = ColorUtilities.color(fromHexString: backgroundColor)
+            }
         }
         
         // CRITICAL FIX: Add debug border if needed
@@ -62,17 +69,3 @@ class DCMauiViewComponent: NSObject, DCMauiComponent {
     }
 }
 
-/// Static list of layout property names
-class LayoutProps {
-    static let all = [
-        "width", "height", "minWidth", "maxWidth", "minHeight", "maxHeight",
-        "margin", "marginTop", "marginRight", "marginBottom", "marginLeft",
-        "marginHorizontal", "marginVertical",
-        "padding", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
-        "paddingHorizontal", "paddingVertical",
-        "left", "top", "right", "bottom", "position",
-        "flexDirection", "justifyContent", "alignItems", "alignSelf", "alignContent",
-        "flexWrap", "flex", "flexGrow", "flexShrink", "flexBasis",
-        "display", "overflow", "direction"
-    ]
-}

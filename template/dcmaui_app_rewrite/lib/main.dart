@@ -64,11 +64,8 @@ class AnimatedAppComponent extends StatefulComponent {
 
     return UI.View(
         layout: LayoutProps(
-          // Use the state variables for dimensions
-          height: 500,
-          width: 200,
-          // width: '100%',
-          // height:'100%',
+          width: '100%',
+          height: '100%',
           alignItems: YogaAlign.center,
           justifyContent: YogaJustifyContent.center,
         ),
@@ -77,13 +74,13 @@ class AnimatedAppComponent extends StatefulComponent {
           UI.View(
             layout: LayoutProps(height: 100, width: 200),
             style: StyleSheet(
-              backgroundColor: Colors.red,
+              backgroundColor: Colors.transparent,
               borderRadius: 8,
             ),
             children: [
               UI.Text(
                 content:
-                    'ed',
+                    'Screen: ${screenWidth.value.toInt()} x ${screenHeight.value.toInt()}',
                 textProps: TextProps(
                   color: Colors.purpleAccent,
                   fontSize: 20,

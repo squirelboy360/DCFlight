@@ -23,7 +23,7 @@ class AppDelegate: FlutterAppDelegate {
         // Create a native container view controller with explicit background
         let nativeRootVC = UIViewController()
         nativeRootVC.view.backgroundColor = .white
-        nativeRootVC.title = "DC MAUI Native UI"
+        nativeRootVC.title = "Root View (DCMAUI)"
         
         // Initialize and setup DCMauiNativeBridge
         setupDCMauiNativeBridge(rootView: nativeRootVC.view)
@@ -48,8 +48,6 @@ class AppDelegate: FlutterAppDelegate {
     private func setupDCMauiNativeBridge(rootView: UIView) {
         // Set up the root container view - FULL SIZE
         let rootContainer = UIView(frame: rootView.bounds)
-        rootContainer.backgroundColor = .systemBlue
-        
         // CRITICAL FIX: Set constraints to make sure rootContainer fills the parent view
         rootContainer.translatesAutoresizingMaskIntoConstraints = false
         rootView.addSubview(rootContainer)
@@ -86,16 +84,16 @@ class AppDelegate: FlutterAppDelegate {
             YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
             
             // CRITICAL FIX: Enable debug view borders for development
-            UserDefaults.standard.set(true, forKey: "DCMauiDebugViewBorders")
+//            UserDefaults.standard.set(true, forKey: "DCMauiDebugViewBorders")
             
             // Print debug info about all views
             print("📋 View hierarchy after initial layout:")
             LayoutDebugging.shared.printViewHierarchy(rootContainer)
             
             // CRITICAL FIX: Enable visual debugging for all views EXCEPT root
-            #if DEBUG
-            LayoutDebugging.shared.enableVisualDebuggingExceptRoot(for: rootContainer)
-            #endif
+//            #if DEBUG
+//            LayoutDebugging.shared.enableVisualDebuggingExceptRoot(for: rootContainer)
+//            #endif
         }
     }
 }

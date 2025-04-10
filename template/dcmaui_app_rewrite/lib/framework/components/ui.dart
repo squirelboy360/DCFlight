@@ -67,6 +67,8 @@ class UI {
     // Add layout props if available
     if (layout != null) {
       propsMap.addAll(layout.toMap());
+    } else {
+      propsMap.addAll(LayoutProps(height: 20, width: 100).toMap());
     }
 
     // Add style props if available
