@@ -83,7 +83,7 @@ class AnimatedAppComponent extends StatefulComponent {
           UI.View(
             layout: LayoutProps(height: 100, width: 200),
             style: StyleSheet(
-              backgroundColor: Colors.transparent,
+              backgroundColor: Colors.pink,
               borderRadius: 8,
             ),
             children: [
@@ -97,7 +97,7 @@ class AnimatedAppComponent extends StatefulComponent {
                 content:
                     'Screen: ${screenWidth.value.toInt()} x ${screenHeight.value.toInt()}',
                 textProps: TextProps(
-                  color: Colors.purpleAccent,
+                  color: Colors.amberAccent,
                   fontSize: 20,
                   fontWeight: 'bold',
                 ),

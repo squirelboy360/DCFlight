@@ -6,9 +6,11 @@ class ColorUtilities {
     /// Convert a hex string to a UIColor
     /// Format: "#RRGGBB" or "#RRGGBBAA" or "#AARRGGBB" (Android format)
     static func color(fromHexString hexString: String) -> UIColor? {
-        // Check for Flutter's Colors.transparent (which comes as 0x00000000 or 0)
-        if hexString == "0x00000000" || hexString == "0" || hexString.lowercased() == "transparent" {
-            print("🔍 Detected transparent color from Flutter: \(hexString)")
+        print("Color conversion request: \"\(hexString)\"")
+        
+        // Handle transparent color explicitly
+        if hexString.lowercased() == "transparent" {
+            print("🔍 Using transparent color (explicit keyword)")
             return UIColor.clear
         }
         
@@ -24,6 +26,7 @@ class ColorUtilities {
             
             // Check for transparent (0)
             if intValue == 0 {
+                print("🔍 Using transparent color (int zero)")
                 return UIColor.clear
             }
             
@@ -69,9 +72,9 @@ class ColorUtilities {
             green = CGFloat((rgbValue >> 8) & 0xFF) / 255.0
             blue = CGFloat(rgbValue & 0xFF) / 255.0
             
-            // Check for transparent color (alpha = 0)
+            // If explicitly has alpha 0, return clear regardless of RGB values
             if alpha == 0 {
-                print("🔍 Detected transparent color (alpha=0)")
+                print("🔍 Using transparent color (alpha=0)")
                 return UIColor.clear
             }
             
@@ -80,6 +83,13 @@ class ColorUtilities {
             green = CGFloat((rgbValue >> 8) & 0xFF) / 255.0
             blue = CGFloat(rgbValue & 0xFF) / 255.0
             alpha = 1.0
+            
+            // CRITICAL BUGFIX: Handle #000000 specially - check if it was meant to be transparent
+            if red == 0 && green == 0 && blue == 0 && 
+               (hexString.contains("transparent") || hexString.contains("00000")) {
+                print("🔍 Special case: treating #000000 as transparent based on context")
+                return UIColor.clear
+            }
             
         default:
             print("⚠️ Invalid color format: \(cleanHexString) (length: \(cleanHexString.count))")
@@ -112,6 +122,7 @@ class ColorUtilities {
     
     /// Check if a color string represents transparent
     static func isTransparent(_ colorString: String) -> Bool {
+        // Clean up the string for comparison
         let lowerString = colorString.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         
         return lowerString == "transparent" ||

@@ -79,23 +79,41 @@ class StyleSheet {
       map['borderBottomRightRadius'] = borderBottomRightRadius;
     }
     if (borderColor != null) {
-      final hexValue = borderColor!.value & 0xFFFFFF;
-      map['borderColor'] = '#${hexValue.toRadixString(16).padLeft(6, '0')}';
+      // FIXED: Check for transparency before converting to hex
+      if (borderColor!.alpha == 0) {
+        map['borderColor'] = 'transparent';
+      } else {
+        final hexValue = borderColor!.value & 0xFFFFFF;
+        map['borderColor'] = '#${hexValue.toRadixString(16).padLeft(6, '0')}';
+      }
     }
     if (borderWidth != null) map['borderWidth'] = borderWidth;
 
     // Add background and opacity
     if (backgroundColor != null) {
-      final hexValue = backgroundColor!.value & 0xFFFFFF;
-      map['backgroundColor'] = '#${hexValue.toRadixString(16).padLeft(6, '0')}';
-      print("transparent color hit but from dart side: '#${hexValue.toRadixString(16).padLeft(6, '0')}" );
+      // FIXED: Check for transparency and handle it specially
+      if (backgroundColor!.alpha == 0) {
+        map['backgroundColor'] = 'transparent';
+        print("Sending transparent color correctly: 'transparent'");
+      } else {
+        final hexValue = backgroundColor!.value & 0xFFFFFF;
+        map['backgroundColor'] =
+            '#${hexValue.toRadixString(16).padLeft(6, '0')}';
+        print(
+            "Sending solid color: '#${hexValue.toRadixString(16).padLeft(6, '0')}'");
+      }
     }
     if (opacity != null) map['opacity'] = opacity;
 
     // Add shadow properties
     if (shadowColor != null) {
-      final hexValue = shadowColor!.value & 0xFFFFFF;
-      map['shadowColor'] = '#${hexValue.toRadixString(16).padLeft(6, '0')}';
+      // FIXED: Also check for transparency in shadow color
+      if (shadowColor!.alpha == 0) {
+        map['shadowColor'] = 'transparent';
+      } else {
+        final hexValue = shadowColor!.value & 0xFFFFFF;
+        map['shadowColor'] = '#${hexValue.toRadixString(16).padLeft(6, '0')}';
+      }
     }
     if (shadowOpacity != null) map['shadowOpacity'] = shadowOpacity;
     if (shadowRadius != null) map['shadowRadius'] = shadowRadius;
