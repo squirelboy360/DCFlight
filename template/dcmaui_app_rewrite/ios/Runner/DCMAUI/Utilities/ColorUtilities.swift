@@ -6,62 +6,35 @@ class ColorUtilities {
     /// Convert a hex string to a UIColor
     /// Format: "#RRGGBB" or "#RRGGBBAA" or "#AARRGGBB" (Android format)
     static func color(fromHexString hexString: String) -> UIColor? {
-        print("color is being converted from hex string: \(hexString)")
-        if(hexString == "0x00000000"){
-            print("transparent color hit");
-        }
-        // Print debug info for troubleshooting color issues
-        print("⚡️ ColorUtilities: Processing color string: \(hexString)")
-        
-        // CRITICAL FIX: Handle "transparent" as a special keyword
-        if hexString.lowercased() == "transparent" {
-            print("🔍 Detected transparent color")
+        // Check for Flutter's Colors.transparent (which comes as 0x00000000 or 0)
+        if hexString == "0x00000000" || hexString == "0" || hexString.lowercased() == "transparent" {
+            print("🔍 Detected transparent color from Flutter: \(hexString)")
             return UIColor.clear
         }
         
-        var cleanHexString = hexString.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Print debug info for troubleshooting color issues
+        print("⚡️ ColorUtilities: Processing color string: \(hexString)")
         
-        // CRITICAL FIX: Handle RGBA format from Flutter (rgba(r,g,b,a))
-        if cleanHexString.hasPrefix("rgba(") && cleanHexString.hasSuffix(")") {
-            print("🔍 Detected RGBA format")
-            let rgbaContent = cleanHexString.dropFirst(5).dropLast(1)
-            let components = rgbaContent.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            
-            if components.count == 4,
-               let r = Float(components[0]),
-               let g = Float(components[1]),
-               let b = Float(components[2]),
-               let a = Float(components[3]) {
-                
-                // RGBA values are typically 0-255 for RGB and 0-1 for alpha
-                let red = CGFloat(r) / 255.0
-                let green = CGFloat(g) / 255.0
-                let blue = CGFloat(b) / 255.0
-                let alpha = CGFloat(a)
-                
-                print("🎨 RGBA components: R=\(red), G=\(green), B=\(blue), A=\(alpha)")
-                return UIColor(red: red, green: green, blue: blue, alpha: alpha)
-            }
-        }
+        var cleanHexString = hexString.trimmingCharacters(in: .whitespacesAndNewlines)
         
         // Special handling for Material colors from Flutter
         // These come in as positive integer values
-        if let intValue = Int(cleanHexString), intValue > 0 {
-            print("🎨 Converting int color value: \(intValue)")
+        if let intValue = Int(cleanHexString), intValue >= 0 {
+            print("🎨 Converting Flutter color integer value: \(intValue)")
+            
+            // Check for transparent (0)
+            if intValue == 0 {
+                return UIColor.clear
+            }
+            
             // Convert the int to hex - Flutter uses ARGB format
             let hexValue = String(format: "#%08x", intValue)
             cleanHexString = hexValue
         }
         
-        // CRITICAL FIX: Detect 0 value specifically for transparent
-        if cleanHexString == "0" || cleanHexString == "0x0" || cleanHexString == "#0" {
-            print("🔍 Detected transparent color (0 value)")
-            return UIColor.clear
-        }
-        
         cleanHexString = cleanHexString.replacingOccurrences(of: "#", with: "")
         
-        // CRITICAL FIX: Handle common color names
+        // Handle common color names
         if cleanHexString.lowercased() == "red" { return .red }
         if cleanHexString.lowercased() == "green" { return .green }
         if cleanHexString.lowercased() == "blue" { return .blue }
@@ -71,8 +44,7 @@ class ColorUtilities {
         if cleanHexString.lowercased() == "purple" { return .purple }
         if cleanHexString.lowercased() == "orange" { return .orange }
         if cleanHexString.lowercased() == "cyan" { return .cyan }
-        if cleanHexString.lowercased() == "clear" || 
-           cleanHexString.lowercased() == "transparent" { return .clear }
+        if cleanHexString.lowercased() == "clear" { return .clear }
         
         // For 3-character hex codes like #RGB
         if cleanHexString.count == 3 {
@@ -90,48 +62,25 @@ class ColorUtilities {
         var green: CGFloat = 0.0
         var blue: CGFloat = 0.0
         
-        // CRITICAL FIX: Better hex parsing with proper logging
         switch cleanHexString.count {
-        case 8: // 8 characters: either AARRGGBB or RRGGBBAA
-            // Check if it's AARRGGBB or RRGGBBAA format
-            let isARGB = true // Default to ARGB format (Flutter standard)
+        case 8: // 8 characters: AARRGGBB format used by Flutter
+            alpha = CGFloat((rgbValue >> 24) & 0xFF) / 255.0
+            red = CGFloat((rgbValue >> 16) & 0xFF) / 255.0
+            green = CGFloat((rgbValue >> 8) & 0xFF) / 255.0
+            blue = CGFloat(rgbValue & 0xFF) / 255.0
             
-            if isARGB {
-                // AARRGGBB format (Android/Flutter)
-                alpha = CGFloat((rgbValue >> 24) & 0xFF) / 255.0
-                red = CGFloat((rgbValue >> 16) & 0xFF) / 255.0
-                green = CGFloat((rgbValue >> 8) & 0xFF) / 255.0
-                blue = CGFloat(rgbValue & 0xFF) / 255.0
-                
-                // CRITICAL FIX: Check for transparent color (alpha = 0)
-                if alpha == 0 {
-                    print("🔍 Detected transparent color (alpha=0)")
-                    return UIColor.clear
-                }
-            } else {
-                // RRGGBBAA format
-                red = CGFloat((rgbValue >> 24) & 0xFF) / 255.0
-                green = CGFloat((rgbValue >> 16) & 0xFF) / 255.0
-                blue = CGFloat((rgbValue >> 8) & 0xFF) / 255.0
-                alpha = CGFloat(rgbValue & 0xFF) / 255.0
-                
-                // CRITICAL FIX: Check for transparent color (alpha = 0)
-                if alpha == 0 {
-                    print("🔍 Detected transparent color (alpha=0)")
-                    return UIColor.clear
-                }
+            // Check for transparent color (alpha = 0)
+            if alpha == 0 {
+                print("🔍 Detected transparent color (alpha=0)")
+                return UIColor.clear
             }
+            
         case 6: // 6 characters: RRGGBB
             red = CGFloat((rgbValue >> 16) & 0xFF) / 255.0
             green = CGFloat((rgbValue >> 8) & 0xFF) / 255.0
             blue = CGFloat(rgbValue & 0xFF) / 255.0
             alpha = 1.0
             
-            // CRITICAL FIX: Check for special case of all zeros (represents transparent in some systems)
-            if red == 0 && green == 0 && blue == 0 && hexString.lowercased().contains("transparent") {
-                print("🔍 Detected transparent color (context clue)")
-                return UIColor.clear
-            }
         default:
             print("⚠️ Invalid color format: \(cleanHexString) (length: \(cleanHexString.count))")
             return .magenta // Return a bright color to make issues obvious
@@ -151,23 +100,17 @@ class ColorUtilities {
         
         color.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
         
-        // CRITICAL FIX: Handle transparent color specially
+        // Return "transparent" for completely transparent colors
         if alpha == 0 {
             return "transparent"
         }
         
-        if alpha < 1.0 {
-            // Include alpha in the hex string for non-opaque colors
-            let argb = (Int)(alpha * 255) << 24 | (Int)(red * 255) << 16 | (Int)(green * 255) << 8 | (Int)(blue * 255) << 0
-            return String(format: "#%08x", argb)
-        } else {
-            // Just RGB for fully opaque colors
-            let rgb = (Int)(red * 255) << 16 | (Int)(green * 255) << 8 | (Int)(blue * 255) << 0
-            return String(format: "#%06x", rgb)
-        }
+        let rgb = (Int)(red * 255) << 16 | (Int)(green * 255) << 8 | (Int)(blue * 255) << 0
+        
+        return String(format: "#%06x", rgb)
     }
     
-    /// CRITICAL FIX: Add helper to explicitly check if a color string represents transparent
+    /// Check if a color string represents transparent
     static func isTransparent(_ colorString: String) -> Bool {
         let lowerString = colorString.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         
@@ -175,9 +118,7 @@ class ColorUtilities {
                lowerString == "clear" ||
                lowerString == "0x00000000" ||
                lowerString == "rgba(0,0,0,0)" ||
-               lowerString == "rgba(0, 0, 0, 0)" ||
                lowerString == "#00000000" ||
-               lowerString == "0" ||
-               lowerString == "0x0"
+               lowerString == "0"
     }
 }

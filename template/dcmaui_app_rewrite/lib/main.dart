@@ -62,6 +62,15 @@ class AnimatedAppComponent extends StatefulComponent {
     final screenHeight =
         useState(ScreenUtilities.instance.screenHeight, 'screenHeight');
 
+    // useEffect(() {
+    //   screenHeight.setValue(ScreenUtilities.instance.screenHeight);
+    //   screenWidth.setValue(ScreenUtilities.instance.screenWidth);
+    //   return () {
+    //     screenHeight.dispose();
+    //     screenWidth.dispose();
+    //   };
+    // }, dependencies: []);
+
     return UI.View(
         layout: LayoutProps(
           width: '100%',
@@ -79,6 +88,12 @@ class AnimatedAppComponent extends StatefulComponent {
             ),
             children: [
               UI.Text(
+                style: StyleSheet(
+                  backgroundColor: Colors.blue,
+                  borderRadius: 8,
+                ),
+                layout: LayoutProps(
+                    width: '100%', height: 50, alignSelf: YogaAlign.center),
                 content:
                     'Screen: ${screenWidth.value.toInt()} x ${screenHeight.value.toInt()}',
                 textProps: TextProps(

@@ -88,7 +88,7 @@ class StyleSheet {
     if (backgroundColor != null) {
       final hexValue = backgroundColor!.value & 0xFFFFFF;
       map['backgroundColor'] = '#${hexValue.toRadixString(16).padLeft(6, '0')}';
-      print("transparent color hit but from dart side: '#${hexValue.toRadixString(16).padLeft(6, '0')}"ADSZCX );
+      print("transparent color hit but from dart side: '#${hexValue.toRadixString(16).padLeft(6, '0')}" );
     }
     if (opacity != null) map['opacity'] = opacity;
 
