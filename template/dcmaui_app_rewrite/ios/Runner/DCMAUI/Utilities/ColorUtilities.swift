@@ -9,37 +9,50 @@ class ColorUtilities {
         // Print debug info for troubleshooting color issues
         print("⚡️ ColorUtilities: Processing color string: \(hexString)")
         
-        var hexString = hexString.trimmingCharacters(in: .whitespacesAndNewlines)
+        var cleanHexString = hexString.trimmingCharacters(in: .whitespacesAndNewlines)
         
         // Special handling for Material colors from Flutter
         // These come in as positive integer values
-        if let intValue = Int(hexString), intValue > 0 {
+        if let intValue = Int(cleanHexString), intValue > 0 {
             print("🎨 Converting int color value: \(intValue)")
             // Convert the int to hex - Flutter uses ARGB format
             let hexValue = String(format: "#%08x", intValue)
-            hexString = hexValue
+            cleanHexString = hexValue
         }
         
-        hexString = hexString.replacingOccurrences(of: "#", with: "")
+        cleanHexString = cleanHexString.replacingOccurrences(of: "#", with: "")
+        
+        // CRITICAL FIX: Handle common color names
+        if cleanHexString.lowercased() == "red" { return .red }
+        if cleanHexString.lowercased() == "green" { return .green }
+        if cleanHexString.lowercased() == "blue" { return .blue }
+        if cleanHexString.lowercased() == "black" { return .black }
+        if cleanHexString.lowercased() == "white" { return .white }
+        if cleanHexString.lowercased() == "yellow" { return .yellow }
+        if cleanHexString.lowercased() == "purple" { return .purple }
+        if cleanHexString.lowercased() == "orange" { return .orange }
+        if cleanHexString.lowercased() == "cyan" { return .cyan }
         
         // For 3-character hex codes like #RGB
-        if hexString.count == 3 {
-            let r = String(hexString[hexString.startIndex])
-            let g = String(hexString[hexString.index(hexString.startIndex, offsetBy: 1)])
-            let b = String(hexString[hexString.index(hexString.startIndex, offsetBy: 2)])
-            hexString = r + r + g + g + b + b
+        if cleanHexString.count == 3 {
+            let r = String(cleanHexString[cleanHexString.startIndex])
+            let g = String(cleanHexString[cleanHexString.index(cleanHexString.startIndex, offsetBy: 1)])
+            let b = String(cleanHexString[cleanHexString.index(cleanHexString.startIndex, offsetBy: 2)])
+            cleanHexString = r + r + g + g + b + b
         }
         
         var rgbValue: UInt64 = 0
-        Scanner(string: hexString).scanHexInt64(&rgbValue)
+        Scanner(string: cleanHexString).scanHexInt64(&rgbValue)
         
         var alpha: CGFloat = 1.0
         var red: CGFloat = 0.0
         var green: CGFloat = 0.0
         var blue: CGFloat = 0.0
         
-        if hexString.count == 8 {
-            // Check if it's RRGGBBAA or AARRGGBB format
+        // CRITICAL FIX: Better hex parsing with proper logging
+        switch cleanHexString.count {
+        case 8: // 8 characters: either AARRGGBB or RRGGBBAA
+            // Check if it's AARRGGBB or RRGGBBAA format
             let isARGB = (rgbValue & 0xFF000000) > 0
             
             if isARGB {
@@ -55,19 +68,19 @@ class ColorUtilities {
                 blue = CGFloat((rgbValue >> 8) & 0xFF) / 255.0
                 alpha = CGFloat(rgbValue & 0xFF) / 255.0
             }
-        } else if hexString.count == 6 {
-            // RRGGBB format
+        case 6: // 6 characters: RRGGBB
             red = CGFloat((rgbValue >> 16) & 0xFF) / 255.0
             green = CGFloat((rgbValue >> 8) & 0xFF) / 255.0
             blue = CGFloat(rgbValue & 0xFF) / 255.0
             alpha = 1.0
-        } else {
-            print("⚠️ Invalid color format: \(hexString)")
-            return nil
+        default:
+            print("⚠️ Invalid color format: \(cleanHexString) (length: \(cleanHexString.count))")
+            return .magenta // Return a bright color to make issues obvious
         }
         
-        print("🎨 Color components: R=\(red), G=\(green), B=\(blue), A=\(alpha)")
-        return UIColor(red: red, green: green, blue: blue, alpha: alpha)
+        let color = UIColor(red: red, green: green, blue: blue, alpha: alpha)
+        print("🎨 Color components: R=\(red), G=\(green), B=\(blue), A=\(alpha) -> UIColor: \(color)")
+        return color
     }
     
     /// Convert UIColor to hex string

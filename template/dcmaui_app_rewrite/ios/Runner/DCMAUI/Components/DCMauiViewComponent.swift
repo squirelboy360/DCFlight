@@ -28,6 +28,21 @@ class DCMauiViewComponent: NSObject, DCMauiComponent {
             view.applyStyles(props: styleProps)
         }
         
+        // CRITICAL FIX: Apply background color directly if specified
+        if let backgroundColor = props["backgroundColor"] as? String {
+            print("🎨 Setting background color directly: \(backgroundColor)")
+            view.backgroundColor = ColorUtilities.color(fromHexString: backgroundColor)
+        }
+        
+        // CRITICAL FIX: Add debug border if needed
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["DCMAUI_DEBUG_VIEW_BORDERS"] == "1" || 
+           UserDefaults.standard.bool(forKey: "DCMauiDebugViewBorders") {
+            view.layer.borderWidth = 1
+            view.layer.borderColor = UIColor.red.cgColor
+        }
+        #endif
+        
         return true
     }
     
@@ -41,11 +56,11 @@ class DCMauiViewComponent: NSObject, DCMauiComponent {
     
     func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
         view.nodeId = nodeId
+        
+        // CRITICAL FIX: Set accessibility identifier for easier debugging
+        view.accessibilityIdentifier = nodeId
     }
-
 }
-
-
 
 /// Static list of layout property names
 class LayoutProps {

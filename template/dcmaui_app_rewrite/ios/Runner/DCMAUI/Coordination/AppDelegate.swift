@@ -85,9 +85,17 @@ class AppDelegate: FlutterAppDelegate {
             // Calculate layout directly
             YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
             
+            // CRITICAL FIX: Enable debug view borders for development
+            UserDefaults.standard.set(true, forKey: "DCMauiDebugViewBorders")
+            
             // Print debug info about all views
             print("📋 View hierarchy after initial layout:")
             LayoutDebugging.shared.printViewHierarchy(rootContainer)
+            
+            // CRITICAL FIX: Enable visual debugging on all views
+            #if DEBUG
+            LayoutDebugging.shared.enableVisualDebugging(for: rootContainer)
+            #endif
         }
     }
 }

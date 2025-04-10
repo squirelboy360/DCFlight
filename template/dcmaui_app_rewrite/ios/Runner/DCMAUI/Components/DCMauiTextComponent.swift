@@ -10,6 +10,9 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
         let label = UILabel()
         label.numberOfLines = 0 // Allow multiple lines by default
         
+        // CRITICAL FIX: Set minimum size and ensure text doesn't disappear
+        label.text = props["content"] as? String ?? "" 
+        
         // Apply properties
         _ = updateView(label, withProps: props)
         
@@ -22,7 +25,13 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
         }
         
         // Apply text properties
-        if let text = props["text"] as? String {
+        if let text = props["content"] as? String {
+            // CRITICAL FIX: Use "content" property for text instead of "text" property
+            print("📝 Setting text content: \(text)")
+            label.text = text
+        } else if let text = props["text"] as? String {
+            // Also support "text" property for backward compatibility
+            print("📝 Setting text content: \(text)")
             label.text = text
         }
         
@@ -31,7 +40,8 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
         
         // Apply text-specific styles
         if let color = props["color"] as? String {
-            label.textColor = UIColor(named: color)
+            print("🎨 Setting text color directly: \(color)")
+            label.textColor = ColorUtilities.color(fromHexString: color) ?? .black
         }
         
         if let fontSize = props["fontSize"] as? CGFloat {
@@ -89,13 +99,31 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
             )
         }
         
+        // CRITICAL FIX: Ensure text has proper sizing by calling sizeToFit if needed
+        label.sizeToFit()
+        
+        // CRITICAL FIX: Force minimum height for text
+        if label.frame.height < 20 {
+            var frame = label.frame
+            frame.size.height = 20
+            label.frame = frame
+        }
+        
+        print("📐 Final text size after update: \(label.frame.size)")
+        
         return true
     }
     
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        guard let label = view as? UILabel,
-              let text = props["text"] as? String else {
+        guard let label = view as? UILabel else {
             return .zero
+        }
+        
+        // CRITICAL FIX: Use text content if available
+        let text = props["content"] as? String ?? props["text"] as? String ?? ""
+        
+        if text.isEmpty {
+            return CGSize(width: 0, height: 20) // Minimum height even if empty
         }
         
         // Create a temporary label to measure text with the same properties
@@ -107,7 +135,14 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
         // Calculate size with constraints
         let maxWidth = props["maxWidth"] as? CGFloat ?? CGFloat.greatestFiniteMagnitude
         let constraintSize = CGSize(width: maxWidth, height: CGFloat.greatestFiniteMagnitude)
-        let size = tempLabel.sizeThatFits(constraintSize)
+        var size = tempLabel.sizeThatFits(constraintSize)
+        
+        // CRITICAL FIX: Ensure minimum height
+        if size.height < 20 {
+            size.height = 20
+        }
+        
+        print("📏 Text intrinsic size measurement: \"\(text)\" -> \(size)")
         
         return size
     }
