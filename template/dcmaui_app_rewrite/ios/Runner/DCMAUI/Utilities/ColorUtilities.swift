@@ -6,6 +6,10 @@ class ColorUtilities {
     /// Convert a hex string to a UIColor
     /// Format: "#RRGGBB" or "#RRGGBBAA" or "#AARRGGBB" (Android format)
     static func color(fromHexString hexString: String) -> UIColor? {
+        print("color is being converted from hex string: \(hexString)")
+        if(hexString == "0x00000000"){
+            print("transparent color hit");
+        }
         // Print debug info for troubleshooting color issues
         print("⚡️ ColorUtilities: Processing color string: \(hexString)")
         
@@ -169,6 +173,7 @@ class ColorUtilities {
         
         return lowerString == "transparent" ||
                lowerString == "clear" ||
+               lowerString == "0x00000000" ||
                lowerString == "rgba(0,0,0,0)" ||
                lowerString == "rgba(0, 0, 0, 0)" ||
                lowerString == "#00000000" ||
