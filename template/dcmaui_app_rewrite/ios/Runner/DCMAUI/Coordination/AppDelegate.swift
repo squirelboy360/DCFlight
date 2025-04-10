@@ -49,10 +49,18 @@ class AppDelegate: FlutterAppDelegate {
         // Set up the root container view - FULL SIZE
         let rootContainer = UIView(frame: rootView.bounds)
         rootContainer.backgroundColor = .systemBlue
-       
+        
+        // CRITICAL FIX: Set constraints to make sure rootContainer fills the parent view
+        rootContainer.translatesAutoresizingMaskIntoConstraints = false
         rootView.addSubview(rootContainer)
         
-
+        NSLayoutConstraint.activate([
+            rootContainer.topAnchor.constraint(equalTo: rootView.topAnchor),
+            rootContainer.bottomAnchor.constraint(equalTo: rootView.bottomAnchor),
+            rootContainer.leadingAnchor.constraint(equalTo: rootView.leadingAnchor),
+            rootContainer.trailingAnchor.constraint(equalTo: rootView.trailingAnchor)
+        ])
+        
         // Set up the root with our props
         DCMauiNativeBridgeCoordinator.shared.manuallyCreateRootView(rootContainer, viewId: "root", props: ["flex":1])
         
@@ -67,5 +75,19 @@ class AppDelegate: FlutterAppDelegate {
         // Initialize the yoga layout system
         _ = YogaShadowTree.shared
         _ = DCMauiLayoutManager.shared
+        
+        // CRITICAL FIX: Force initial layout calculation with screen dimensions
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            print("🚀 Performing initial layout calculation")
+            let screenWidth = UIScreen.main.bounds.width
+            let screenHeight = UIScreen.main.bounds.height
+            
+            // Calculate layout directly
+            YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
+            
+            // Print debug info about all views
+            print("📋 View hierarchy after initial layout:")
+            LayoutDebugging.shared.printViewHierarchy(rootContainer)
+        }
     }
 }

@@ -369,8 +369,24 @@ import Foundation
     @objc func calculateLayout(screenWidth: CGFloat, screenHeight: CGFloat) -> Bool {
         NSLog("DCMauiFFIBridge: calculateLayout called with dimensions: \(screenWidth)x\(screenHeight)")
         
+        // CRITICAL FIX: Make sure root view is properly registered
+        guard let rootView = self.views["root"] else {
+            print("❌ CRITICAL ERROR: Root view is not registered! Cannot perform layout.")
+            
+            // Try to debug what views are available
+            print("🔍 Available views in registry: \(self.views.keys.joined(separator: ", "))")
+            return false
+        }
+        
+        print("✅ Root view found: \(rootView)")
+        print("✅ Root view frame before layout: \(rootView.frame)")
+        
         // Use the shadow tree to calculate and apply layout
-        return YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
+        let success = YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
+        
+        print("✅ Root view frame after layout: \(rootView.frame)")
+        
+        return success
     }
     
     /// Measure text
@@ -657,15 +673,41 @@ public func dcmaui_calculate_layout_impl(
     screen_width: Float,
     screen_height: Float
 ) -> Int8 {
+    print("🚀 DCMauiFFIBridge: calculateLayout called via FFI with dimensions: \(screen_width)x\(screen_height)")
+    
     if Thread.isMainThread {
-        return DCMauiFFIBridge.shared.calculateLayout(screenWidth: CGFloat(screen_width), screenHeight: CGFloat(screen_height)) ? 1 : 0
+        // CRITICAL FIX: Added detailed logging and error handling
+        do {
+            let success = DCMauiFFIBridge.shared.calculateLayout(screenWidth: CGFloat(screen_width), screenHeight: CGFloat(screen_height))
+            print("🔢 DCMauiFFIBridge: calculateLayout result: \(success)")
+            
+            // CRITICAL DEBUG: Show all views in the registry
+            let registry = ViewRegistry.shared
+            let viewIds = registry.allViewIds
+            print("📋 Total views in registry: \(viewIds.count)")
+            for viewId in viewIds {
+                if let view = registry.getView(id: viewId) {
+                    print("📍 View \(viewId): frame=\(view.frame), hidden=\(view.isHidden), alpha=\(view.alpha), superview=\(view.superview != nil)")
+                }
+            }
+            
+            return success ? 1 : 0
+        } catch {
+            print("❌ DCMauiFFIBridge: calculateLayout error: \(error)")
+            return 0
+        }
     } else {
         let semaphore = DispatchSemaphore(value: 0)
         var result = false
         
         DispatchQueue.main.async {
-            result = DCMauiFFIBridge.shared.calculateLayout(screenWidth: CGFloat(screen_width), screenHeight: CGFloat(screen_height))
-            semaphore.signal()
+            do {
+                result = DCMauiFFIBridge.shared.calculateLayout(screenWidth: CGFloat(screen_width), screenHeight: CGFloat(screen_height))
+                semaphore.signal()
+            } catch {
+                print("❌ DCMauiFFIBridge: calculateLayout error on main thread: \(error)")
+                semaphore.signal()
+            }
         }
         
         semaphore.wait()

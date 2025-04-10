@@ -338,8 +338,11 @@ class YogaShadowTree {
             return false
         }
         
+        // CRITICAL DEBUGGING: Print node hierarchy before calculation
+        print("📊 Node hierarchy before calculation:")
+        printNodeHierarchy()
+        
         // CRITICAL FIX: Reset any cached layout data to ensure fresh calculation
-        // Use Float.nan instead of YGUndefined - this is the correct constant for Yoga's undefined value
         YGNodeCalculateLayout(root, Float.nan, Float.nan, YGDirection.LTR)
         
         // CRITICAL FIX: Set proper width and height on root
@@ -372,12 +375,42 @@ class YogaShadowTree {
             print("✅ Applied layout to root: \(rootLayout)")
         }
         
-        // Process remaining nodes
-        for nodeId in allNodeIds {
-            if !processedNodes.contains(nodeId), let layout = getNodeLayout(nodeId: nodeId) {
-                applyLayoutToView(viewId: nodeId, frame: layout)
-                processedNodes.insert(nodeId)
-                print("✅ Applied layout to node \(nodeId): \(layout)")
+        // Process remaining nodes in parent-child order
+        // This ensures parents are positioned before children
+        var nodesToProcess = ["root"]
+        while !nodesToProcess.isEmpty {
+            let parentId = nodesToProcess.removeFirst()
+            processedNodes.insert(parentId)
+            
+            // Find all direct children of this parent
+            for (childId, currentParentId) in nodeParents where currentParentId == parentId {
+                if !processedNodes.contains(childId) {
+                    if let layout = getNodeLayout(nodeId: childId) {
+                        applyLayoutToView(viewId: childId, frame: layout)
+                        processedNodes.insert(childId)
+                        print("✅ Applied layout to child \(childId) of \(parentId): \(layout)")
+                    }
+                    // Add this child as next parent to process
+                    nodesToProcess.append(childId)
+                }
+            }
+        }
+        
+        // CRITICAL DEBUGGING: Print node hierarchy after calculation
+        print("📊 Node hierarchy after calculation:")
+        printNodeHierarchy()
+        
+        // Force views to be updated on main thread
+        DispatchQueue.main.async {
+            // Force root view to layout its subviews
+            if let rootView = DCMauiLayoutManager.shared.getView(withId: "root") {
+                rootView.setNeedsLayout()
+                rootView.layoutIfNeeded()
+                print("🔄 Forced layout of root view: \(rootView.frame)")
+                
+                // Add debug border to root for visibility
+                rootView.layer.borderColor = UIColor.green.cgColor
+                rootView.layer.borderWidth = 2
             }
         }
         
@@ -387,25 +420,34 @@ class YogaShadowTree {
         
         print("✅ Complete layout calculation and application finished in \(String(format: "%.2f", duration * 1000))ms")
         
-        // If debug is enabled, log additional performance data
-        if debugLayoutEnabled {
-            logPerformanceMetrics()
-        }
-        
         return true
     }
     
-    // ADD THIS MISSING METHOD: Helper to apply layout to a view by ID
-    private func applyLayoutToView(viewId: String, frame: CGRect) {
-        // Delegate to the layout manager which has access to the views
-        DispatchQueue.main.async {
-            DCMauiLayoutManager.shared.applyLayout(
-                to: viewId, 
-                left: frame.origin.x, 
-                top: frame.origin.y, 
-                width: frame.width, 
-                height: frame.height
-            )
+    // ADD THIS DEBUG METHOD: print full node hierarchy with layout info
+    func printNodeHierarchy() {
+        print("📋 FULL NODE HIERARCHY:")
+        printNodeHierarchyRecursive(nodeId: "root", depth: 0)
+    }
+    
+    private func printNodeHierarchyRecursive(nodeId: String, depth: Int) {
+        guard let node = nodes[nodeId] else {
+            print("\(String(repeating: "  ", count: depth))❓ Node not found: \(nodeId)")
+            return
+        }
+        
+        let indent = String(repeating: "  ", count: depth)
+        let layout = getNodeLayout(nodeId: nodeId) ?? CGRect.zero
+        let view = DCMauiLayoutManager.shared.getView(withId: nodeId)
+        let viewFrame = view?.frame ?? CGRect.zero
+        
+        print("\(indent)📍 \(nodeId) (\(nodeTypes[nodeId] ?? "unknown"))")
+        print("\(indent)   Yoga: \(layout)")
+        print("\(indent)   View: \(viewFrame)")
+        
+        // Print all children
+        let childNodeIds = nodeParents.filter { $0.value == nodeId }.map { $0.key }
+        for childId in childNodeIds {
+            printNodeHierarchyRecursive(nodeId: childId, depth: depth + 1)
         }
     }
     
@@ -1191,6 +1233,28 @@ class YogaShadowTree {
         }
         
         return nodeInfo
+    }
+    
+    // ADD THIS MISSING METHOD: Helper to apply layout to a view by ID
+    private func applyLayoutToView(viewId: String, frame: CGRect) {
+        // Get the view from the layout manager
+        guard let view = DCMauiLayoutManager.shared.getView(withId: viewId) else {
+            print("⚠️ View not found for ID \(viewId) when applying layout")
+            return
+        }
+        
+        print("🎯 Applying layout to view \(viewId): \(frame)")
+        
+        // Apply layout directly using layout manager
+        DispatchQueue.main.async {
+            DCMauiLayoutManager.shared.applyLayout(
+                to: viewId, 
+                left: frame.origin.x, 
+                top: frame.origin.y, 
+                width: frame.width, 
+                height: frame.height
+            )
+        }
     }
     
     // Cleanup
