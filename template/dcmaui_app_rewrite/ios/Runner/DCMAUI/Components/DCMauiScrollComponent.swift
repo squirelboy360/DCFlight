@@ -17,7 +17,7 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent, UIScrollViewDelegate {
         
         // Content view to hold children and enforce proper sizing
         let contentView = UIView()
-        contentView.backgroundColor = .clear // Make sure background is clear
+        contentView.backgroundColor = .clear // Make background clear initially
         scrollView.addSubview(contentView)
         
         // Tag the content view for identification
@@ -26,8 +26,7 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent, UIScrollViewDelegate {
         // Default configuration with better defaults
         scrollView.showsHorizontalScrollIndicator = true
         scrollView.showsVerticalScrollIndicator = true
-        scrollView.alwaysBounceVertical = false // Changed to false by default
-        scrollView.backgroundColor = .clear // Make scroll view transparent by default
+        scrollView.alwaysBounceVertical = false
         scrollView.clipsToBounds = true
         
         // Set up content view constraints - much simpler approach
@@ -41,11 +40,8 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent, UIScrollViewDelegate {
             contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
         ])
         
-        // Apply styling from extension
-        scrollView.applyStyles(props: props)
-        
-        // Apply scroll view specific properties
-        updateView(scrollView, withProps: props)
+        // Apply styles and props
+        _ = updateView(scrollView, withProps: props)
         
         return scrollView
     }
@@ -55,6 +51,29 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent, UIScrollViewDelegate {
         
         // Get content view
         let contentView = scrollView.viewWithTag(1001)
+        
+        // Apply style properties first - FIX: explicitly handle backgroundColor for content view
+        if let backgroundColorStr = props["backgroundColor"] as? String {
+            // Apply background color directly to content view for ScrollView
+            if let contentView = contentView {
+                let color = ColorUtilities.color(fromHexString: backgroundColorStr)
+                contentView.backgroundColor = color
+                
+                // The scroll view itself should keep transparent background
+                scrollView.backgroundColor = .clear
+            } else {
+                // Fallback if content view not found
+                scrollView.backgroundColor = ColorUtilities.color(fromHexString: backgroundColorStr)
+            }
+            
+            // Remove from props to prevent double application
+            var modifiedProps = props
+            modifiedProps.removeValue(forKey: "backgroundColor")
+            scrollView.applyStyles(props: modifiedProps)
+        } else {
+            // Apply remaining styles if no background color was specified
+            scrollView.applyStyles(props: props)
+        }
         
         // Configure scroll direction
         if let horizontal = props["horizontal"] as? Bool {
@@ -158,17 +177,6 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent, UIScrollViewDelegate {
         // Configure scroll enabled state
         if let scrollEnabled = props["scrollEnabled"] as? Bool {
             scrollView.isScrollEnabled = scrollEnabled
-        }
-        
-        // Apply non-layout styling - Fix: use the view extension directly instead of through layout manager
-        view.applyStyles(props: props)  // Changed from DCMauiLayoutManager.shared.applyStyles(to: scrollView, props: props)
-        
-        // Ensure the content view receives background color if specified for ScrollView
-        if let backgroundColor = props["backgroundColor"] as? String,
-           let contentView = contentView,
-           scrollView.backgroundColor == nil || scrollView.backgroundColor == .clear {
-            contentView.backgroundColor = ColorUtilities.color(fromHexString: backgroundColor)
-            scrollView.backgroundColor = .clear  // Ensure scroll view is transparent
         }
         
         return true

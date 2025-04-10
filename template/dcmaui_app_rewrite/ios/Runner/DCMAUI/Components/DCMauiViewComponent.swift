@@ -17,29 +17,9 @@ class DCMauiViewComponent: NSObject, DCMauiComponent {
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        // Extract style-related properties
-        let styleProps = props.filter { key, _ in
-            // Filter for style properties (not layout)
-            !SupportedLayoutsProps.supportedLayoutProps.contains(key)
-        }
-        
-        // Apply styles directly to view
-        if !styleProps.isEmpty {
-            view.applyStyles(props: styleProps)
-        }
-        
-        // CRITICAL FIX: Apply background color directly if specified
-        if let backgroundColor = props["backgroundColor"] as? String {
-            print("🎨 Setting background color directly: \(backgroundColor)")
-            
-            // CRITICAL FIX: Special handling for transparent colors
-            if ColorUtilities.isTransparent(backgroundColor) {
-                print("🔍 Applying transparent background")
-                view.backgroundColor = .clear
-            } else {
-                view.backgroundColor = ColorUtilities.color(fromHexString: backgroundColor)
-            }
-        }
+        // FIXED: Use common approach for all components:
+        // Apply styles directly via the extension
+        view.applyStyles(props: props)
         
         // CRITICAL FIX: Add debug border if needed
         #if DEBUG

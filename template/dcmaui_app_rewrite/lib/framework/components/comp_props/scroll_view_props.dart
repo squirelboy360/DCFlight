@@ -63,17 +63,21 @@ class ScrollViewProps {
     if (horizontal != null) map['horizontal'] = horizontal;
     if (contentWidth != null) map['contentWidth'] = contentWidth;
     if (contentHeight != null) map['contentHeight'] = contentHeight;
-    if (showsHorizontalScrollIndicator != null)
+    if (showsHorizontalScrollIndicator != null) {
       map['showsHorizontalScrollIndicator'] = showsHorizontalScrollIndicator;
-    if (showsVerticalScrollIndicator != null)
+    }
+    if (showsVerticalScrollIndicator != null) {
       map['showsVerticalScrollIndicator'] = showsVerticalScrollIndicator;
+    }
     if (bounces != null) map['bounces'] = bounces;
     if (pagingEnabled != null) map['pagingEnabled'] = pagingEnabled;
-    if (scrollEventThrottle != null)
+    if (scrollEventThrottle != null) {
       map['scrollEventThrottle'] = scrollEventThrottle;
+    }
     if (contentInsetTop != null) map['contentInsetTop'] = contentInsetTop;
-    if (contentInsetBottom != null)
+    if (contentInsetBottom != null) {
       map['contentInsetBottom'] = contentInsetBottom;
+    }
     if (contentInsetLeft != null) map['contentInsetLeft'] = contentInsetLeft;
     if (contentInsetRight != null) map['contentInsetRight'] = contentInsetRight;
     if (scrollEnabled != null) map['scrollEnabled'] = scrollEnabled;

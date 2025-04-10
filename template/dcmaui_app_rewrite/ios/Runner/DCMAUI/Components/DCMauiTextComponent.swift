@@ -27,7 +27,7 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
             label.trailingAnchor.constraint(equalTo: containerView.trailingAnchor)
         ])
         
-        // CRITICAL FIX: Set minimum size and ensure text doesn't disappear
+        // Set minimum size and ensure text doesn't disappear
         label.text = props["content"] as? String ?? "" 
         
         // Apply properties
@@ -37,7 +37,7 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        // CRITICAL FIX: First find the label inside the container
+        // First find the label inside the container
         guard let label = view.viewWithTag(1001) as? UILabel else {
             // Direct label case (legacy)
             if let directLabel = view as? UILabel {
@@ -46,7 +46,8 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
             return false
         }
         
-        // Apply all styling props to container view first
+        // FIXED: Apply all styling props to container view first
+        // Extract style properties and apply directly to the view
         view.applyStyles(props: props)
         
         // Apply text-specific props to label

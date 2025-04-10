@@ -61,8 +61,8 @@ class LayoutProps {
 
   /// Create layout props with the specified values
   const LayoutProps({
-    this.width,
-    this.height,
+    this.width = '100%', // Default to 100% width for proper nesting
+    this.height = 40, // Default to 40 height for visibility
     this.minWidth,
     this.maxWidth,
     this.minHeight,
@@ -149,9 +149,11 @@ class LayoutProps {
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{};
 
+    // Always include default width and height if not specified
+    map['width'] = width;
+    map['height'] = height;
+
     // Add dimension properties
-    if (width != null) map['width'] = width;
-    if (height != null) map['height'] = height;
     if (minWidth != null) map['minWidth'] = minWidth;
     if (maxWidth != null) map['maxWidth'] = maxWidth;
     if (minHeight != null) map['minHeight'] = minHeight;

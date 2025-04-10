@@ -53,10 +53,6 @@ void startNativeApp() async {
 class DCMauiDemoApp extends StatefulComponent {
   @override
   VDomNode render() {
-    // Get screen dimensions for responsive design
-    final screenWidth = ScreenUtilities.instance.screenWidth;
-    final screenHeight = ScreenUtilities.instance.screenHeight;
-
     // State hooks
     final currentTabIndex = useState(0, 'currentTabIndex');
     final isMenuOpen = useState(false, 'isMenuOpen');
@@ -86,13 +82,13 @@ class DCMauiDemoApp extends StatefulComponent {
     ];
 
     // Main app structure with side menu
-    return UI.View(
+    return UI.ScrollView(
       layout: LayoutProps(
         width: '100%',
         height: '100%',
       ),
       style: StyleSheet(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.amber,
       ),
       children: [
         // Main content area
@@ -288,7 +284,7 @@ class DCMauiDemoApp extends StatefulComponent {
             alignItems: YogaAlign.center,
           ),
           style: StyleSheet(
-            backgroundColor: Colors.transparent,
+            backgroundColor: Colors.red,
           ),
           buttonProps: ButtonProps(
             title: "",

@@ -21,7 +21,7 @@ class DCMauiImageComponent: NSObject, DCMauiComponent {
             return false
         }
         
-        // Apply style properties directly to view
+        // FIXED: Apply style properties first using common extension method
         view.applyStyles(props: props)
         
         // Handle image source

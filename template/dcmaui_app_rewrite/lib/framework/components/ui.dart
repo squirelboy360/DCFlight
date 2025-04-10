@@ -76,7 +76,6 @@ class UI {
       propsMap.addAll(textProps.toMap());
     }
 
-
     return VDomElement(
       type: 'Text',
       key: key,
@@ -91,7 +90,6 @@ class UI {
     ButtonProps? buttonProps,
     String? key,
     Function? onPress,
-    Map<String, dynamic>? events,
   }) {
     // Merge props from both layout and style
     final propsMap = <String, dynamic>{};
@@ -112,11 +110,6 @@ class UI {
     // Add onPress handler
     if (onPress != null) {
       propsMap['onPress'] = onPress;
-    }
-
-    // Add additional event handlers
-    if (events != null) {
-      propsMap.addAll(events);
     }
 
     return VDomElement(
@@ -181,7 +174,6 @@ class UI {
     List<VDomNode> children = const [],
     String? key,
     Function? onScroll,
-    Map<String, dynamic>? events,
   }) {
     // Merge props from both layout and style
     final propsMap = <String, dynamic>{};
@@ -202,11 +194,6 @@ class UI {
     // Add scroll event handler
     if (onScroll != null) {
       propsMap['onScroll'] = onScroll;
-    }
-
-    // Add additional event handlers
-    if (events != null) {
-      propsMap.addAll(events);
     }
 
     return VDomElement(
