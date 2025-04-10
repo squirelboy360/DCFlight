@@ -46,6 +46,9 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
         
         if let fontSize = props["fontSize"] as? CGFloat {
             label.font = UIFont.systemFont(ofSize: fontSize)
+        } else {
+            // CRITICAL FIX: Default font size if not provided
+            label.font = UIFont.systemFont(ofSize: 14)
         }
         
         if let fontWeight = props["fontWeight"] as? String {
@@ -102,12 +105,20 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
         // CRITICAL FIX: Ensure text has proper sizing by calling sizeToFit if needed
         label.sizeToFit()
         
-        // CRITICAL FIX: Force minimum height for text
-        if label.frame.height < 20 {
+        // CRITICAL FIX: Force minimum height for text - increased from 20 to 24
+        if label.frame.height < 24 {
             var frame = label.frame
-            frame.size.height = 20
+            frame.size.height = 24
             label.frame = frame
         }
+        
+        // Store intrinsic height as associated object to ensure consistent layout calculation
+        objc_setAssociatedObject(
+            label,
+            UnsafeRawPointer(bitPattern: "intrinsicHeight".hashValue)!,
+            label.frame.height,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
         
         print("📐 Final text size after update: \(label.frame.size)")
         
@@ -123,13 +134,22 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
         let text = props["content"] as? String ?? props["text"] as? String ?? ""
         
         if text.isEmpty {
-            return CGSize(width: 0, height: 20) // Minimum height even if empty
+            return CGSize(width: 0, height: 24) // Minimum height increased
+        }
+        
+        // Use stored font or create one with props
+        let font: UIFont
+        if let fontSize = props["fontSize"] as? CGFloat {
+            font = UIFont.systemFont(ofSize: fontSize)
+        } else {
+            // CRITICAL FIX: Default font size if not provided
+            font = UIFont.systemFont(ofSize: 14)
         }
         
         // Create a temporary label to measure text with the same properties
         let tempLabel = UILabel()
         tempLabel.text = text
-        tempLabel.font = label.font
+        tempLabel.font = font
         tempLabel.numberOfLines = 0
         
         // Calculate size with constraints
@@ -138,8 +158,8 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
         var size = tempLabel.sizeThatFits(constraintSize)
         
         // CRITICAL FIX: Ensure minimum height
-        if size.height < 20 {
-            size.height = 20
+        if size.height < 24 {
+            size.height = 24
         }
         
         print("📏 Text intrinsic size measurement: \"\(text)\" -> \(size)")

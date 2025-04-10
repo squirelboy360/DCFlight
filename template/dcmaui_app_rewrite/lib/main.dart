@@ -83,7 +83,7 @@ class AnimatedAppComponent extends StatefulComponent {
             children: [
               UI.Text(
                 content:
-                    'Screen: ${screenWidth.value.toInt()} x ${screenHeight.value.toInt()}',
+                    'ed',
                 textProps: TextProps(
                   color: Colors.purpleAccent,
                   fontSize: 20,

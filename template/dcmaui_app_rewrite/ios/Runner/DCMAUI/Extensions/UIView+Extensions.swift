@@ -32,7 +32,7 @@ extension UIView {
     
     // Add overlay with frame info
     func addFrameOverlay() {
-        // Remove any existing overlays
+       
         self.viewWithTag(999999)?.removeFromSuperview()
         
         let overlay = UILabel()

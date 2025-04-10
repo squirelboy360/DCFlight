@@ -92,9 +92,9 @@ class AppDelegate: FlutterAppDelegate {
             print("📋 View hierarchy after initial layout:")
             LayoutDebugging.shared.printViewHierarchy(rootContainer)
             
-            // CRITICAL FIX: Enable visual debugging on all views
+            // CRITICAL FIX: Enable visual debugging for all views EXCEPT root
             #if DEBUG
-            LayoutDebugging.shared.enableVisualDebugging(for: rootContainer)
+            LayoutDebugging.shared.enableVisualDebuggingExceptRoot(for: rootContainer)
             #endif
         }
     }

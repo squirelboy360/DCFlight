@@ -51,6 +51,21 @@ class LayoutDebugging {
         processViewHierarchy(rootView)
     }
     
+    /// Enable visual debugging for all views in hierarchy except the root view
+    func enableVisualDebuggingExceptRoot(for rootView: UIView) {
+        // Process the view hierarchy but skip the root
+        for subview in rootView.subviews {
+            addDebugBorder(to: subview, color: randomColor())
+            
+            // Get view ID if available
+            let viewId = subview.accessibilityIdentifier ?? "unknown"
+            addDimensionLabel(to: subview, viewId: viewId)
+            
+            // Process all subviews of this view
+            processViewHierarchy(subview)
+        }
+    }
+    
     private func processViewHierarchy(_ view: UIView) {
         // Add debug elements to this view
         addDebugBorder(to: view, color: randomColor())
