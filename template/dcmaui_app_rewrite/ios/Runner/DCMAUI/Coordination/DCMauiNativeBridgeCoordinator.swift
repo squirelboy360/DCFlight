@@ -1,6 +1,22 @@
 import Flutter
 import UIKit
 import yoga
+import Foundation
+
+// Internal class definition for supported layout properties
+class SupportedLayoutsProps {
+    static let supportedLayoutProps = [
+        "width", "height", "minWidth", "maxWidth", "minHeight", "maxHeight",
+        "margin", "marginTop", "marginRight", "marginBottom", "marginLeft",
+        "marginHorizontal", "marginVertical",
+        "padding", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+        "paddingHorizontal", "paddingVertical",
+        "left", "top", "right", "bottom", "position",
+        "flexDirection", "justifyContent", "alignItems", "alignSelf", "alignContent",
+        "flexWrap", "flex", "flexGrow", "flexShrink", "flexBasis",
+        "display", "overflow", "direction", "borderWidth"
+    ]
+}
 
 // For ambiguous init issue:
 typealias ViewTypeInfo = (view: UIView, type: String)
@@ -85,7 +101,7 @@ class ViewRegistry {
         
         // Apply initial layout props
         let layoutProps = extractLayoutProps(from: props)
-        if !layoutProps.isEmpty {
+        if (!layoutProps.isEmpty) {
             DCMauiLayoutManager.shared.updateNodeWithLayoutProps(
                 nodeId: viewId,
                 componentType: "View",
@@ -95,7 +111,7 @@ class ViewRegistry {
         
         // Apply initial style props
         let styleProps = props.filter { !layoutProps.keys.contains($0.key) }
-        if !styleProps.isEmpty {
+        if (!styleProps.isEmpty) {
             view.applyStyles(props: styleProps)
         }
         
@@ -107,17 +123,8 @@ class ViewRegistry {
     
     // Extract layout props from props dictionary
     private func extractLayoutProps(from props: [String: Any]) -> [String: Any] {
-        let layoutPropKeys = [
-            "width", "height", "minWidth", "maxWidth", "minHeight", "maxHeight",
-            "margin", "marginTop", "marginRight", "marginBottom", "marginLeft",
-            "marginHorizontal", "marginVertical",
-            "padding", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
-            "paddingHorizontal", "paddingVertical",
-            "left", "top", "right", "bottom", "position",
-            "flexDirection", "justifyContent", "alignItems", "alignSelf", "alignContent",
-            "flexWrap", "flex", "flexGrow", "flexShrink", "flexBasis",
-            "display", "overflow", "direction", "borderWidth"
-        ]
+        // No need to create an instance - access the static property directly
+        let layoutPropKeys = SupportedLayoutsProps.supportedLayoutProps
         
         return props.filter { layoutPropKeys.contains($0.key) }
     }
@@ -304,12 +311,12 @@ class ViewRegistry {
         var fixedHeight = height
         
         // Don't allow zero or negative dimensions
-        if fixedWidth <= 0 {
+        if (fixedWidth <= 0) {
             fixedWidth = view.superview?.bounds.width ?? 100
             print("⚠️ Fixed invalid width: \(width) → \(fixedWidth)")
         }
         
-        if fixedHeight <= 0 {
+        if (fixedHeight <= 0) {
             // Use minimal height for UI elements
             fixedHeight = 44
             print("⚠️ Fixed invalid height: \(height) → \(fixedHeight)")
@@ -323,7 +330,7 @@ class ViewRegistry {
             view.frame = frame
             
             // Set background color for debugging visibility
-            if view.backgroundColor == nil || view.backgroundColor == .clear {
+            if (view.backgroundColor == nil || view.backgroundColor == .clear) {
                 view.backgroundColor = UIColor(
                     hue: CGFloat(viewId.hashValue % 100) / 100.0,
                     saturation: 0.15,
