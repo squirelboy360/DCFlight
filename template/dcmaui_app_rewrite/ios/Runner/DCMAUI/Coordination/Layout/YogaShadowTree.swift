@@ -184,147 +184,12 @@ class YogaShadowTree {
         nodeModificationTimes[nodeId] = Date().timeIntervalSince1970
         nodeSyncState[nodeId] = true
         
-        // Do not mark nodes as dirty - Yoga will handle this automatically
-        // during the next layout calculation
+      
+        print("layout props cleaned and recalculated for node \(nodeId) and with props \(props)")
     }
     
-    // IMPROVED: Calculate layout for the shadow tree with enhanced performance
-    func calculateLayout(width: CGFloat, height: CGFloat, direction: YGDirection = YGDirection.LTR) {
-        guard let root = rootNode else { return }
-        
-        let startTime = Date().timeIntervalSince1970
-        print("🔢 Starting native layout calculation with dimensions: \(width)x\(height)")
-        
-        // Set root dimensions
-        YGNodeStyleSetWidth(root, Float(width))
-        YGNodeStyleSetHeight(root, Float(height))
-        
-        // NEW: Apply percentage-based layouts before calculation
-        applyPercentageBasedLayouts(parentSize: CGSize(width: width, height: height))
-        
-        // Calculate layout
-        YGNodeCalculateLayout(root, Float(width), Float(height), direction)
-        
-        // Track performance
-        let endTime = Date().timeIntervalSince1970
-        let duration = endTime - startTime
-        layoutCalculationTimes.append(duration)
-        lastLayoutTime = duration
-        layoutCount += 1
-        
-        // Keep only the last 10 calculations for memory reasons
-        if layoutCalculationTimes.count > 10 {
-            layoutCalculationTimes.removeFirst()
-        }
-        
-        print("✅ Native layout calculation completed in \(String(format: "%.2f", duration * 1000))ms")
-        
-        // Apply calculated layout to views
-        if let rootId = nodes.first(where: { $0.value == root })?.key {
-            applyLayoutToViewsRecursively(nodeId: rootId)
-        } else {
-            print("⚠️ Warning: Could not find root node ID in node map")
-            if nodes.count > 0 {
-                print("🔍 Attempting to apply layout to all known nodes...")
-                for (nodeId, _) in nodes {
-                    if nodeId != "root" { // Skip the dummy root
-                        applyLayoutToViewsRecursively(nodeId: nodeId)
-                    }
-                }
-            }
-        }
-        
-        // NEW: Apply debug visualizations if enabled
-        if debugLayoutEnabled {
-            applyDebugVisualization()
-        }
-        
-        print("🎯 Layout applied to all views in hierarchy")
-    }
     
-    // NEW: Apply percentage-based layouts
-    private func applyPercentageBasedLayouts(parentSize: CGSize) {
-        // Process all node relationships to set percentage sizes
-        for (childId, parentId) in nodeParents {
-            guard let childNode = nodes[childId],
-                  let parentNode = nodes[parentId] else { continue }
-            
-            // Check if this node has percentage width/height tag
-            let view = DCMauiLayoutManager.shared.getView(withId: childId)
-            let hasPercentWidth = objc_getAssociatedObject(view,
-                                 UnsafeRawPointer(bitPattern: "hasPercentageWidth".hashValue)!) as? Bool ?? false
-            let hasPercentHeight = objc_getAssociatedObject(view,
-                                  UnsafeRawPointer(bitPattern: "hasPercentageHeight".hashValue)!) as? Bool ?? false
-                                  
-            if hasPercentWidth || hasPercentHeight {
-                let parentWidth = CGFloat(YGNodeLayoutGetWidth(parentNode))
-                let parentHeight = CGFloat(YGNodeLayoutGetHeight(parentNode))
-                
-                // Calculate actual dimensions based on parent size
-                if hasPercentWidth {
-                    let percentValue = objc_getAssociatedObject(view, 
-                                      UnsafeRawPointer(bitPattern: "percentageWidthValue".hashValue)!) as? CGFloat ?? 100
-                    let calculatedWidth = parentWidth * percentValue / 100.0
-                    YGNodeStyleSetWidth(childNode, Float(calculatedWidth))
-                }
-                
-                if hasPercentHeight {
-                    let percentValue = objc_getAssociatedObject(view, 
-                                      UnsafeRawPointer(bitPattern: "percentageHeightValue".hashValue)!) as? CGFloat ?? 100
-                    let calculatedHeight = parentHeight * percentValue / 100.0
-                    YGNodeStyleSetHeight(childNode, Float(calculatedHeight))
-                }
-            }
-        }
-    }
-    
-    // NEW: Enhanced layout application with batching for performance
-    private func applyLayoutToViewsRecursively(nodeId: String, batchUpdates: Bool = true) {
-        guard let node = nodes[nodeId] else { return }
-        
-        // Get layout values directly from Yoga node
-        let left = CGFloat(YGNodeLayoutGetLeft(node))
-        let top = CGFloat(YGNodeLayoutGetTop(node))
-        let width = CGFloat(YGNodeLayoutGetWidth(node))
-        let height = CGFloat(YGNodeLayoutGetHeight(node))
-        
-        print("📐 Node \(nodeId) layout: (\(left), \(top), \(width), \(height))")
-        
-        // Check for NaN values which can crash the app
-        let safeLeft = left.isNaN ? 0 : left
-        let safeTop = top.isNaN ? 0 : top
-        let safeWidth = width.isNaN ? 0 : width
-        let safeHeight = height.isNaN ? 0 : height
-        
-        // NEW: Batch updates for improved performance
-        if batchUpdates {
-            // Add to batch update queue
-            DispatchQueue.main.async {
-                DCMauiLayoutManager.shared.applyLayout(
-                    to: nodeId, 
-                    left: safeLeft, 
-                    top: safeTop, 
-                    width: safeWidth, 
-                    height: safeHeight
-                )
-            }
-        } else {
-            // Apply immediately (legacy mode)
-            DCMauiLayoutManager.shared.applyLayout(
-                to: nodeId, 
-                left: safeLeft, 
-                top: safeTop, 
-                width: safeWidth, 
-                height: safeHeight
-            )
-        }
-        
-        // Apply layout to all children
-        let childNodeIds = nodeParents.filter { $0.value == nodeId }.map { $0.key }
-        for childId in childNodeIds {
-            applyLayoutToViewsRecursively(nodeId: childId, batchUpdates: batchUpdates)
-        }
-    }
+
     
     // ENHANCED: Calculate and apply layout in one call with better performance monitoring
     func calculateAndApplyLayout(width: CGFloat, height: CGFloat) -> Bool {
@@ -890,12 +755,7 @@ class YogaShadowTree {
         return nodes.first(where: { $0.value == node })?.key
     }
     
-    // ADDED: Function to respond to screen orientation changes
-    func handleScreenOrientationChange(screenWidth: CGFloat, screenHeight: CGFloat) {
-        // Recalculate layout with new screen dimensions
-        print("📱 Screen orientation changed. Recalculating layouts: \(screenWidth)×\(screenHeight)")
-        calculateAndApplyLayout(width: screenWidth, height: screenHeight)
-    }
+
     
     // Helper to convert input values to Float
     private func convertToFloat(_ value: Any) -> Float? {
@@ -1230,8 +1090,67 @@ class YogaShadowTree {
         
         return nodeInfo
     }
+    /// Handle incremental layout updates for specific nodes
+    func performIncrementalLayoutUpdate(nodeId: String, props: [String: Any]) -> Bool {
+        print("📐 Performing incremental layout update for node: \(nodeId)")
+        
+        guard let node = nodes[nodeId] else {
+            print("⚠️ Cannot perform incremental layout: node not found for ID \(nodeId)")
+            return false
+        }
+        
+        // CRITICAL FIX: Don't mark as dirty directly
+        // YGNodeMarkDirty(node) - REMOVE THIS LINE
+        
+        // Apply the updated properties to the node
+        for (key, value) in props {
+            applyLayoutProp(node: node, key: key, value: value)
+        }
+        
+        // Find the root node for this subtree
+        var currentNode = node
+        var parentId = nodeParents[nodeId]
+        var affectedNodeIds = Set<String>()
+        affectedNodeIds.insert(nodeId) // Always include the updated node
+        
+        // Find all parent nodes up to the root
+        while let pId = parentId, let parentNode = nodes[pId] {
+            // Mark parent nodes as affected
+            affectedNodeIds.insert(pId)
+            // Continue upward
+            currentNode = parentNode
+            parentId = nodeParents[pId]
+        }
+        
+        // Calculate layout for the entire tree (optimization opportunity)
+        let screenWidth = YGNodeStyleGetWidth(rootNode!).value
+        let screenHeight = YGNodeStyleGetHeight(rootNode!).value
+        
+        YGNodeCalculateLayout(rootNode!, Float(screenWidth), Float(screenHeight), YGDirection.LTR)
+        
+        print("🔄 Incremental layout calculated from node \(nodeId) affecting \(affectedNodeIds.count) nodes")
+        
+        // Apply layout only to affected nodes for performance
+        for affectedId in affectedNodeIds {
+            if let layout = getNodeLayout(nodeId: affectedId) {
+                // Apply layout to the affected view
+                DCMauiLayoutManager.shared.applyLayout(
+                    to: affectedId,
+                    left: layout.origin.x,
+                    top: layout.origin.y,
+                    width: layout.width,
+                    height: layout.height
+                )
+                print("🔄 Applied incremental layout to \(affectedId): \(layout)")
+            }
+        }
+        
+        // Update modification time
+        nodeModificationTimes[nodeId] = Date().timeIntervalSince1970
+        
+        return true
+    }
     
-    // ADD THIS MISSING METHOD: Helper to apply layout to a view by ID
     private func applyLayoutToView(viewId: String, frame: CGRect) {
         // Get the view from the layout manager
         guard let view = DCMauiLayoutManager.shared.getView(withId: viewId) else {
