@@ -229,9 +229,9 @@ class DCMauiDemoApp extends StatefulComponent {
         alignItems: YogaAlign.center,
       ),
       style: StyleSheet(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.pinkAccent,
         borderWidth: 1,
-        borderColor: Colors.grey.shade200,
+        borderColor: Colors.orange,
       ),
       children: [
         renderTabButton(
@@ -267,7 +267,7 @@ class DCMauiDemoApp extends StatefulComponent {
     return UI.View(
       layout: LayoutProps(
         width: 80,
-        height: 60,
+        height: 80,
         justifyContent: YogaJustifyContent.center,
         alignItems: YogaAlign.center,
       ),
@@ -276,12 +276,12 @@ class DCMauiDemoApp extends StatefulComponent {
         UI.Button(
           layout: LayoutProps(
             width: '100%',
-            height: '100%',
+            height: '20%',
             justifyContent: YogaJustifyContent.center,
             alignItems: YogaAlign.center,
           ),
           style: StyleSheet(
-            backgroundColor: Colors.transparent,
+            backgroundColor: Colors.cyanAccent,
           ),
           buttonProps: ButtonProps(
             title: "",
@@ -290,8 +290,8 @@ class DCMauiDemoApp extends StatefulComponent {
         ),
         UI.Text(
           content: icon,
-          layout: LayoutProps(),
-          style: StyleSheet(),
+          layout: LayoutProps(height: '20%'),
+          style: StyleSheet(backgroundColor: Colors.yellow),
           textProps: TextProps(
             fontSize: 24,
           ),
@@ -300,6 +300,7 @@ class DCMauiDemoApp extends StatefulComponent {
           content: label,
           layout: LayoutProps(
             marginTop: 4,
+            height: '20%',
           ),
           style: StyleSheet(),
           textProps: TextProps(
