@@ -22,4 +22,22 @@ class Fragment extends VDomNode {
   bool equals(VDomNode other) {
     return other is Fragment && key == other.key;
   }
+
+  @override
+  void mount(VDomNode? parent) {
+    this.parent = parent;
+
+    // Mount all children
+    for (final child in children) {
+      child.mount(this);
+    }
+  }
+
+  @override
+  void unmount() {
+    // Unmount all children
+    for (final child in children) {
+      child.unmount();
+    }
+  }
 }

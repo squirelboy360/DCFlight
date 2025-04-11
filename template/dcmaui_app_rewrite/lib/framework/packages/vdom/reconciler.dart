@@ -1,10 +1,12 @@
 import 'dart:developer' as developer;
+import 'dart:math' as math;
 import '../../constants/layout_properties.dart';
 
 import 'vdom_node.dart';
 import 'vdom_element.dart';
 import 'component_node.dart';
 import 'vdom.dart';
+import '../native_bridge/native_bridge.dart';
 
 /// Class responsible for reconciling differences between VDOM trees
 class Reconciler {
@@ -365,6 +367,71 @@ class Reconciler {
     if (index < 0) return null;
 
     return _ParentInfo(parent.nativeViewId!, index);
+  }
+
+  // Add support for registering events during reconciliation
+  static void mountElement(VDomElement element, String? parentId) async {
+    try {
+      final elementId = element.key ?? generateId();
+
+      // Create the view
+      await NativeBridge.instance.createView(
+        elementId,
+        element.type,
+        element.props,
+      );
+
+      // If parent is not null, attach this view to the parent
+      if (parentId != null) {
+        await NativeBridge.instance.attachView(
+          elementId,
+          parentId,
+          0, // Default index, can be updated later
+        );
+      }
+
+      // Register any events for this element
+      if (element.events != null && element.events!.isNotEmpty) {
+        // Register event listeners with native side
+        List<String> eventTypes = element.events!.keys.toList();
+        await NativeBridge.instance.addEventListeners(elementId, eventTypes);
+
+        // Register callbacks for each event type
+        element.events!.forEach((eventType, callback) {
+          NativeBridge.instance
+              .registerEventCallback(elementId, eventType, callback);
+        });
+      }
+
+      // Now mount all children
+      final childIds = <String>[];
+      for (int i = 0; i < element.children.length; i++) {
+        final child = element.children[i];
+        if (child is VDomElement) {
+          // Get or generate child ID
+          final childId = child.key ?? generateId();
+          childIds.add(childId);
+
+          // Mount the child - don't use return value
+          mountElement(child, elementId); // Don't await or use the result
+        }
+      }
+
+      // Set children in order
+      if (childIds.isNotEmpty) {
+        await NativeBridge.instance.setChildren(elementId, childIds);
+      }
+    } catch (e, st) {
+      developer.log('Error mounting element: $e\n$st');
+    }
+  }
+
+  // Add the missing generateId method
+  static String generateId() {
+    final random = math.Random();
+    final id =
+        'node_${DateTime.now().millisecondsSinceEpoch}_${random.nextInt(10000)}';
+    return id;
   }
 }
 

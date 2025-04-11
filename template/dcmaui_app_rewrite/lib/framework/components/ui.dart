@@ -1,4 +1,3 @@
-import 'dart:ui';
 import '../packages/vdom/vdom_node.dart';
 import '../packages/vdom/vdom_element.dart';
 import '../constants/layout_properties.dart';
@@ -107,15 +106,18 @@ class UI {
       propsMap.addAll(buttonProps.toMap());
     }
 
-    // Add onPress handler
+    // IMPORTANT: Don't add onPress handler to props directly
+    // Instead, create a map of events to register separately
+    Map<String, dynamic>? events;
     if (onPress != null) {
-      propsMap['onPress'] = onPress;
+      events = {'press': onPress};
     }
 
     return VDomElement(
       type: 'Button',
       key: key,
       props: propsMap,
+      events: events, // Pass events separately from props
     );
   }
 

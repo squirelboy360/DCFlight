@@ -58,4 +58,25 @@ class ComponentNode extends VDomNode {
   String toString() {
     return 'ComponentNode(component: ${component.runtimeType}, id: ${component.instanceId}, key: $key)';
   }
+
+  @override
+  void mount(VDomNode? parent) {
+    this.parent = parent;
+
+    // If there's a rendered node, propagate the mount
+    if (renderedNode != null) {
+      renderedNode!.mount(this);
+    }
+  }
+
+  @override
+  void unmount() {
+    // Clean up the rendered node if any
+    if (renderedNode != null) {
+      renderedNode!.unmount();
+    }
+
+    // Additional cleanup if needed
+    component.componentWillUnmount();
+  }
 }

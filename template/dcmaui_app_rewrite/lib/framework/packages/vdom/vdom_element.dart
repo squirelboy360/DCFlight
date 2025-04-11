@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart';
 import 'vdom_node.dart';
+import '../native_bridge/native_bridge.dart';
 
 /// Represents an element in the Virtual DOM tree
 class VDomElement extends VDomNode {
@@ -12,11 +13,15 @@ class VDomElement extends VDomNode {
   /// Child nodes
   final List<VDomNode> children;
 
+  // Add a new field for event handlers
+  final Map<String, dynamic>? events;
+
   VDomElement({
     required this.type,
     super.key,
     Map<String, dynamic>? props,
     List<VDomNode>? children,
+    this.events,
   })  : props = props ?? {},
         children = children ?? [] {
     // Set parent reference for children
@@ -32,6 +37,7 @@ class VDomElement extends VDomNode {
       key: key,
       props: Map<String, dynamic>.from(props),
       children: children.map((child) => child.clone()).toList(),
+      events: events,
     );
   }
 
@@ -74,5 +80,32 @@ class VDomElement extends VDomNode {
       return EmptyVDomNode();
     }
     return children[index];
+  }
+
+  @override
+  void mount(VDomNode? parent) {
+    // Call mount on children
+    for (final child in children) {
+      child.mount(this);
+    }
+  }
+
+  @override
+  void unmount() {
+    // Call unmount on children
+    for (final child in children) {
+      child.unmount();
+    }
+  }
+
+  // Add a new method to register events
+  void registerEvents() {
+    if (events != null && events!.isNotEmpty) {
+      // Gather event types from the events map
+      final eventTypes = events!.keys.toList();
+
+      // Register events with the native bridge
+      NativeBridge.instance.addEventListeners(key!, eventTypes);
+    }
   }
 }

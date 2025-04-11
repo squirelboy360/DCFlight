@@ -60,6 +60,9 @@ class FFINativeBridge implements NativeBridge {
   // Method channel for events - PUBLIC so it can be accessed directly
   static const MethodChannel eventChannel = MethodChannel('com.dcmaui.events');
 
+  // Map to store callbacks for each view and event type
+  final Map<String, Map<String, Function>> _eventCallbacks = {};
+
   // Sets up communication with native code
   FFINativeBridge() {
     // Load the native library
@@ -128,15 +131,19 @@ class FFINativeBridge implements NativeBridge {
         final Map<dynamic, dynamic> args = call.arguments;
         final String viewId = args['viewId'];
         final String eventType = args['eventType'];
-        final Map<String, dynamic> eventData =
-            Map<String, dynamic>.from(args['eventData']);
+        final Map<dynamic, dynamic> eventData = args['eventData'] ?? {};
 
-        developer.log(
-            'Event received in Dart through method channel: $viewId - $eventType - Data: $eventData',
-            name: 'FFI');
+        // Convert dynamic map to String, dynamic map
+        final typedEventData = eventData.map<String, dynamic>(
+          (key, value) => MapEntry(key.toString(), value),
+        );
 
+        // Forward to the appropriate handler
+        handleNativeEvent(viewId, eventType, typedEventData);
+
+        // If there's also a direct event handler, call it
         if (_eventHandler != null) {
-          _eventHandler!(viewId, eventType, eventData);
+          _eventHandler!(viewId, eventType, typedEventData);
         }
       }
       return null;
@@ -285,16 +292,15 @@ class FFINativeBridge implements NativeBridge {
     // DIRECT METHOD CHANNEL ONLY - No FFI for events
     try {
       final result = await eventChannel.invokeMethod<bool>('registerEvents', {
-        'viewId': viewId,
+        'viewId': viewId, // Add viewId to the arguments
         'eventTypes': eventTypes,
       });
 
       if (result == true) {
-        developer.log('Event registration succeeded via method channel',
-            name: 'FFI');
         return true;
       } else {
-        developer.log('Method channel event registration failed', name: 'FFI');
+        developer.log('Method channel event registration returned false',
+            name: 'FFI');
         return false;
       }
     } catch (e) {
@@ -586,6 +592,31 @@ class FFINativeBridge implements NativeBridge {
     } catch (e) {
       print("[FFI] Error enabling visual debugging: $e");
       return false;
+    }
+  }
+
+  @override
+  void registerEventCallback(
+      String viewId, String eventType, Function callback) {
+    _eventCallbacks[viewId] ??= {};
+    _eventCallbacks[viewId]![eventType] = callback;
+  }
+
+  @override
+  void handleNativeEvent(
+      String viewId, String eventType, Map<String, dynamic> eventData) {
+    // Remove the super call since handleNativeEvent is abstract in the superclass
+    // Instead, directly implement the event handling logic here
+
+    developer.log('Event received: $viewId, $eventType, $eventData',
+        name: 'FFI_EVENTS');
+
+    final viewCallbacks = _eventCallbacks[viewId];
+    if (viewCallbacks != null && viewCallbacks.containsKey(eventType)) {
+      final callback = viewCallbacks[eventType];
+      if (callback != null) {
+        callback(eventData);
+      }
     }
   }
 }

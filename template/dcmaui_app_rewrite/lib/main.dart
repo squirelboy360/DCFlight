@@ -60,15 +60,15 @@ class DCMauiDemoApp extends StatefulComponent {
 
     // Animation timer effect
     useEffect(() {
-      // Create a timer that updates the animated value
-      final timer = Timer.periodic(Duration(milliseconds: 50), (_) {
-        final newValue = (animatedValue.value + 0.02) % 1.0;
-        animatedValue.setValue(newValue);
-        developer.log('Animated value updated: $newValue', name: 'Animation');
-      });
+      // // Create a timer that updates the animated value
+      // final timer = Timer.periodic(Duration(milliseconds: 50), (_) {
+      //   final newValue = (animatedValue.value + 0.02) % 1.0;
+      //   animatedValue.setValue(newValue);
+      //   developer.log('Animated value updated: $newValue', name: 'Animation');
+      // });
 
-      // Return cleanup function
-      return () => timer.cancel();
+      // // Return cleanup function
+      // return () => timer.cancel();
     }, dependencies: []);
 
     // Menu animation value based on isMenuOpen state
@@ -284,7 +284,7 @@ class DCMauiDemoApp extends StatefulComponent {
             alignItems: YogaAlign.center,
           ),
           style: StyleSheet(
-            backgroundColor: Colors.red,
+            backgroundColor: Colors.transparent,
           ),
           buttonProps: ButtonProps(
             title: "",

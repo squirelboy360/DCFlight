@@ -25,6 +25,12 @@ abstract class Component {
 
   /// Called when the component is mounted
   void componentDidMount() {}
+
+  /// Called when the component will unmount
+  void componentWillUnmount() {
+    // Base implementation does nothing
+    // Subclasses like StatefulComponent override this with specific cleanup
+  }
 }
 
 /// Stateful component with hooks
@@ -54,6 +60,7 @@ abstract class StatefulComponent extends Component {
   }
 
   /// Called when the component will unmount
+  @override
   void componentWillUnmount() {
     // Clean up hooks
     for (final hook in _hooks) {

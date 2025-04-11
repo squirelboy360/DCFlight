@@ -17,6 +17,9 @@ abstract class VDomNode {
   /// Whether this node is equal to another
   bool equals(VDomNode other);
 
+  void mount(VDomNode? parent);
+  void unmount();
+
   @override
   String toString() {
     return 'VDomNode(key: $key)';
@@ -35,4 +38,15 @@ class EmptyVDomNode extends VDomNode {
 
   @override
   String toString() => 'EmptyVDomNode()';
+
+  @override
+  void mount(VDomNode? parent) {
+    this.parent = parent;
+    // Empty node has no additional mounting logic
+  }
+
+  @override
+  void unmount() {
+    // Empty node has no cleanup logic
+  }
 }
