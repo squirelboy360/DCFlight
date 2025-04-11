@@ -85,5 +85,55 @@ class AppDelegate: FlutterAppDelegate {
             print("📋 View hierarchy after initial layout:")
             LayoutDebugging.shared.printViewHierarchy(rootContainer)
         }
+        
+        // CRITICAL FIX: Register for notifications about layout changes
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleLayoutChange(_:)),
+            name: UIApplication.didChangeStatusBarFrameNotification,
+            object: nil
+        )
+        
+        // Add this observer for device orientation changes
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(orientationChanged),
+            name: UIDevice.orientationDidChangeNotification,
+            object: nil
+        )
+    }
+    
+    // Add this method to handle layout changes
+    @objc private func handleLayoutChange(_ notification: Notification) {
+        guard let view = notification.object as? UIView,
+              let nodeId = view.getNodeId() else { return }
+        
+        // Special optimization: we only care about container views changing size
+        if view.subviews.count > 0 {
+            print("📲 View \(nodeId) changed size to: \(view.frame)")
+            
+            // Force recalculation of this subtree
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                YogaShadowTree.shared.performIncrementalLayoutUpdate(
+                    nodeId: nodeId,
+                    props: ["width": view.frame.width, "height": view.frame.height]
+                )
+            }
+        }
+    }
+    
+    // Add this method to handle orientation changes
+    @objc private func orientationChanged() {
+        // Allow a moment for the UI to update
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            // Get the current screen dimensions
+            let screenWidth = UIScreen.main.bounds.width
+            let screenHeight = UIScreen.main.bounds.height
+            
+            print("📱 Device orientation changed: \(screenWidth)x\(screenHeight)")
+            
+            // Update layouts with new dimensions
+            YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
+        }
     }
 }
