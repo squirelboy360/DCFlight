@@ -223,22 +223,23 @@ class DCMauiDemoApp extends StatefulComponent {
     return UI.View(
       layout: LayoutProps(
         width: '100%',
-        height: 60,
+        height: 120,
+        paddingBottom: ScreenUtilities.instance.statusBarHeight,
         flexDirection: YogaFlexDirection.row,
         justifyContent: YogaJustifyContent.spaceAround,
         alignItems: YogaAlign.center,
       ),
       style: StyleSheet(
-        backgroundColor: Colors.pinkAccent,
+        backgroundColor: Colors.white,
         borderWidth: 1,
-        borderColor: Colors.orange,
+        borderColor: Colors.grey.shade200,
       ),
       children: [
         renderTabButton(
           icon: "🏠",
           label: "Home",
           isSelected: currentIndex == 0,
-          onPress: () => onTabPress(0),
+      onPress: () => {onTabPress(0),print("pressed button 0")},
         ),
         renderTabButton(
           icon: "🖼️",
@@ -267,7 +268,7 @@ class DCMauiDemoApp extends StatefulComponent {
     return UI.View(
       layout: LayoutProps(
         width: 80,
-        height: 80,
+        height: 60,
         justifyContent: YogaJustifyContent.center,
         alignItems: YogaAlign.center,
       ),
@@ -276,39 +277,27 @@ class DCMauiDemoApp extends StatefulComponent {
         UI.Button(
           layout: LayoutProps(
             width: '100%',
-            height: '20%',
+            height: '50%',
             justifyContent: YogaJustifyContent.center,
             alignItems: YogaAlign.center,
           ),
           style: StyleSheet(
-            backgroundColor: Colors.cyanAccent,
+            backgroundColor: Colors.grey.shade200,
           ),
           buttonProps: ButtonProps(
-            title: "",
+            title: icon,disabled: false,
           ),
-          onPress: () => onPress(),
-        ),
-        UI.Text(
-          content: icon,
-          layout: LayoutProps(height: '20%'),
-          style: StyleSheet(backgroundColor: Colors.yellow),
-          textProps: TextProps(
-            fontSize: 24,
-          ),
+          onPress: () => {onPress(),print("pressed button $label")},
         ),
         UI.Text(
           content: label,
-          layout: LayoutProps(
-            marginTop: 4,
-            height: '20%',
-          ),
-          style: StyleSheet(),
+          layout: LayoutProps(height: '50%'),
+          style: StyleSheet(backgroundColor: Colors.transparent),
           textProps: TextProps(
-            color: isSelected ? Colors.blue : Colors.grey,
-            fontSize: 12,
-            fontWeight: isSelected ? "bold" : "normal",
+            fontSize: 16,
           ),
         ),
+       
       ],
     );
   }
