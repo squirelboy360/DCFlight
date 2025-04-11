@@ -109,10 +109,7 @@ class DCMauiDemoApp extends StatefulComponent {
 
             // Tab content
             UI.View(
-              layout: LayoutProps(
-                flex: 1,
-                width: '100%',
-              ),
+              layout: LayoutProps(flex: 1, width: '100%'),
               style: StyleSheet(),
               children: [tabContent[currentTabIndex.value]],
             ),
@@ -169,8 +166,8 @@ class DCMauiDemoApp extends StatefulComponent {
       {required bool isMenuOpen, required Function onMenuPress}) {
     return UI.View(
       layout: LayoutProps(
+        paddingVertical: ScreenUtilities.instance.statusBarHeight,
         width: '100%',
-        height: 60,
         flexDirection: YogaFlexDirection.row,
         alignItems: YogaAlign.center,
         paddingLeft: 16,
@@ -193,10 +190,10 @@ class DCMauiDemoApp extends StatefulComponent {
             justifyContent: YogaJustifyContent.center,
             alignItems: YogaAlign.center,
           ),
-          style: StyleSheet(),
+          style: StyleSheet(backgroundColor: Colors.blueGrey),
           buttonProps: ButtonProps(
             title: isMenuOpen ? "✕" : "☰",
-            titleColor: Colors.white,
+            titleColor: Colors.amber,
             fontSize: 24,
           ),
           onPress: () => onMenuPress(),

@@ -329,16 +329,6 @@ class ViewRegistry {
         DispatchQueue.main.async {
             view.frame = frame
             
-            // Set background color for debugging visibility
-            if (view.backgroundColor == nil || view.backgroundColor == .clear) {
-                view.backgroundColor = UIColor(
-                    hue: CGFloat(viewId.hashValue % 100) / 100.0,
-                    saturation: 0.15,
-                    brightness: 0.95,
-                    alpha: 1.0
-                )
-            }
-            
             // Force layout if needed
             view.setNeedsLayout()
             view.layoutIfNeeded()
