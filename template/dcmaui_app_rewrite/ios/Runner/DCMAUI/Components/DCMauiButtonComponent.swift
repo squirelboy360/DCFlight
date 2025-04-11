@@ -20,10 +20,9 @@ class DCMauiButtonComponent: NSObject, DCMauiComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let button = view as? UIButton else { return false }
         
-        // FIXED: First apply all styling props directly
+    
         view.applyStyles(props: props)
-        
-        // Then apply button-specific props
+    
         applyButtonProps(button, props: props)
         
         return true

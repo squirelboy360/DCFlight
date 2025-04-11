@@ -58,18 +58,18 @@ class DCMauiDemoApp extends StatefulComponent {
     final isMenuOpen = useState(false, 'isMenuOpen');
     final animatedValue = useState(0.0, 'animatedValue');
 
-    // Animation timer effect
-    useEffect(() {
-      // // Create a timer that updates the animated value
-      // final timer = Timer.periodic(Duration(milliseconds: 50), (_) {
-      //   final newValue = (animatedValue.value + 0.02) % 1.0;
-      //   animatedValue.setValue(newValue);
-      //   developer.log('Animated value updated: $newValue', name: 'Animation');
-      // });
+    // // Animation timer effect
+    // useEffect(() {
+    //   // // Create a timer that updates the animated value
+    //   final timer = Timer.periodic(Duration(milliseconds: 50), (_) {
+    //     final newValue = (animatedValue.value + 0.02) % 1.0;
+    //     animatedValue.setValue(newValue);
+    //     developer.log('Animated value updated: $newValue', name: 'Animation');
+    //   });
 
-      // // Return cleanup function
-      // return () => timer.cancel();
-    }, dependencies: []);
+    //   // Return cleanup function
+    //   return () => timer.cancel();
+    // }, dependencies: []); 
 
     // Menu animation value based on isMenuOpen state
     final menuSlideValue = isMenuOpen.value ? 0.0 : -250.0;
@@ -239,7 +239,7 @@ class DCMauiDemoApp extends StatefulComponent {
           icon: "🏠",
           label: "Home",
           isSelected: currentIndex == 0,
-      onPress: () => {onTabPress(0),print("pressed button 0")},
+          onPress: () => {onTabPress(0), print("pressed button 0")},
         ),
         renderTabButton(
           icon: "🖼️",
@@ -277,27 +277,25 @@ class DCMauiDemoApp extends StatefulComponent {
         UI.Button(
           layout: LayoutProps(
             width: '100%',
-            height: '50%',
+            height: '60%',
             justifyContent: YogaJustifyContent.center,
             alignItems: YogaAlign.center,
           ),
           style: StyleSheet(
             backgroundColor: Colors.grey.shade200,
           ),
-          buttonProps: ButtonProps(
-            title: icon,disabled: false,
-          ),
-          onPress: () => {onPress(),print("pressed button $label")},
+          buttonProps:
+              ButtonProps(title: icon, disabled: false, activeOpacity: 0.1,),
+          onPress: () => {onPress(), print("pressed button $label")},
         ),
         UI.Text(
           content: label,
-          layout: LayoutProps(height: '50%'),
+          layout: LayoutProps(height: '40%'),
           style: StyleSheet(backgroundColor: Colors.transparent),
           textProps: TextProps(
             fontSize: 16,
           ),
         ),
-       
       ],
     );
   }

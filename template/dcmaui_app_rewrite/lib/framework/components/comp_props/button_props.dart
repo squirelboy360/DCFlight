@@ -43,8 +43,8 @@ class ButtonProps {
     if (fontSize != null) map['fontSize'] = fontSize;
     if (fontWeight != null) map['fontWeight'] = fontWeight;
     if (fontFamily != null) map['fontFamily'] = fontFamily;
-    if (disabled != null) map['disabled'] = disabled;
-    if (activeOpacity != null) map['activeOpacity'] = activeOpacity;
+    if (disabled != null) map['disabled'] = disabled ?? false;
+    if (activeOpacity != null) map['activeOpacity'] = activeOpacity ?? 0.1;
 
     return map;
   }
