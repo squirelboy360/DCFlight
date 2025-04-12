@@ -7,7 +7,7 @@ class DCMauiLayoutMethodHandler: NSObject {
     static let shared = DCMauiLayoutMethodHandler()
     
     // Method channel for layout operations
-    private var methodChannel: FlutterMethodChannel?
+    internal var methodChannel: FlutterMethodChannel?
     
     // Private initializer for singleton
     private override init() {
@@ -77,6 +77,13 @@ class DCMauiLayoutMethodHandler: NSObject {
                 width: screenWidth, 
                 height: screenHeight
             )
+            
+            // CRITICAL FIX: Force root view to update after layout calculation
+            if let rootView = DCMauiLayoutManager.shared.getView(withId: "root") {
+                rootView.setNeedsLayout()
+                rootView.layoutIfNeeded()
+            }
+            
             result(success)
         }
     }

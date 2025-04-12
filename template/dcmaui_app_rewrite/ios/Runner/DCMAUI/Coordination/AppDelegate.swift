@@ -58,7 +58,44 @@ class AppDelegate: FlutterAppDelegate {
         
         print("DC MAUI: Running in headless mode with native UI container")
         
+        // CRITICAL FIX: Trigger layout calculations on main thread after a very short delay
+        // This ensures the root view is properly set up when running from Flutter CLI
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            self?.performInitialLayoutCalculation()
+            
+            // Schedule another calculation after the Flutter engine is fully initialized
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                self?.performInitialLayoutCalculation()
+                print("🔄 Performed delayed secondary layout calculation")
+            }
+        }
+        
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    }
+    
+    // NEW: Extract initial layout calculation to a separate method for reusability
+    private func performInitialLayoutCalculation() {
+        print("🚀 Performing initial layout calculation")
+        let screenWidth = UIScreen.main.bounds.width
+        let screenHeight = UIScreen.main.bounds.height
+        
+        // Calculate layout through the method channel instead of directly
+        DCMauiLayoutMethodHandler.shared.methodChannel?.invokeMethod("calculateLayout", arguments: [
+            "screenWidth": screenWidth,
+            "screenHeight": screenHeight
+        ])
+        
+        // Ensure we also trigger the direct calculation as a fallback
+        YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
+        
+        // Force all views to update
+        if let rootView = DCMauiLayoutManager.shared.getView(withId: "root") {
+            rootView.setNeedsLayout()
+            rootView.layoutIfNeeded()
+            
+            print("📋 View hierarchy after initial layout:")
+            LayoutDebugging.shared.printViewHierarchy(rootView)
+        }
     }
     
     // Setup the DCMauiNativeBridge
@@ -91,18 +128,6 @@ class AppDelegate: FlutterAppDelegate {
         _ = YogaShadowTree.shared
         _ = DCMauiLayoutManager.shared
         
-        // CRITICAL FIX: Force initial layout calculation with screen dimensions
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            print("🚀 Performing initial layout calculation")
-            let screenWidth = UIScreen.main.bounds.width
-            let screenHeight = UIScreen.main.bounds.height
-            
-            // Calculate layout directly
-            YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
-            print("📋 View hierarchy after initial layout:")
-            LayoutDebugging.shared.printViewHierarchy(rootContainer)
-        }
-        
         // CRITICAL FIX: Register for notifications about layout changes
         NotificationCenter.default.addObserver(
             self,
@@ -118,6 +143,9 @@ class AppDelegate: FlutterAppDelegate {
             name: UIDevice.orientationDidChangeNotification,
             object: nil
         )
+        
+        // NOTE: We removed the initial layout calculation here and moved it to the main method
+        // with better timing controls
     }
     
     // Add this method to handle layout changes
@@ -149,8 +177,14 @@ class AppDelegate: FlutterAppDelegate {
             
             print("📱 Device orientation changed: \(screenWidth)x\(screenHeight)")
             
-            // Update layouts with new dimensions
+            // Update layouts with new dimensions - use BOTH methods for reliability
             YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
+            
+            // Also trigger via method channel
+            DCMauiLayoutMethodHandler.shared.methodChannel?.invokeMethod("calculateLayout", arguments: [
+                "screenWidth": screenWidth,
+                "screenHeight": screenHeight
+            ])
         }
     }
 }
