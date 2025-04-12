@@ -1,4 +1,4 @@
-import 'dart:async';
+
 import 'package:flutter/material.dart' hide View, Text, Image, ScrollView;
 import 'dart:developer' as developer;
 
@@ -196,7 +196,7 @@ class DCMauiDemoApp extends StatefulComponent {
             titleColor: Colors.amber,
             fontSize: 24,
           ),
-          onPress: () => onMenuPress(),
+          onPress: (v) => onMenuPress(),
         ),
 
         // Title
@@ -819,7 +819,7 @@ class DCMauiDemoApp extends StatefulComponent {
                 titleColor: Colors.white,
                 fontSize: 16,
               ),
-              onPress: () {
+              onPress: (v) {
                 developer.log('Edit profile button pressed', name: 'UI');
               },
             ),
