@@ -13,20 +13,57 @@ class VDomElement extends VDomNode {
   /// Child nodes
   final List<VDomNode> children;
 
-  // Add a new field for event handlers
-  final Map<String, dynamic>? events;
+  // FIXED: Changed from final to private Map that can be modified
+  // Event handlers map
+  Map<String, dynamic>? _events;
+
+  // Add getter for events
+  Map<String, dynamic>? get events => _events;
 
   VDomElement({
     required this.type,
     super.key,
     Map<String, dynamic>? props,
     List<VDomNode>? children,
-    this.events,
+    Map<String, dynamic>? events,
   })  : props = props ?? {},
-        children = children ?? [] {
+        children = children ?? [],
+        _events = events {
     // Set parent reference for children
     for (var child in this.children) {
       child.parent = this;
+    }
+
+    // Automatically extract onX props into events
+    if (this.props.isNotEmpty) {
+      _extractEventHandlersFromProps();
+    }
+  }
+
+  /// Extract event handlers from props - any prop starting with "on" is an event
+  void _extractEventHandlersFromProps() {
+    final extractedEvents = <String, dynamic>{};
+
+    // Get all keys starting with "on"
+    final eventKeys =
+        props.keys.where((key) => key.startsWith('on') && key.length > 2);
+
+    for (final key in eventKeys) {
+      final handler = props[key];
+      if (handler is Function) {
+        // Convert onEvent to 'event' format for native bridge
+        final eventName = key.substring(2, 3).toLowerCase() + key.substring(3);
+        extractedEvents[eventName] = handler;
+      }
+    }
+
+    // Set the extracted events if any were found
+    if (extractedEvents.isNotEmpty) {
+      if (_events == null) {
+        _events = extractedEvents;
+      } else {
+        _events!.addAll(extractedEvents);
+      }
     }
   }
 
@@ -37,7 +74,7 @@ class VDomElement extends VDomNode {
       key: key,
       props: Map<String, dynamic>.from(props),
       children: children.map((child) => child.clone()).toList(),
-      events: events,
+      events: events != null ? Map<String, dynamic>.from(events!) : null,
     );
   }
 
@@ -98,14 +135,34 @@ class VDomElement extends VDomNode {
     }
   }
 
-  // Add a new method to register events
-  void registerEvents() {
-    if (events != null && events!.isNotEmpty) {
-      // Gather event types from the events map
-      final eventTypes = events!.keys.toList();
+  // Get all event types this element has handlers for
+  List<String> get eventTypes {
+    final types = <String>[];
 
+    // Add events from the explicit events map
+    if (_events != null && _events!.isNotEmpty) {
+      types.addAll(_events!.keys);
+    }
+
+    // Add events from props (onX format)
+    for (final key in props.keys) {
+      if (key.startsWith('on') && key.length > 2 && props[key] is Function) {
+        final eventName = key.substring(2, 3).toLowerCase() + key.substring(3);
+        if (!types.contains(eventName)) {
+          types.add(eventName);
+        }
+      }
+    }
+
+    return types;
+  }
+
+  // Register events with the native bridge
+  void registerEvents() {
+    final types = eventTypes;
+    if (types.isNotEmpty && nativeViewId != null) {
       // Register events with the native bridge
-      NativeBridge.instance.addEventListeners(key!, eventTypes);
+      NativeBridge.instance.addEventListeners(nativeViewId!, types);
     }
   }
 }

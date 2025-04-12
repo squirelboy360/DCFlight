@@ -483,7 +483,6 @@ import Foundation
 }
 
 // MARK: - C FFI Interface Functions
-
 @_cdecl("dcmaui_initialize_impl")
 public func dcmaui_initialize_impl() -> Int8 {
     return DCMauiFFIBridge.shared.initialize() ? 1 : 0

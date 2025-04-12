@@ -218,12 +218,16 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent, UIScrollViewDelegate {
         scrollView.contentSize = CGSize(width: contentWidth, height: contentHeight)
     }
     
-    // Add event listeners to the scroll view
+    // FIXED: Removed incorrect override keyword
     func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], 
-                         eventCallback: @escaping (String, String, [String: Any]) -> Void) {
+                          eventCallback: @escaping (String, String, [String: Any]) -> Void) {
+        // Store the common event data using the protocol extension's implementation
+        (self as DCMauiComponent).addEventListeners(to: view, viewId: viewId, eventTypes: eventTypes, eventCallback: eventCallback)
+        
         guard let scrollView = view as? UIScrollView else { return }
         
-        if (eventTypes.contains("scroll")) {
+        // Handle specific events
+        if eventTypes.contains("scroll") {
             // Get or create delegate
             let delegate = DCMauiScrollComponent.scrollViewDelegates[scrollView] ?? DCMauiScrollDelegate()
             
@@ -235,8 +239,10 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent, UIScrollViewDelegate {
                 delegate.throttleInterval = throttleInterval / 1000.0
             }
             
-            // Set up callback
-            delegate.onScroll = { (scrollView: UIScrollView) in
+            // Set up callback using the generic triggerEvent
+            delegate.onScroll = { [weak self] (scrollView: UIScrollView) in
+                guard let self = self else { return }
+                
                 let eventData: [String: Any] = [
                     "contentOffset": [
                         "x": scrollView.contentOffset.x,
@@ -252,21 +258,17 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent, UIScrollViewDelegate {
                     ]
                 ]
                 
-                eventCallback(viewId, "scroll", eventData)
+                // Use the generic trigger event method
+                self.triggerEvent(on: scrollView, eventType: "scroll", eventData: eventData)
             }
             
             // Store delegate and assign to scrollView
             DCMauiScrollComponent.scrollViewDelegates[scrollView] = delegate
             scrollView.delegate = delegate
         }
-        
-        // Store callback and viewId for scroll events
-        objc_setAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!, 
-                               eventCallback, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-        objc_setAssociatedObject(view, UnsafeRawPointer(bitPattern: "viewId".hashValue)!, 
-                               viewId, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
     }
     
+    // FIXED: Removed incorrect override keyword
     func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String]) {
         guard let scrollView = view as? UIScrollView else { return }
         
@@ -276,21 +278,14 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent, UIScrollViewDelegate {
             scrollView.delegate = nil
         }
         
-        // Remove stored event callback
-        objc_setAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!, 
-                               nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        // Call the protocol extension's implementation
+        (self as DCMauiComponent).removeEventListeners(from: view, viewId: viewId, eventTypes: eventTypes)
     }
     
     // MARK: - UIScrollViewDelegate
     
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        // Get stored event callback if any
-        guard let eventCallback = objc_getAssociatedObject(scrollView, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!) 
-                              as? (String, String, [String: Any]) -> Void,
-              let viewId = objc_getAssociatedObject(scrollView, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String 
-        else { return }
-        
-        // Create scroll event data
+        // Create event data
         let eventData: [String: Any] = [
             "contentOffset": [
                 "x": scrollView.contentOffset.x,
@@ -306,8 +301,8 @@ class DCMauiScrollComponent: NSObject, DCMauiComponent, UIScrollViewDelegate {
             ]
         ]
         
-        // Send event
-        eventCallback(viewId, "scroll", eventData)
+        // Use the generic trigger event method
+        triggerEvent(on: scrollView, eventType: "scroll", eventData: eventData)
     }
 }
 

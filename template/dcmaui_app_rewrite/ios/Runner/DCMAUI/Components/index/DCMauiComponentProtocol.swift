@@ -57,15 +57,98 @@ extension DCMauiComponent {
                                .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
     }
     
-    // Default implementation for addEventListeners - do nothing by default
+    // Default implementation for addEventListeners
     func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], 
                           eventCallback: @escaping (String, String, [String: Any]) -> Void) {
-        // Default implementation does nothing
+        // CRITICAL FIX: Print detailed debug info for event registration
+        print("📣 Registering events \(eventTypes) for view \(viewId) of type \(type(of: view))")
+        
+        // Store the event callback and view ID for generic event handling
+        objc_setAssociatedObject(view, 
+                               UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!, 
+                               eventCallback, 
+                               .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        
+        objc_setAssociatedObject(view, 
+                               UnsafeRawPointer(bitPattern: "viewId".hashValue)!, 
+                               viewId, 
+                               .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        
+        // Store the registered event types
+        objc_setAssociatedObject(view, 
+                               UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!,
+                               eventTypes,
+                               .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        
+        // CRITICAL FIX: Verify storage of event data
+        let storedCallback = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!)
+        print("✅ Event callback stored: \(storedCallback != nil ? "yes" : "no")")
     }
     
-    // Default implementation for removeEventListeners - do nothing by default
+    // Default implementation for removeEventListeners
     func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String]) {
-        // Default implementation does nothing
+        // Clean up the stored event types
+        if let existingTypes = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!) as? [String] {
+            var remainingTypes = existingTypes
+            for type in eventTypes {
+                if let index = remainingTypes.firstIndex(of: type) {
+                    remainingTypes.remove(at: index)
+                }
+            }
+            
+            if remainingTypes.isEmpty {
+                // Clear all event-related objects if no events remain
+                objc_setAssociatedObject(view, 
+                                       UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!,
+                                       nil, 
+                                       .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                
+                objc_setAssociatedObject(view, 
+                                       UnsafeRawPointer(bitPattern: "viewId".hashValue)!,
+                                       nil, 
+                                       .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                
+                objc_setAssociatedObject(view, 
+                                       UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!,
+                                       nil,
+                                       .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            } else {
+                // Store remaining event types
+                objc_setAssociatedObject(view, 
+                                       UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!,
+                                       remainingTypes,
+                                       .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            }
+        }
+    }
+    
+    // Generic event trigger helper that can be used by any component
+    func triggerEvent(on view: UIView, eventType: String, eventData: [String: Any] = [:]) {
+        // CRITICAL FIX: Print more detailed debug info
+        print("🔔 Attempting to trigger event \(eventType) on view \(type(of: view))")
+        
+        guard let callback = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!) 
+                as? (String, String, [String: Any]) -> Void,
+              let viewId = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String else {
+            print("❌ Event triggering failed: Missing callback or viewId")
+            return
+        }
+              
+        // Get registered event types
+        let eventTypes = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!) as? [String] ?? []
+        
+        // CRITICAL FIX: Use more flexible event matching for common patterns
+        let shouldTrigger = eventTypes.contains(eventType) ||
+                           (eventType == "press" && eventTypes.contains("onPress")) ||
+                           (eventType == "onPress" && eventTypes.contains("press"))
+        
+        if shouldTrigger {
+            print("✅ Triggering event \(eventType) for view with ID \(viewId)")
+            // Call the event callback
+            callback(viewId, eventType, eventData)
+        } else {
+            print("❌ Event not registered. Registered events: \(eventTypes)")
+        }
     }
 }
 
@@ -81,5 +164,22 @@ extension UIView {
                               UnsafeRawPointer(bitPattern: "nodeId".hashValue)!, 
                               nodeId, 
                               .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+    }
+    
+    // Convenience method to trigger events
+    func triggerEvent(_ eventType: String, withData data: [String: Any] = [:]) {
+        // Get the component protocol from the component registry
+        let viewClassName = String(describing: type(of: self))
+        
+        // Try to find component for view's class
+        for (_, componentType) in DCMauiComponentRegistry.shared.componentTypes {
+            let tempInstance = componentType.init()
+            let tempView = tempInstance.createView(props: [:])
+            
+            if String(describing: type(of: tempView)) == viewClassName {
+                tempInstance.triggerEvent(on: self, eventType: eventType, eventData: data)
+                return
+            }
+        }
     }
 }

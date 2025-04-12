@@ -133,6 +133,9 @@ class ViewRegistry {
     @objc public func sendEvent(_ eventName: String, data: [String: Any], viewId: String) {
         guard let channel = eventChannel else { return }
         
+        // Log the event for debugging
+        print("📣 Sending event: \(eventName) from view \(viewId) with data: \(data)")
+        
         channel.invokeMethod("onEvent", arguments: [
             "eventType": eventName,
             "viewId": viewId,

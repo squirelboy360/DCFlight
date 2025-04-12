@@ -266,6 +266,19 @@ class VDom {
     }
 
     if (node is VDomElement) {
+      // Try explicit events map first
+      if (node.events != null &&
+          node.events!.containsKey(eventType) &&
+          node.events![eventType] is Function) {
+        _performanceMonitor.startTimer('event_handler');
+        final handler = node.events![eventType] as Function;
+        handler(eventData);
+        _performanceMonitor.endTimer('event_handler');
+        _performanceMonitor.endTimer('handle_native_event');
+        return;
+      }
+
+      // If not found in events map, try props with "onX" format
       // Convert event name to prop name (e.g., 'press' -> 'onPress')
       final propName =
           'on${eventType[0].toUpperCase()}${eventType.substring(1)}';
@@ -483,8 +496,8 @@ class VDom {
       _performanceMonitor.endTimer('attach_view');
     }
 
-    // Register event listeners
-    final eventTypes = _extractEventTypes(element.props);
+    // Register event listeners - modified to use eventTypes getter
+    final eventTypes = element.eventTypes;
     if (eventTypes.isNotEmpty) {
       _performanceMonitor.startTimer('add_event_listeners');
       await _nativeBridge.addEventListeners(viewId, eventTypes);

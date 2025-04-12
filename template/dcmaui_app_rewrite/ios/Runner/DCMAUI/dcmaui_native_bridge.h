@@ -35,10 +35,10 @@ const char* dcmaui_measure_text(const char* view_id, const char* text, const cha
 // Calculate layout for the entire UI tree
 int8_t dcmaui_calculate_layout(float screen_width, float screen_height);
 
-// NEW: Synchronize node hierarchy between Dart and native
+// Synchronize node hierarchy between Dart and native
 const char* dcmaui_sync_node_hierarchy(const char* root_id, const char* node_tree_json);
 
-// NEW: Get node hierarchy as JSON
+// Get node hierarchy as JSON
 const char* dcmaui_get_node_hierarchy(const char* node_id);
 
 #ifdef __cplusplus

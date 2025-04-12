@@ -17,7 +17,8 @@ class UI {
     ViewProps? viewProps,
     List<VDomNode> children = const [],
     String? key,
-    // Map<String, dynamic>? events,
+    // Add an optional events map parameter
+    Map<String, dynamic>? events,
   }) {
     // Merge props from both layout and style
     final propsMap = <String, dynamic>{};
@@ -40,6 +41,7 @@ class UI {
       key: key,
       props: propsMap,
       children: children,
+      events: events, // Pass the events map
     );
   }
 
@@ -50,7 +52,8 @@ class UI {
     StyleSheet? style,
     TextProps? textProps,
     String? key,
-    // Map<String, dynamic>? events,
+    // Add an optional events map parameter
+    Map<String, dynamic>? events,
   }) {
     // Merge props from layout, style, and text-specific props
     final propsMap = <String, dynamic>{};
@@ -79,6 +82,7 @@ class UI {
       type: 'Text',
       key: key,
       props: propsMap,
+      events: events, // Pass the events map
     );
   }
 
@@ -106,18 +110,39 @@ class UI {
       propsMap.addAll(buttonProps.toMap());
     }
 
-    // IMPORTANT: Don't add onPress handler to props directly
-    // Instead, create a map of events to register separately
-    Map<String, dynamic>? events;
+    // CRITICAL FIX: Create an events map for the button press event
+    final eventsMap = <String, dynamic>{};
+
+    // CRITICAL FIX: Add onPress directly to events map
     if (onPress != null) {
-      events = {'press': onPress};
+      eventsMap['press'] = onPress;
+      eventsMap['onPress'] = onPress; // Add both formats for compatibility
+
+      // Debugging info
+      print("Button created with onPress handler: $onPress");
+    }
+
+    // CRITICAL FIX: Set default visible styles if not provided
+    if (!propsMap.containsKey('backgroundColor')) {
+      propsMap['backgroundColor'] = '#3498db'; // Default blue
+    }
+
+    // CRITICAL FIX: Ensure minimum size
+    if (!propsMap.containsKey('width') ||
+        (propsMap['width'] is num && propsMap['width'] < 80)) {
+      propsMap['width'] = 120;
+    }
+
+    if (!propsMap.containsKey('height') ||
+        (propsMap['height'] is num && propsMap['height'] < 30)) {
+      propsMap['height'] = 44;
     }
 
     return VDomElement(
       type: 'Button',
       key: key,
       props: propsMap,
-      events: events, // Pass events separately from props
+      events: eventsMap.isNotEmpty ? eventsMap : null,
     );
   }
 
@@ -129,7 +154,6 @@ class UI {
     String? key,
     Function? onLoad,
     Function? onError,
-    Map<String, dynamic>? events,
   }) {
     // Merge props from both layout and style
     final propsMap = <String, dynamic>{};
@@ -147,18 +171,13 @@ class UI {
       propsMap.addAll(imageProps.toMap());
     }
 
-    // Add image-specific event handlers
+    // CRITICAL FIX: Add event handlers directly to props for consistent handling
     if (onLoad != null) {
       propsMap['onLoad'] = onLoad;
     }
 
     if (onError != null) {
       propsMap['onError'] = onError;
-    }
-
-    // Add additional event handlers
-    if (events != null) {
-      propsMap.addAll(events);
     }
 
     return VDomElement(
@@ -193,7 +212,7 @@ class UI {
       propsMap.addAll(scrollViewProps.toMap());
     }
 
-    // Add scroll event handler
+    // CRITICAL FIX: Add event handler directly to props for consistent handling
     if (onScroll != null) {
       propsMap['onScroll'] = onScroll;
     }

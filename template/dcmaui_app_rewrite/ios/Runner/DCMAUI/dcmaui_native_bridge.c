@@ -10,10 +10,11 @@ extern int8_t dcmaui_update_view_layout_impl(const char* view_id, float left, fl
 extern const char* dcmaui_measure_text_impl(const char* view_id, const char* text, const char* attributes_json);
 extern int8_t dcmaui_calculate_layout_impl(float screen_width, float screen_height);
 
-// NEW: Function declarations for Swift implementations
+// Function declarations for Swift implementations
 extern const char* dcmaui_sync_node_hierarchy_impl(const char* root_id, const char* node_tree_json);
 extern const char* dcmaui_get_node_hierarchy_impl(const char* node_id);
 
+// Implement the C interface functions
 int8_t dcmaui_initialize(void) {
     return dcmaui_initialize_impl();
 }
@@ -50,12 +51,10 @@ int8_t dcmaui_calculate_layout(float screen_width, float screen_height) {
     return dcmaui_calculate_layout_impl(screen_width, screen_height);
 }
 
-// NEW: Synchronize node hierarchy between Dart and native
 const char* dcmaui_sync_node_hierarchy(const char* root_id, const char* node_tree_json) {
     return dcmaui_sync_node_hierarchy_impl(root_id, node_tree_json);
 }
 
-// NEW: Get node hierarchy as JSON
 const char* dcmaui_get_node_hierarchy(const char* node_id) {
     return dcmaui_get_node_hierarchy_impl(node_id);
 }

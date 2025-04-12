@@ -605,9 +605,7 @@ class FFINativeBridge implements NativeBridge {
   @override
   void handleNativeEvent(
       String viewId, String eventType, Map<String, dynamic> eventData) {
-    // Remove the super call since handleNativeEvent is abstract in the superclass
-    // Instead, directly implement the event handling logic here
-
+    // Method channel implementation of event handling
     developer.log('Event received: $viewId, $eventType, $eventData',
         name: 'FFI_EVENTS');
 
