@@ -14,6 +14,13 @@ class DCMauiLayoutManager {
     // Map view IDs to actual UIViews for direct access
     private var viewRegistry = [String: UIView]()
     
+    // ADDED: For optimizing layout updates
+    private var pendingLayouts = [String: CGRect]()
+    private var isLayoutUpdateScheduled = false
+    
+    // ADDED: Dedicated queue for layout operations
+    private let layoutQueue = DispatchQueue(label: "com.dcmaui.layoutQueue", qos: .userInitiated)
+    
     private init() {}
     
     // MARK: - View Registry Management
@@ -32,8 +39,6 @@ class DCMauiLayoutManager {
     func getView(withId viewId: String) -> UIView? {
         return viewRegistry[viewId]
     }
-
-
     
     // MARK: - Absolute Layout Management
     
@@ -63,67 +68,129 @@ class DCMauiLayoutManager {
     func applyStyles(to view: UIView, props: [String: Any]) {
         view.applyStyles(props: props)
     }
-}
-
-extension DCMauiLayoutManager {
     
-    /// Apply calculated layout to a view
-    @discardableResult
-    func applyLayout(to viewId: String, left: CGFloat, top: CGFloat, width: CGFloat, height: CGFloat) -> Bool {
-        guard let view = getView(withId: viewId) else {
-            print("Layout Error: View not found for ID \(viewId)")
+    // MARK: - Layout Management
+    
+    /// Queue layout update to happen off the main thread
+    func queueLayoutUpdate(to viewId: String, left: CGFloat, top: CGFloat, width: CGFloat, height: CGFloat) -> Bool {
+        guard viewRegistry[viewId] != nil else {
+            print("❌ Layout Error: View not found for ID \(viewId)")
             return false
         }
         
-        print("🔄 LAYOUT MANAGER APPLYING LAYOUT TO \(viewId): (\(left), \(top), \(width), \(height))")
-        print("🔄 BEFORE LAYOUT: View \(viewId) frame was \(view.frame)")
+        // Store layout in pending queue
+        let frame = CGRect(x: left, y: top, width: max(1, width), height: max(1, height))
         
-        // Apply frame directly
-        let frame = CGRect(x: left, y: top, width: width, height: height)
-        
-        print("🔄 FRAME TO SET: \(frame)")
-        
-        DispatchQueue.main.async {
-            print("⏱️ ASYNC LAYOUT OPERATION STARTING FOR \(viewId)")
-            print("⏱️ VIEW \(viewId) is type \(type(of: view))")
+        // Use layout queue to modify shared data
+        layoutQueue.async {
+            self.pendingLayouts[viewId] = frame
             
-            // Check if explicit dimensions were set from Dart
-            let hasExplicitDimensions = objc_getAssociatedObject(view, 
-                                         UnsafeRawPointer(bitPattern: "hasExplicitDimensions".hashValue)!) as? Bool ?? false
-            
-            // Check if this is a percentage-based view
-            let hasPercentageWidth = objc_getAssociatedObject(view,
-                                    UnsafeRawPointer(bitPattern: "hasPercentageWidth".hashValue)!) as? Bool ?? false
-            let hasPercentageHeight = objc_getAssociatedObject(view,
-                                     UnsafeRawPointer(bitPattern: "hasPercentageHeight".hashValue)!) as? Bool ?? false
-            
-            // Only modify frame if not explicitly set from Dart or it's a percentage-based view
-            if !hasExplicitDimensions || hasPercentageWidth || hasPercentageHeight {
-                var newFrame = frame
+            if !self.isLayoutUpdateScheduled {
+                self.isLayoutUpdateScheduled = true
                 
-                // If percentage width/height, recalculate based on screen dimensions
-                if hasPercentageWidth && view.accessibilityIdentifier?.hasPrefix("view_") == true {
-                    let percentValue = objc_getAssociatedObject(view, 
-                                      UnsafeRawPointer(bitPattern: "percentageWidthValue".hashValue)!) as? CGFloat ?? 100
-                    newFrame.size.width = UIScreen.main.bounds.width * percentValue / 100.0
+                // Schedule layout application on main thread
+                DispatchQueue.main.async {
+                    self.applyPendingLayouts()
                 }
-                
-                if hasPercentageHeight && view.accessibilityIdentifier?.hasPrefix("view_") == true {
-                    let percentValue = objc_getAssociatedObject(view, 
-                                      UnsafeRawPointer(bitPattern: "percentageHeightValue".hashValue)!) as? CGFloat ?? 100
-                    newFrame.size.height = UIScreen.main.bounds.height * percentValue / 100.0
-                }
-                
-                view.frame = newFrame
             }
-            
-            // Force layout if needed
-            view.setNeedsLayout()
-            view.layoutIfNeeded()
-            
-            print("⏱️ AFTER layoutIfNeeded: \(view.frame) FOR VIEW \(viewId)")
         }
         
         return true
+    }
+    
+    /// Apply calculated layout to a view with optional animation
+    @discardableResult
+    func applyLayout(to viewId: String, left: CGFloat, top: CGFloat, width: CGFloat, height: CGFloat, 
+                     animationDuration: TimeInterval = 0.0) -> Bool {
+        guard let view = getView(withId: viewId) else {
+            print("❌ Layout Error: View not found for ID \(viewId)")
+            return false
+        }
+        
+        // Create valid frame with minimum dimensions to ensure visibility
+        let frame = CGRect(
+            x: left,
+            y: top,
+            width: max(1, width),
+            height: max(1, height)
+        )
+        
+        // Apply on main thread
+        if Thread.isMainThread {
+            if animationDuration > 0 {
+                UIView.animate(withDuration: animationDuration) {
+                    self.applyLayoutDirectly(to: view, frame: frame)
+                }
+            } else {
+                self.applyLayoutDirectly(to: view, frame: frame)
+            }
+        } else {
+            // Schedule on main thread
+            DispatchQueue.main.async {
+                if animationDuration > 0 {
+                    UIView.animate(withDuration: animationDuration) {
+                        self.applyLayoutDirectly(to: view, frame: frame)
+                    }
+                } else {
+                    self.applyLayoutDirectly(to: view, frame: frame)
+                }
+            }
+        }
+        
+        return true
+    }
+    
+    // Direct layout application helper
+    private func applyLayoutDirectly(to view: UIView, frame: CGRect) {
+        // Ensure minimum dimensions
+        var safeFrame = frame
+        safeFrame.size.width = max(1, frame.width)
+        safeFrame.size.height = max(1, frame.height)
+        
+        // Make sure view is visible
+        view.isHidden = false
+        view.alpha = 1.0
+        
+        // Set frame directly for best performance
+        view.frame = safeFrame
+        
+        // Force layout
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
+    }
+    
+    // New method to batch process layout updates
+    private func applyPendingLayouts(animationDuration: TimeInterval = 0.0) {
+        // Must be called on main thread
+        assert(Thread.isMainThread, "applyPendingLayouts must be called on the main thread")
+        
+        // Reset flag first
+        isLayoutUpdateScheduled = false
+        
+        // Make local copy to prevent concurrency issues
+        var layoutsToApply: [String: CGRect] = [:]
+        
+        // Use layoutQueue to safely get pending layouts
+        layoutQueue.sync {
+            layoutsToApply = self.pendingLayouts
+            self.pendingLayouts.removeAll()
+        }
+        
+        // Apply all pending layouts
+        if animationDuration > 0 {
+            UIView.animate(withDuration: animationDuration) {
+                for (viewId, frame) in layoutsToApply {
+                    if let view = self.getView(withId: viewId) {
+                        self.applyLayoutDirectly(to: view, frame: frame)
+                    }
+                }
+            }
+        } else {
+            for (viewId, frame) in layoutsToApply {
+                if let view = self.getView(withId: viewId) {
+                    self.applyLayoutDirectly(to: view, frame: frame)
+                }
+            }
+        }
     }
 }

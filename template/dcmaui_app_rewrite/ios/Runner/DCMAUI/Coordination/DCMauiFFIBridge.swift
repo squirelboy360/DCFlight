@@ -8,7 +8,7 @@ import Foundation
     @objc static let shared = DCMauiFFIBridge()
     
     // Dictionary to hold view references
-    private var views = [String: UIView]()
+    internal var views = [String: UIView]()
     
     // Track node operation status for synchronization with Dart side
     private struct NodeSyncStatus {
@@ -351,13 +351,36 @@ import Foundation
         // Check view's current frame BEFORE updating
         NSLog("📏 BEFORE LAYOUT: View \(viewId) frame is \(view.frame)")
         
-        // Apply layout directly (for backward compatibility only)
-        view.frame = CGRect(
-            x: CGFloat(left),
-            y: CGFloat(top),
-            width: CGFloat(width),
-            height: CGFloat(height)
-        )
+        // CRITICAL FIX: Ensure minimum dimensions and execute on main thread
+        let safeWidth = max(1.0, width)
+        let safeHeight = max(1.0, height)
+        
+        // Apply layout directly on main thread
+        if Thread.isMainThread {
+            view.frame = CGRect(
+                x: CGFloat(left),
+                y: CGFloat(top),
+                width: CGFloat(safeWidth),
+                height: CGFloat(safeHeight)
+            )
+            view.setNeedsLayout()
+            view.layoutIfNeeded()
+        } else {
+            DispatchQueue.main.sync {
+                view.frame = CGRect(
+                    x: CGFloat(left),
+                    y: CGFloat(top),
+                    width: CGFloat(safeWidth),
+                    height: CGFloat(safeHeight)
+                )
+                view.setNeedsLayout()
+                view.layoutIfNeeded()
+            }
+        }
+        
+        // CRITICAL FIX: Ensure view is visible
+        view.isHidden = false
+        view.alpha = 1.0
         
         // Check view's updated frame AFTER updating
         NSLog("📏 AFTER LAYOUT: View \(viewId) frame is now \(view.frame)")
@@ -675,18 +698,24 @@ public func dcmaui_calculate_layout_impl(
     print("🚀 DCMauiFFIBridge: calculateLayout called via FFI with dimensions: \(screen_width)x\(screen_height)")
     
     if Thread.isMainThread {
-        // CRITICAL FIX: Added detailed logging and error handling
+        // CRITICAL FIX: Added detailed logging and immediate layout application
         do {
-            let success = DCMauiFFIBridge.shared.calculateLayout(screenWidth: CGFloat(screen_width), screenHeight: CGFloat(screen_height))
+            // CRITICAL FIX: Calculate layout and force apply immediately
+            let success = YogaShadowTree.shared.calculateAndApplyLayout(
+                width: CGFloat(screen_width),
+                height: CGFloat(screen_height)
+            )
             print("🔢 DCMauiFFIBridge: calculateLayout result: \(success)")
             
-            // CRITICAL DEBUG: Show all views in the registry
-            let registry = ViewRegistry.shared
-            let viewIds = registry.allViewIds
-            print("📋 Total views in registry: \(viewIds.count)")
-            for viewId in viewIds {
-                if let view = registry.getView(id: viewId) {
-                    print("📍 View \(viewId): frame=\(view.frame), hidden=\(view.isHidden), alpha=\(view.alpha), superview=\(view.superview != nil)")
+            // CRITICAL DEBUG: Force layout on view hierarchy
+            if let rootView = DCMauiFFIBridge.shared.views["root"] {
+                rootView.setNeedsLayout()
+                rootView.layoutIfNeeded()
+                
+                // Force layout on immediate children
+                for subview in rootView.subviews {
+                    subview.setNeedsLayout()
+                    subview.layoutIfNeeded()
                 }
             }
             
@@ -699,9 +728,13 @@ public func dcmaui_calculate_layout_impl(
         let semaphore = DispatchSemaphore(value: 0)
         var result = false
         
-        DispatchQueue.main.async {
+        // CRITICAL FIX: Use sync instead of async for immediate results
+        DispatchQueue.main.sync {
             do {
-                result = DCMauiFFIBridge.shared.calculateLayout(screenWidth: CGFloat(screen_width), screenHeight: CGFloat(screen_height))
+                result = YogaShadowTree.shared.calculateAndApplyLayout(
+                    width:  CGFloat(screen_width),
+                    height: CGFloat(screen_height)
+                )
                 semaphore.signal()
             } catch {
                 print("❌ DCMauiFFIBridge: calculateLayout error on main thread: \(error)")

@@ -61,6 +61,19 @@ class YogaShadowTree {
         print("YogaShadowTree initialized with root node")
     }
     
+    // ADDED: Optimized initialization method
+    func optimizedInitialization() {
+        print("YogaShadowTree optimized initialization")
+        
+        // Configure root node with device bounds only, skip other initialization
+        if let root = rootNode {
+            YGNodeStyleSetDirection(root, YGDirection.LTR)
+            YGNodeStyleSetFlexDirection(root, YGFlexDirection.column)
+            YGNodeStyleSetWidth(root, Float(UIScreen.main.bounds.width))
+            YGNodeStyleSetHeight(root, Float(UIScreen.main.bounds.height))
+        }
+    }
+    
     // Create a new node in the shadow tree
     func createNode(id: String, componentType: String) {
         print("Creating shadow node: \(id) of type \(componentType)")
@@ -191,11 +204,9 @@ class YogaShadowTree {
     
 
     
-    // ENHANCED: Calculate and apply layout in one call with better performance monitoring
+    // OPTIMIZED: More efficient layout calculation with less logging
     func calculateAndApplyLayout(width: CGFloat, height: CGFloat) -> Bool {
-        print("🚀 Complete layout calculation and application started for dimensions: \(width)×\(height)")
-        
-        let startTime = Date().timeIntervalSince1970
+        print("🚀 Layout calculation with dimensions: \(width)×\(height)")
         
         // CRITICAL FIX: Make sure root node exists before proceeding
         guard let root = nodes["root"] else {
@@ -203,83 +214,61 @@ class YogaShadowTree {
             return false
         }
         
-        // CRITICAL DEBUGGING: Print node hierarchy before calculation
-        print("📊 Node hierarchy before calculation:")
-        printNodeHierarchy()
+        // Debug the nodes
+        print("📊 Total nodes before layout: \(nodes.count)")
         
-        // CRITICAL FIX: Reset any cached layout data to ensure fresh calculation
-        YGNodeCalculateLayout(root, Float.nan, Float.nan, YGDirection.LTR)
-        
-        // CRITICAL FIX: Set proper width and height on root
+        // Set proper width and height on root
         YGNodeStyleSetWidth(root, Float(width))
         YGNodeStyleSetHeight(root, Float(height))
         
-        print("📏 ROOT NODE DIMENSIONS SET: \(width)×\(height)")
+        // CRITICAL FIX: Use dedicated background queue for layout calculation
+        let layoutQueue = DispatchQueue(label: "com.dcmaui.layoutCalculation", qos: .userInitiated)
+        let layoutSemaphore = DispatchSemaphore(value: 0)
         
-        // Calculate layout with proper dimensions
-        YGNodeCalculateLayout(root, Float(width), Float(height), YGDirection.LTR)
+        // Store success state
+        var calculationSucceeded = false
         
-        // DEBUG: Check what the calculated root layout is
-        let rootWidth = YGNodeLayoutGetWidth(root)
-        let rootHeight = YGNodeLayoutGetHeight(root)
-        print("📐 ROOT LAYOUT CALCULATED: \(rootWidth)×\(rootHeight)")
-        
-        // CRITICAL FIX: Force immediate application of layout to all views in a specific order
-        // Starting from root which must exist
-        let allNodeIds = nodes.keys.sorted()
-        
-        print("🔄 Applying layout to \(allNodeIds.count) nodes...")
-        
-        // CRITICAL FIX: Process nodes in parent-first order to ensure proper positioning
-        var processedNodes = Set<String>()
-        
-        // First apply to root node
-        if let rootLayout = getNodeLayout(nodeId: "root") {
-            applyLayoutToView(viewId: "root", frame: rootLayout)
-            processedNodes.insert("root")
-            print("✅ Applied layout to root: \(rootLayout)")
+        // Run layout calculation on background queue
+        layoutQueue.async {
+            // Calculate layout in background
+            YGNodeCalculateLayout(root, Float(width), Float(height), YGDirection.LTR)
+            calculationSucceeded = true
+            
+            print("✅ Layout calculation completed on background thread")
+            
+            // Signal completion
+            layoutSemaphore.signal()
         }
         
-        // Process remaining nodes in parent-child order
-        // This ensures parents are positioned before children
-        var nodesToProcess = ["root"]
-        while !nodesToProcess.isEmpty {
-            let parentId = nodesToProcess.removeFirst()
-            processedNodes.insert(parentId)
-            
-            // Find all direct children of this parent
-            for (childId, currentParentId) in nodeParents where currentParentId == parentId {
-                if !processedNodes.contains(childId) {
-                    if let layout = getNodeLayout(nodeId: childId) {
-                        applyLayoutToView(viewId: childId, frame: layout)
-                        processedNodes.insert(childId)
-                        print("✅ Applied layout to child \(childId) of \(parentId): \(layout)")
-                    }
-                    // Add this child as next parent to process
-                    nodesToProcess.append(childId)
+        // Wait with timeout for layout calculation to finish
+        let waitResult = layoutSemaphore.wait(timeout: .now() + 1.0)
+        if waitResult == .timedOut {
+            print("⚠️ Layout calculation timed out")
+            return false
+        }
+        
+        if !calculationSucceeded {
+            print("❌ Layout calculation failed")
+            return false
+        }
+        
+        // Apply layout separately on the main thread
+        DispatchQueue.main.async {
+            // Apply layouts to all views
+            for (nodeId, node) in self.nodes {
+                // Get layout values from the node
+                let left = CGFloat(YGNodeLayoutGetLeft(node))
+                let top = CGFloat(YGNodeLayoutGetTop(node))
+                let width = CGFloat(YGNodeLayoutGetWidth(node))
+                let height = CGFloat(YGNodeLayoutGetHeight(node))
+                
+                if let view = DCMauiLayoutManager.shared.getView(withId: nodeId) {
+                    view.frame = CGRect(x: left, y: top, width: max(1, width), height: max(1, height))
+                    view.setNeedsLayout()
+                    print("📏 Applied layout to \(nodeId): (\(left), \(top), \(width), \(height))")
                 }
             }
         }
-        
-        // CRITICAL DEBUGGING: Print node hierarchy after calculation
-        print("📊 Node hierarchy after calculation:")
-        printNodeHierarchy()
-        
-        // Force views to be updated on main thread
-        DispatchQueue.main.async {
-            // Force root view to layout its subviews
-            if let rootView = DCMauiLayoutManager.shared.getView(withId: "root") {
-                rootView.setNeedsLayout()
-                rootView.layoutIfNeeded()
-                print("🔄 Forced layout of root view: \(rootView.frame)")
-            }
-        }
-        
-        // Performance reporting
-        let endTime = Date().timeIntervalSince1970
-        let duration = endTime - startTime
-        
-        print("✅ Complete layout calculation and application finished in \(String(format: "%.2f", duration * 1000))ms")
         
         return true
     }
@@ -1151,23 +1140,28 @@ class YogaShadowTree {
         return true
     }
     
-    private func applyLayoutToView(viewId: String, frame: CGRect) {
+    // OPTIMIZED: More efficient layout application
+    private func applyLayoutToView(viewId: String, node: YGNodeRef) {
         // Get the view from the layout manager
         guard let view = DCMauiLayoutManager.shared.getView(withId: viewId) else {
-            print("⚠️ View not found for ID \(viewId) when applying layout")
             return
         }
         
-        print("🎯 Applying layout to view \(viewId): \(frame)")
+        // Get layout values from the node
+        let left = CGFloat(YGNodeLayoutGetLeft(node))
+        let top = CGFloat(YGNodeLayoutGetTop(node))
+        let width = CGFloat(YGNodeLayoutGetWidth(node))
+        let height = CGFloat(YGNodeLayoutGetHeight(node))
         
-        // Apply layout directly using layout manager
+        // Apply layout directly using layout manager - no animation for better performance
         DispatchQueue.main.async {
             DCMauiLayoutManager.shared.applyLayout(
                 to: viewId, 
-                left: frame.origin.x, 
-                top: frame.origin.y, 
-                width: frame.width, 
-                height: frame.height
+                left: left, 
+                top: top, 
+                width: width, 
+                height: height,
+                animationDuration: 0
             )
         }
     }

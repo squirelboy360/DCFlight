@@ -2,12 +2,18 @@ import UIKit
 import yoga
 
 class DCMauiButtonComponent: NSObject, DCMauiComponent {
+    // Keep singleton instance to prevent deallocation when button targets are registered
+    private static let sharedInstance = DCMauiButtonComponent()
+    
     required override init() {
         super.init()
     }
     
     // Static storage for button handlers
     private static var buttonEventHandlers: [UIButton: (String, (String, String, [String: Any]) -> Void)] = [:]
+    
+    // ADDED: Store strong reference to self when buttons are registered
+    private static var registeredButtons = [UIButton: DCMauiButtonComponent]()
     
     func createView(props: [String: Any]) -> UIView {
         // FIXED: Use custom button instead of system button which has better touch handling
@@ -154,13 +160,34 @@ class DCMauiButtonComponent: NSObject, DCMauiComponent {
             return 
         }
         
-        // Use the parent implementation to store common event data
-        (self as DCMauiComponent).addEventListeners(to: view, viewId: viewId, eventTypes: eventTypes, eventCallback: eventCallback)
+        // FIXED: Don't use protocol casting which causes the bad access
+        // Instead, store basic event info directly
         
-        // CRITICAL FIX: Log to console using NSLog for debugging with device logs
         NSLog("🔘 Adding event listeners to button \(viewId): \(eventTypes)")
         
-        // CRITICAL: Store the callback and viewId directly on the button as associated objects
+        // Store the event information as associated objects
+        objc_setAssociatedObject(
+            button,
+            UnsafeRawPointer(bitPattern: "viewId".hashValue)!,
+            viewId,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        
+        objc_setAssociatedObject(
+            button,
+            UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!,
+            eventTypes,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        
+        objc_setAssociatedObject(
+            button,
+            UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!,
+            eventCallback,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        
+        // CRITICAL: Store the callback and viewId directly on the button as additional objects
         objc_setAssociatedObject(
             button,
             UnsafeRawPointer(bitPattern: "buttonViewId".hashValue)!,
@@ -178,18 +205,21 @@ class DCMauiButtonComponent: NSObject, DCMauiComponent {
         // Store the button-specific event handler in the static dictionary as backup
         DCMauiButtonComponent.buttonEventHandlers[button] = (viewId, eventCallback)
         
+        // FIXED: Store strong reference to component instance
+        DCMauiButtonComponent.registeredButtons[button] = DCMauiButtonComponent.sharedInstance
+        
         // Remove any existing targets to avoid duplicates
         button.removeTarget(nil, action: nil, for: .touchUpInside)
         button.removeTarget(nil, action: nil, for: .touchDown)
         button.removeTarget(nil, action: nil, for: .touchUpOutside)
         button.removeTarget(nil, action: nil, for: .touchCancel)
         
-        // CRITICAL FIX: Use strong reference to self to prevent deallocation of handler
-        button.addTarget(self, action: #selector(handleButtonPress(_:)), for: .touchUpInside)
-        button.addTarget(self, action: #selector(handleButtonTouchDown(_:)), for: .touchDown)
-        button.addTarget(self, action: #selector(handleButtonTouchUp(_:)), for: .touchUpInside)
-        button.addTarget(self, action: #selector(handleButtonTouchUp(_:)), for: .touchUpOutside)
-        button.addTarget(self, action: #selector(handleButtonTouchUp(_:)), for: .touchCancel)
+        // CRITICAL FIX: Use sharedInstance (static reference) to ensure the target isn't deallocated
+        button.addTarget(DCMauiButtonComponent.sharedInstance, action: #selector(handleButtonPress(_:)), for: .touchUpInside)
+        button.addTarget(DCMauiButtonComponent.sharedInstance, action: #selector(handleButtonTouchDown(_:)), for: .touchDown)
+        button.addTarget(DCMauiButtonComponent.sharedInstance, action: #selector(handleButtonTouchUp(_:)), for: .touchUpInside)
+        button.addTarget(DCMauiButtonComponent.sharedInstance, action: #selector(handleButtonTouchUp(_:)), for: .touchUpOutside)
+        button.addTarget(DCMauiButtonComponent.sharedInstance, action: #selector(handleButtonTouchUp(_:)), for: .touchCancel)
         
         NSLog("✅ Successfully added event handlers to button \(viewId)")
     }
@@ -200,16 +230,52 @@ class DCMauiButtonComponent: NSObject, DCMauiComponent {
         // Remove from static handlers dictionary
         DCMauiButtonComponent.buttonEventHandlers.removeValue(forKey: button)
         
+        // FIXED: Also remove from registered buttons dictionary
+        DCMauiButtonComponent.registeredButtons.removeValue(forKey: button)
+        
         // Remove all touch events
         button.removeTarget(nil, action: nil, for: .touchUpInside)
         button.removeTarget(nil, action: nil, for: .touchDown)
         button.removeTarget(nil, action: nil, for: .touchUpOutside)
         button.removeTarget(nil, action: nil, for: .touchCancel)
         
-        print("✅ Removed event listeners from button: \(viewId)")
+        // Clear associated objects
+        objc_setAssociatedObject(
+            button,
+            UnsafeRawPointer(bitPattern: "viewId".hashValue)!,
+            nil,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
         
-        // Use the parent implementation to clean up common event data
-        (self as DCMauiComponent).removeEventListeners(from: view, viewId: viewId, eventTypes: eventTypes)
+        objc_setAssociatedObject(
+            button,
+            UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!,
+            nil,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        
+        objc_setAssociatedObject(
+            button,
+            UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!,
+            nil,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        
+        objc_setAssociatedObject(
+            button,
+            UnsafeRawPointer(bitPattern: "buttonViewId".hashValue)!,
+            nil,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        
+        objc_setAssociatedObject(
+            button,
+            UnsafeRawPointer(bitPattern: "buttonCallback".hashValue)!,
+            nil,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        
+        print("✅ Removed event listeners from button: \(viewId)")
     }
     
     // MARK: - Button Event Handlers
