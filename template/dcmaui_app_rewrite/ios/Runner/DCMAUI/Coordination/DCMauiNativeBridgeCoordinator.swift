@@ -70,121 +70,10 @@ class ViewRegistry {
     // Singleton instance
     @objc public static let shared = DCMauiNativeBridgeCoordinator()
     
-    // Event channel for communicating with Flutter
-    internal var eventChannel: FlutterMethodChannel?
-    
-    // Add the event callback property that was missing
-    private var eventCallback: ((String, String, [String: Any]) -> Void)?
-    
     // Private initializer
     private override init() {
         super.init()
         NSLog("DCMauiNativeBridgeCoordinator initialized")
-    }
-    
-    // Setup event channel
-    @objc public func setupEventChannel(binaryMessenger: FlutterBinaryMessenger) {
-        eventChannel = FlutterMethodChannel(name: "com.dcmaui.events", binaryMessenger: binaryMessenger)
-        NSLog("⚡️ Method channel for events initialized")
-        
-        // Set up method handler for Dart-to-native communication
-        eventChannel?.setMethodCallHandler { [weak self] (call, result) in
-            guard let self = self else {
-                result(FlutterError(code: "UNAVAILABLE", message: "Bridge coordinator not available", details: nil))
-                return
-            }
-            
-            switch call.method {
-                case "addEventListeners":
-                    if let args = call.arguments as? [String: Any],
-                       let viewId = args["viewId"] as? String,
-                       let eventTypes = args["eventTypes"] as? [String] {
-                        print("🎯 Native: Received addEventListeners call for view \(viewId): \(eventTypes)")
-                        
-                        // Register event listeners in native code
-                        let success = self.registerEventListeners(viewId: viewId, eventTypes: eventTypes)
-                        result(success)
-                    } else {
-                        result(FlutterError(code: "INVALID_ARGS", message: "Invalid arguments for addEventListeners", details: nil))
-                    }
-                    
-                case "removeEventListeners":
-                    if let args = call.arguments as? [String: Any],
-                       let viewId = args["viewId"] as? String,
-                       let eventTypes = args["eventTypes"] as? [String] {
-                        print("🎯 Native: Received removeEventListeners call for view \(viewId): \(eventTypes)")
-                        
-                        // Unregister event listeners in native code
-                        let success = self.unregisterEventListeners(viewId: viewId, eventTypes: eventTypes)
-                        result(success)
-                    } else {
-                        result(FlutterError(code: "INVALID_ARGS", message: "Invalid arguments for removeEventListeners", details: nil))
-                    }
-                    
-                default:
-                    result(FlutterMethodNotImplemented)
-            }
-        }
-    }
-    
-    // Helper method to register event listeners
-    private func registerEventListeners(viewId: String, eventTypes: [String]) -> Bool {
-        guard let view = ViewRegistry.shared.getView(id: viewId),
-              let viewInfo = ViewRegistry.shared.getViewInfo(id: viewId) else {
-            print("❌ Cannot register events: View not found with ID \(viewId)")
-            return false
-        }
-        
-        let componentType = viewInfo.type
-        if let handlerType = DCMauiComponentRegistry.shared.getComponentType(for: componentType) {
-            let handler = handlerType.init()
-            handler.addEventListeners(to: view, viewId: viewId, eventTypes: eventTypes) { [weak self] (viewId, eventType, eventData) in
-                print("🔔 Event triggered: \(eventType) for view \(viewId)")
-                self?.sendEventToDart(viewId: viewId, eventName: eventType, eventData: eventData)
-            }
-            return true
-        }
-        return false
-    }
-    
-    // Helper method to unregister event listeners
-    private func unregisterEventListeners(viewId: String, eventTypes: [String]) -> Bool {
-        guard let view = ViewRegistry.shared.getView(id: viewId),
-              let viewInfo = ViewRegistry.shared.getViewInfo(id: viewId) else {
-            return false
-        }
-        
-        let componentType = viewInfo.type
-        if let handlerType = DCMauiComponentRegistry.shared.getComponentType(for: componentType) {
-            let handler = handlerType.init()
-            handler.removeEventListeners(from: view, viewId: viewId, eventTypes: eventTypes)
-            return true
-        }
-        return false
-    }
-    
-    // Send events to Dart using method channel
-    func sendEventToDart(viewId: String, eventName: String, eventData: [String: Any]) {
-        print("📣 Sending event to Dart - viewId: \(viewId), eventName: \(eventName), data: \(eventData)")
-        
-        if let callback = self.eventCallback {
-            // Use the stored callback if available
-            callback(viewId, eventName, eventData)
-            print("✅ Event sent via direct callback")
-        } else {
-            // Fall back to method channel
-            guard let channel = eventChannel else {
-                print("❌ No method channel available for sending events")
-                return
-            }
-            
-            print("📲 Sending event via method channel")
-            channel.invokeMethod("onEvent", arguments: [
-                "viewId": viewId,
-                "eventType": eventName,
-                "eventData": eventData
-            ])
-        }
     }
     
     // Manually create root view
@@ -227,17 +116,10 @@ class ViewRegistry {
         return props.filter { layoutPropKeys.contains($0.key) }
     }
     
-    // Send event to Flutter
+    // Send event to Flutter - now delegates to the event handler
     @objc public func sendEvent(_ eventName: String, data: [String: Any], viewId: String) {
-        guard let channel = eventChannel else { return }
-        
-        // Log the event for debugging
-        print("📣 Sending event: \(eventName) from view \(viewId) with data: \(data)")
-        channel.invokeMethod("onEvent", arguments: [
-            "eventType": eventName,
-            "viewId": viewId,
-            "eventData": data
-        ])
+        // Delegate to the event handler
+        DCMauiEventMethodHandler.shared.sendEvent(viewId: viewId, eventName: eventName, eventData: data)
     }
     
     // Called by FFI to initialize the native bridge
@@ -370,11 +252,6 @@ class ViewRegistry {
         }
         
         return 1
-    }
-    
-    // Set event callback function
-    func setEventCallback(_ callback: @escaping (String, String, [String: Any]) -> Void) {
-        self.eventCallback = callback
     }
 
     /// Update a view's layout directly with absolute positioning

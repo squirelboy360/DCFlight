@@ -236,7 +236,7 @@ class DCMauiButtonComponent: NSObject, DCMauiComponent {
             
             // Also send via coordinator for redundancy
             DispatchQueue.main.async {
-                DCMauiNativeBridgeCoordinator.shared.sendEventToDart(
+                DCMauiEventMethodHandler.shared.sendEvent(
                     viewId: viewId,
                     eventName: "onPress",
                     eventData: eventData
@@ -282,7 +282,7 @@ class DCMauiButtonComponent: NSObject, DCMauiComponent {
         
         // CRITICAL FIX: Also send directly via method channel for redundancy
         DispatchQueue.main.async {
-            DCMauiNativeBridgeCoordinator.shared.sendEventToDart(
+            DCMauiEventMethodHandler.shared.sendEvent(
                 viewId: viewId,
                 eventName: "onPress",
                 eventData: [
