@@ -71,7 +71,7 @@ class ViewRegistry {
     @objc public static let shared = DCMauiNativeBridgeCoordinator()
     
     // Event channel for communicating with Flutter
-    private var eventChannel: FlutterMethodChannel?
+    internal var eventChannel: FlutterMethodChannel?
     
     // Add the event callback property that was missing
     private var eventCallback: ((String, String, [String: Any]) -> Void)?
@@ -85,7 +85,106 @@ class ViewRegistry {
     // Setup event channel
     @objc public func setupEventChannel(binaryMessenger: FlutterBinaryMessenger) {
         eventChannel = FlutterMethodChannel(name: "com.dcmaui.events", binaryMessenger: binaryMessenger)
-        NSLog("⚡️ Method channel for events initialized - ALL EVENT HANDLING IS NOW DIRECT")
+        NSLog("⚡️ Method channel for events initialized")
+        
+        // Set up method handler for Dart-to-native communication
+        eventChannel?.setMethodCallHandler { [weak self] (call, result) in
+            guard let self = self else {
+                result(FlutterError(code: "UNAVAILABLE", message: "Bridge coordinator not available", details: nil))
+                return
+            }
+            
+            switch call.method {
+                case "addEventListeners":
+                    if let args = call.arguments as? [String: Any],
+                       let viewId = args["viewId"] as? String,
+                       let eventTypes = args["eventTypes"] as? [String] {
+                        print("🎯 Native: Received addEventListeners call for view \(viewId): \(eventTypes)")
+                        
+                        // Register event listeners in native code
+                        let success = self.registerEventListeners(viewId: viewId, eventTypes: eventTypes)
+                        result(success)
+                    } else {
+                        result(FlutterError(code: "INVALID_ARGS", message: "Invalid arguments for addEventListeners", details: nil))
+                    }
+                    
+                case "removeEventListeners":
+                    if let args = call.arguments as? [String: Any],
+                       let viewId = args["viewId"] as? String,
+                       let eventTypes = args["eventTypes"] as? [String] {
+                        print("🎯 Native: Received removeEventListeners call for view \(viewId): \(eventTypes)")
+                        
+                        // Unregister event listeners in native code
+                        let success = self.unregisterEventListeners(viewId: viewId, eventTypes: eventTypes)
+                        result(success)
+                    } else {
+                        result(FlutterError(code: "INVALID_ARGS", message: "Invalid arguments for removeEventListeners", details: nil))
+                    }
+                    
+                default:
+                    result(FlutterMethodNotImplemented)
+            }
+        }
+    }
+    
+    // Helper method to register event listeners
+    private func registerEventListeners(viewId: String, eventTypes: [String]) -> Bool {
+        guard let view = ViewRegistry.shared.getView(id: viewId),
+              let viewInfo = ViewRegistry.shared.getViewInfo(id: viewId) else {
+            print("❌ Cannot register events: View not found with ID \(viewId)")
+            return false
+        }
+        
+        let componentType = viewInfo.type
+        if let handlerType = DCMauiComponentRegistry.shared.getComponentType(for: componentType) {
+            let handler = handlerType.init()
+            handler.addEventListeners(to: view, viewId: viewId, eventTypes: eventTypes) { [weak self] (viewId, eventType, eventData) in
+                print("🔔 Event triggered: \(eventType) for view \(viewId)")
+                self?.sendEventToDart(viewId: viewId, eventName: eventType, eventData: eventData)
+            }
+            return true
+        }
+        return false
+    }
+    
+    // Helper method to unregister event listeners
+    private func unregisterEventListeners(viewId: String, eventTypes: [String]) -> Bool {
+        guard let view = ViewRegistry.shared.getView(id: viewId),
+              let viewInfo = ViewRegistry.shared.getViewInfo(id: viewId) else {
+            return false
+        }
+        
+        let componentType = viewInfo.type
+        if let handlerType = DCMauiComponentRegistry.shared.getComponentType(for: componentType) {
+            let handler = handlerType.init()
+            handler.removeEventListeners(from: view, viewId: viewId, eventTypes: eventTypes)
+            return true
+        }
+        return false
+    }
+    
+    // Send events to Dart using method channel
+    func sendEventToDart(viewId: String, eventName: String, eventData: [String: Any]) {
+        print("📣 Sending event to Dart - viewId: \(viewId), eventName: \(eventName), data: \(eventData)")
+        
+        if let callback = self.eventCallback {
+            // Use the stored callback if available
+            callback(viewId, eventName, eventData)
+            print("✅ Event sent via direct callback")
+        } else {
+            // Fall back to method channel
+            guard let channel = eventChannel else {
+                print("❌ No method channel available for sending events")
+                return
+            }
+            
+            print("📲 Sending event via method channel")
+            channel.invokeMethod("onEvent", arguments: [
+                "viewId": viewId,
+                "eventType": eventName,
+                "eventData": eventData
+            ])
+        }
     }
     
     // Manually create root view
@@ -125,7 +224,6 @@ class ViewRegistry {
     private func extractLayoutProps(from props: [String: Any]) -> [String: Any] {
         // No need to create an instance - access the static property directly
         let layoutPropKeys = SupportedLayoutsProps.supportedLayoutProps
-        
         return props.filter { layoutPropKeys.contains($0.key) }
     }
     
@@ -135,7 +233,6 @@ class ViewRegistry {
         
         // Log the event for debugging
         print("📣 Sending event: \(eventName) from view \(viewId) with data: \(data)")
-        
         channel.invokeMethod("onEvent", arguments: [
             "eventType": eventName,
             "viewId": viewId,
@@ -157,7 +254,6 @@ class ViewRegistry {
         let viewIdString = String(cString: viewId)
         let typeString = String(cString: type)
         let propsString = String(cString: propsJson)
-        
         print("DCMauiNativeBridge: Creating view - ID: \(viewIdString), Type: \(typeString)")
         
         // Parse props JSON
@@ -187,7 +283,7 @@ class ViewRegistry {
     }
     
     // Update a view's properties - now uses the stored component type
-    @objc public func dcmaui_update_view(_ viewId: UnsafePointer<CChar>,
+    @objc public func dcmaui_update_view(_ viewId: UnsafePointer<CChar>, 
                                       _ propsJson: UnsafePointer<CChar>) -> Int8 {
         let viewIdString = String(cString: viewId)
         let propsString = String(cString: propsJson)
@@ -209,7 +305,6 @@ class ViewRegistry {
             _ = handler.updateView(view, withProps: props)
             return 1
         }
-        
         return 0
     }
     
@@ -282,30 +377,6 @@ class ViewRegistry {
         self.eventCallback = callback
     }
 
-    // Send events to Dart using method channel
-    func sendEventToDart(viewId: String, eventName: String, eventData: [String: Any]) {
-        print("📣 Sending event to Dart - viewId: \(viewId), eventName: \(eventName), data: \(eventData)")
-        
-        if let callback = self.eventCallback {
-            // Use the stored callback if available
-            callback(viewId, eventName, eventData)
-            print("✅ Event sent via direct callback")
-        } else {
-            // Fall back to method channel
-            guard let channel = eventChannel else {
-                print("❌ No method channel available for sending events")
-                return
-            }
-            
-            print("📲 Sending event via method channel")
-            channel.invokeMethod("onEvent", arguments: [
-                "viewId": viewId,
-                "eventType": eventName,
-                "eventData": eventData
-            ])
-        }
-    }
-
     /// Update a view's layout directly with absolute positioning
     func updateViewLayout(viewId: String, left: CGFloat, top: CGFloat, width: CGFloat, height: CGFloat) -> Bool {
         guard let view = ViewRegistry.shared.getView(id: viewId) else {
@@ -346,10 +417,9 @@ class ViewRegistry {
             // Print actual frame after layout
             print("📏 View \(viewId) actual frame: \(view.frame)")
         }
-        
         return true
     }
-    
+       
     /// Measure text with given attributes
     func measureText(viewId: String, text: String, attributesJson: String) -> String {
         guard let data = attributesJson.data(using: .utf8),
@@ -358,21 +428,15 @@ class ViewRegistry {
             return "{\"width\": 0, \"height\": 0}"
         }
         
-        // Create font attributes for measurement
         let fontSize = attributes["fontSize"] as? CGFloat ?? 14.0
         let fontWeight = attributes["fontWeight"] as? String ?? "normal"
         let fontName = attributes["fontFamily"] as? String
         
         var font: UIFont
-        
-        // Apply font weight if specified
         if let customFontName = fontName {
             font = UIFont(name: customFontName, size: fontSize) ?? UIFont.systemFont(ofSize: fontSize)
         } else {
-            // Handle font weights
             switch fontWeight {
-            case "bold":
-                font = UIFont.boldSystemFont(ofSize: fontSize)
             case "100":
                 font = UIFont.systemFont(ofSize: fontSize, weight: .ultraLight)
             case "200":
@@ -391,6 +455,8 @@ class ViewRegistry {
                 font = UIFont.systemFont(ofSize: fontSize, weight: .heavy)
             case "900":
                 font = UIFont.systemFont(ofSize: fontSize, weight: .black)
+            case "bold":
+                font = UIFont.boldSystemFont(ofSize: fontSize)
             default:
                 font = UIFont.systemFont(ofSize: fontSize)
             }
@@ -401,13 +467,14 @@ class ViewRegistry {
             .font: font
         ]
         
-        // Calculate text size with given attributes
         let constraintWidth = attributes["maxWidth"] as? CGFloat ?? CGFloat.greatestFiniteMagnitude
         let constraintSize = CGSize(width: constraintWidth, height: CGFloat.greatestFiniteMagnitude)
+        
+        // Calculate text size with given attributes
         let boundingRect = text.boundingRect(with: constraintSize, 
-                                           options: [.usesLineFragmentOrigin, .usesFontLeading],
-                                           attributes: fontAttributes,
-                                           context: nil)
+                                             options: [.usesLineFragmentOrigin, .usesFontLeading],
+                                             attributes: fontAttributes,
+                                             context: nil)
         
         // Create response JSON
         let response = [
@@ -419,7 +486,6 @@ class ViewRegistry {
            let jsonString = String(data: jsonData, encoding: .utf8) {
             return jsonString
         }
-        
         return "{\"width\": \(boundingRect.width), \"height\": \(boundingRect.height)}"
     }
 }

@@ -139,14 +139,13 @@ class FFINativeBridge implements NativeBridge {
         );
 
         print(
-            'Event received from native: $eventType for view $viewId with data: $typedEventData');
+            'EVENT RECEIVED FROM NATIVE: $eventType for $viewId with data: $typedEventData');
 
         // Forward to the appropriate handler
         if (_eventHandler != null) {
           _eventHandler!(viewId, eventType, typedEventData);
         } else {
-          print(
-              'Warning: No event handler registered to handle event $eventType');
+          print('WARNING: No event handler registered to process event');
         }
       }
       return null;
@@ -184,6 +183,7 @@ class FFINativeBridge implements NativeBridge {
 
     try {
       developer.log('Creating view via FFI: $viewId, $type', name: 'FFI');
+
       // ADD THIS DETAILED LOGGING:
       developer.log('DETAILED PROPS BEING SENT: ${jsonEncode(props)}',
           name: 'FFI_PROPS');
@@ -246,7 +246,6 @@ class FFINativeBridge implements NativeBridge {
           name: 'FFI_PROPS');
 
       developer.log('FFI updateView sending JSON: $propsJson', name: 'FFI');
-
       final propsPointer = propsJson.toNativeUtf8(allocator: arena);
 
       final result = _updateView(viewIdPointer, propsPointer);
@@ -259,7 +258,6 @@ class FFINativeBridge implements NativeBridge {
   Future<bool> deleteView(String viewId) async {
     return using((arena) {
       final viewIdPointer = viewId.toNativeUtf8(allocator: arena);
-
       final result = _deleteView(viewIdPointer);
       return result != 0;
     });
@@ -371,7 +369,6 @@ class FFINativeBridge implements NativeBridge {
           name: 'FFI_LAYOUT');
 
       final result = _calculateLayoutNative(screenWidth, screenHeight);
-
       developer.log(
           '${result != 0 ? '✅' : '❌'} FFI calculate layout result: $result',
           name: 'FFI_LAYOUT');
@@ -422,10 +419,9 @@ class FFINativeBridge implements NativeBridge {
       final Pointer<Utf8> nodeIdPtr = nodeId.toNativeUtf8();
       final resultPtr = _getNodeHierarchy(nodeIdPtr);
 
+      // Parse JSON result into Map
       final resultJson = resultPtr.toDartString();
       calloc.free(nodeIdPtr);
-
-      // Parse JSON result into Map
       final result = jsonDecode(resultJson);
       if (result is Map<String, dynamic>) {
         return result;
@@ -458,7 +454,6 @@ class FFINativeBridge implements NativeBridge {
 
       final resultString = resultPointer.toDartString();
       final Map<String, dynamic> resultMap = jsonDecode(resultString);
-
       return {
         'width': resultMap['width']?.toDouble() ?? 0.0,
         'height': resultMap['height']?.toDouble() ?? 0.0
@@ -562,7 +557,6 @@ class FFINativeBridge implements NativeBridge {
 
     _batchUpdateInProgress = false;
     _pendingBatchUpdates.clear();
-
     return success == true;
   }
 
@@ -574,7 +568,6 @@ class FFINativeBridge implements NativeBridge {
 
     _batchUpdateInProgress = false;
     _pendingBatchUpdates.clear();
-
     return true;
   }
 
@@ -583,9 +576,8 @@ class FFINativeBridge implements NativeBridge {
   Future<bool> setVisualDebugEnabled(bool enabled) async {
     try {
       // Use invokeMethod from the base class instead
-      final result =
-          await invokeMethod('setVisualDebugEnabled', {'enabled': enabled});
-      return result == true;
+      await invokeMethod('setVisualDebugEnabled', {'enabled': enabled});
+      return true;
     } catch (e) {
       print("[FFI] Error enabling visual debugging: $e");
       return false;
@@ -604,7 +596,6 @@ class FFINativeBridge implements NativeBridge {
       String viewId, String eventType, Map<String, dynamic> eventData) {
     print(
         'Native event received: $eventType for $viewId with data: $eventData');
-
     // Find registered callback for this view and event
     if (_eventHandler != null) {
       _eventHandler!(viewId, eventType, eventData);

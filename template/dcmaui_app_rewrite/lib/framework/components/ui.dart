@@ -115,13 +115,15 @@ class UI {
 
     // Add onPress event handler if provided
     if (onPress != null) {
-      // UPDATED: Use standard "onPress" event name with "on" prefix
+      // CRITICAL FIX: Use standard "onPress" event name
       eventsMap['onPress'] = onPress;
 
-      // Log event registration for debugging
+      // DEBUG: Add logging for event registration
       print("Button created with onPress handler: $onPress");
+      print("Event map: $eventsMap");
     }
 
+    // CRITICAL FIX: Always return the VDomElement with events map
     return VDomElement(
       type: 'Button',
       key: key,

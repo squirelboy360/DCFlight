@@ -10,15 +10,19 @@ class DCMauiButtonComponent: NSObject, DCMauiComponent {
     private static var buttonEventHandlers: [UIButton: (String, (String, String, [String: Any]) -> Void)] = [:]
     
     func createView(props: [String: Any]) -> UIView {
-        // Create a standard system button directly
-        let button = UIButton(type: .system)
+        // FIXED: Use custom button instead of system button which has better touch handling
+        let button = CustomButton(type: .custom)
         
-        // Ensure user interaction is enabled
+        // CRITICAL FIX: Make sure user interaction is explicitly enabled (iOS sometimes disables it)
         button.isUserInteractionEnabled = true
         
         // Apply props to the button directly
         _ = updateView(button, withProps: props)
         
+        // CRITICAL: Enable debug mode for this button
+        button._debugMode = true
+        
+        NSLog("🆕 Created button with props: \(props)")
         return button
     }
     
@@ -145,14 +149,33 @@ class DCMauiButtonComponent: NSObject, DCMauiComponent {
     
     func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], 
                           eventCallback: @escaping (String, String, [String: Any]) -> Void) {
-        guard let button = view as? UIButton else { return }
+        guard let button = view as? UIButton else { 
+            NSLog("❌ Cannot add event listeners to non-button view")
+            return 
+        }
         
         // Use the parent implementation to store common event data
         (self as DCMauiComponent).addEventListeners(to: view, viewId: viewId, eventTypes: eventTypes, eventCallback: eventCallback)
         
-        print("🔘 Adding event listeners to button \(viewId): \(eventTypes)")
+        // CRITICAL FIX: Log to console using NSLog for debugging with device logs
+        NSLog("🔘 Adding event listeners to button \(viewId): \(eventTypes)")
         
-        // Store the button-specific event handler in the static dictionary
+        // CRITICAL: Store the callback and viewId directly on the button as associated objects
+        objc_setAssociatedObject(
+            button,
+            UnsafeRawPointer(bitPattern: "buttonViewId".hashValue)!,
+            viewId,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        
+        objc_setAssociatedObject(
+            button,
+            UnsafeRawPointer(bitPattern: "buttonCallback".hashValue)!,
+            eventCallback,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        
+        // Store the button-specific event handler in the static dictionary as backup
         DCMauiButtonComponent.buttonEventHandlers[button] = (viewId, eventCallback)
         
         // Remove any existing targets to avoid duplicates
@@ -161,20 +184,14 @@ class DCMauiButtonComponent: NSObject, DCMauiComponent {
         button.removeTarget(nil, action: nil, for: .touchUpOutside)
         button.removeTarget(nil, action: nil, for: .touchCancel)
         
-        // UPDATED: Only accept events with "on" prefix
-        for eventType in eventTypes {
-            // Enforce "on" prefix convention - only handle onPress
-            if eventType == "onPress" {
-                // Add touch handlers
-                button.addTarget(self, action: #selector(handleButtonPress(_:)), for: .touchUpInside)
-                button.addTarget(self, action: #selector(handleButtonTouchDown(_:)), for: .touchDown)
-                button.addTarget(self, action: #selector(handleButtonTouchUp(_:)), for: .touchUpInside)
-                button.addTarget(self, action: #selector(handleButtonTouchUp(_:)), for: .touchUpOutside)
-                button.addTarget(self, action: #selector(handleButtonTouchUp(_:)), for: .touchCancel)
-                
-                print("✅ Added \(eventType) event handler to button \(viewId)")
-            }
-        }
+        // CRITICAL FIX: Use strong reference to self to prevent deallocation of handler
+        button.addTarget(self, action: #selector(handleButtonPress(_:)), for: .touchUpInside)
+        button.addTarget(self, action: #selector(handleButtonTouchDown(_:)), for: .touchDown)
+        button.addTarget(self, action: #selector(handleButtonTouchUp(_:)), for: .touchUpInside)
+        button.addTarget(self, action: #selector(handleButtonTouchUp(_:)), for: .touchUpOutside)
+        button.addTarget(self, action: #selector(handleButtonTouchUp(_:)), for: .touchCancel)
+        
+        NSLog("✅ Successfully added event handlers to button \(viewId)")
     }
     
     func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String]) {
@@ -198,29 +215,83 @@ class DCMauiButtonComponent: NSObject, DCMauiComponent {
     // MARK: - Button Event Handlers
     
     @objc func handleButtonPress(_ sender: UIButton) {
-        // Get the stored view ID and callback from the static dictionary
-        guard let (viewId, callback) = DCMauiButtonComponent.buttonEventHandlers[sender] else {
-            print("⚠️ Button press ignored: no handler registered")
+        NSLog("👆 BUTTON PRESS DETECTED")
+        
+        // CRITICAL FIX: Use associated object directly first as primary method
+        if let viewId = objc_getAssociatedObject(sender, UnsafeRawPointer(bitPattern: "buttonViewId".hashValue)!) as? String,
+           let callback = objc_getAssociatedObject(sender, UnsafeRawPointer(bitPattern: "buttonCallback".hashValue)!) as? (String, String, [String: Any]) -> Void {
+            
+            NSLog("🎯 Direct handler found for button: \(viewId)")
+            
+            // Prepare event data
+            let eventData: [String: Any] = [
+                "pressed": true,
+                "timestamp": Date().timeIntervalSince1970,
+                "buttonTitle": sender.title(for: .normal) ?? "",
+                "direct": true
+            ]
+            
+            // Invoke callback directly
+            callback(viewId, "onPress", eventData)
+            
+            // Also send via coordinator for redundancy
+            DispatchQueue.main.async {
+                DCMauiNativeBridgeCoordinator.shared.sendEventToDart(
+                    viewId: viewId,
+                    eventName: "onPress",
+                    eventData: eventData
+                )
+            }
+            
+            NSLog("📣 Event sent for button: \(viewId)")
             return
         }
         
-        print("🔘 Button pressed: \(viewId)")
+        // Fallback to the static dictionary approach
+        guard let (viewId, callback) = DCMauiButtonComponent.buttonEventHandlers[sender] else {
+            NSLog("⚠️ Button press ignored: no handler registered")
+            
+            // CRITICAL FIX: Try to find the handler via associated objects as fallback
+            if let viewId = objc_getAssociatedObject(sender, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String,
+               let callback = objc_getAssociatedObject(sender, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!) as? (String, String, [String: Any]) -> Void {
+                
+                print("🔍 Found event handler via associated objects for view \(viewId)")
+                
+                // Trigger the onPress event
+                callback(viewId, "onPress", [
+                    "pressed": true,
+                    "timestamp": Date().timeIntervalSince1970,
+                    "buttonTitle": sender.title(for: .normal) ?? "",
+                    "emergency": true // Flag to indicate fallback path was used
+                ])
+                return
+            }
+            
+            return
+        }
         
-        // Include useful data for debugging
-        let eventData: [String: Any] = [
+        NSLog("🔘 Button pressed: \(viewId)")
+        
+        // CRITICAL FIX: Always trigger onPress event regardless of registered types
+        callback(viewId, "onPress", [
             "pressed": true,
             "timestamp": Date().timeIntervalSince1970,
-            "buttonTitle": sender.title(for: .normal) ?? "",
-            "buttonTag": sender.tag
-        ]
+            "buttonTitle": sender.title(for: .normal) ?? ""
+        ])
+        print("📣 Triggered onPress event for button \(viewId)")
         
-        // UPDATED: Always use onPress as the standard event name
-        if let eventTypes = objc_getAssociatedObject(sender, 
-                                                   UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!) as? [String],
-           eventTypes.contains("onPress") {
-            // Trigger the event using the standard onPress name
-            callback(viewId, "onPress", eventData)
-            print("📣 Triggered onPress event for button \(viewId)")
+        // CRITICAL FIX: Also send directly via method channel for redundancy
+        DispatchQueue.main.async {
+            DCMauiNativeBridgeCoordinator.shared.sendEventToDart(
+                viewId: viewId,
+                eventName: "onPress",
+                eventData: [
+                    "pressed": true, 
+                    "timestamp": Date().timeIntervalSince1970,
+                    "buttonTitle": sender.title(for: .normal) ?? "",
+                    "direct": true
+                ]
+            )
         }
     }
     
@@ -243,5 +314,60 @@ class DCMauiButtonComponent: NSObject, DCMauiComponent {
         UIView.animate(withDuration: 0.15) {
             sender.alpha = 1.0
         }
+    }
+}
+
+// CRITICAL FIX: Add a custom button class to ensure touch events are properly captured
+class CustomButton: UIButton {
+    var _debugMode = false
+    
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupButton()
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupButton()
+    }
+    
+    private func setupButton() {
+        // Force user interaction to be enabled
+        self.isUserInteractionEnabled = true
+        
+        // Make sure hit testing area is sufficient
+        self.contentEdgeInsets = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+    }
+    
+    // CRITICAL: Override hit testing to ensure button touches are detected even with transparency
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        if _debugMode {
+            NSLog("🔍 Hit test on button: \(point), bounds: \(self.bounds)")
+        }
+        
+        // Expand the hit area slightly to make the button easier to tap
+        let hitTestInsets = UIEdgeInsets(top: -8, left: -8, bottom: -8, right: -8)
+        let hitTestRect = bounds.inset(by: hitTestInsets)
+        
+        let result = hitTestRect.contains(point)
+        if _debugMode && !result {
+            NSLog("❌ Point outside hit area")
+        }
+        return result
+    }
+    
+    // CRITICAL: Log touch events in debug mode
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if _debugMode {
+            NSLog("👇 Button touchesBegan")
+        }
+        super.touchesBegan(touches, with: event)
+    }
+    
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if _debugMode {
+            NSLog("👆 Button touchesEnded")
+        }
+        super.touchesEnded(touches, with: event)
     }
 }

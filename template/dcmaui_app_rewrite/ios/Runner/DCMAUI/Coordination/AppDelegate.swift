@@ -14,8 +14,21 @@ class AppDelegate: FlutterAppDelegate {
         flutterEngine.run(withEntrypoint: nil, initialRoute: "/")
         GeneratedPluginRegistrant.register(with: flutterEngine)
         
-        // Set up the method channel for events
+        // CRITICAL FIX: Set up the method channel for events EARLIER in startup process
         DCMauiNativeBridgeCoordinator.shared.setupEventChannel(binaryMessenger: flutterEngine.binaryMessenger)
+        
+        // CRITICAL FIX: Setup Native-to-Dart event forwarding
+        DCMauiNativeBridgeCoordinator.shared.setEventCallback { viewId, eventType, eventData in
+            print("📲 SENDING EVENT TO DART: \(eventType) for \(viewId)")
+            DCMauiNativeBridgeCoordinator.shared.eventChannel?.invokeMethod(
+                "onEvent",
+                arguments: [
+                    "viewId": viewId,
+                    "eventType": eventType,
+                    "eventData": eventData
+                ]
+            )
+        }
         
         // Create window with proper frame
         self.window = UIWindow(frame: UIScreen.main.bounds)
