@@ -85,7 +85,7 @@ class AppDelegate: FlutterAppDelegate {
             "screenHeight": screenHeight
         ])
         
-        // Ensure we also trigger the direct calculation as a fallback
+        // Ensure we also trigger the direct calculation as a fallback incase user runs the app on another cli like flutter or for future proofing or something like that 
         YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
         
         // Force all views to update
