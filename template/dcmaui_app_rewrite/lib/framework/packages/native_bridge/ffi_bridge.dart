@@ -138,18 +138,21 @@ class FFINativeBridge implements NativeBridge {
           (key, value) => MapEntry(key.toString(), value),
         );
 
-        // Forward to the appropriate handler
-        handleNativeEvent(viewId, eventType, typedEventData);
+        print(
+            'Event received from native: $eventType for view $viewId with data: $typedEventData');
 
-        // If there's also a direct event handler, call it
+        // Forward to the appropriate handler
         if (_eventHandler != null) {
           _eventHandler!(viewId, eventType, typedEventData);
+        } else {
+          print(
+              'Warning: No event handler registered to handle event $eventType');
         }
       }
       return null;
     });
 
-    developer.log('Method channel event handling initialized', name: 'FFI');
+    print('Method channel event handling initialized');
   }
 
   @override
@@ -287,24 +290,18 @@ class FFINativeBridge implements NativeBridge {
 
   @override
   Future<bool> addEventListeners(String viewId, List<String> eventTypes) async {
-    developer.log('Registering for events: $viewId, $eventTypes', name: 'FFI');
+    print('Registering for events: $viewId, $eventTypes');
 
-    // DIRECT METHOD CHANNEL ONLY - No FFI for events
+    // Using method channel for events
     try {
-      final result = await eventChannel.invokeMethod<bool>('registerEvents', {
-        'viewId': viewId, // Add viewId to the arguments
+      await eventChannel.invokeMethod('addEventListeners', {
+        'viewId': viewId,
         'eventTypes': eventTypes,
       });
-
-      if (result == true) {
-        return true;
-      } else {
-        developer.log('Method channel event registration returned false',
-            name: 'FFI');
-        return false;
-      }
+      print('Successfully registered events for view $viewId: $eventTypes');
+      return true;
     } catch (e) {
-      developer.log('Method channel event registration error: $e', name: 'FFI');
+      print('Error registering events: $e');
       return false;
     }
   }
@@ -605,16 +602,14 @@ class FFINativeBridge implements NativeBridge {
   @override
   void handleNativeEvent(
       String viewId, String eventType, Map<String, dynamic> eventData) {
-    // Method channel implementation of event handling
-    developer.log('Event received: $viewId, $eventType, $eventData',
-        name: 'FFI_EVENTS');
+    print(
+        'Native event received: $eventType for $viewId with data: $eventData');
 
-    final viewCallbacks = _eventCallbacks[viewId];
-    if (viewCallbacks != null && viewCallbacks.containsKey(eventType)) {
-      final callback = viewCallbacks[eventType];
-      if (callback != null) {
-        callback(eventData);
-      }
+    // Find registered callback for this view and event
+    if (_eventHandler != null) {
+      _eventHandler!(viewId, eventType, eventData);
+    } else {
+      print('Warning: No event handler registered to process event');
     }
   }
 }

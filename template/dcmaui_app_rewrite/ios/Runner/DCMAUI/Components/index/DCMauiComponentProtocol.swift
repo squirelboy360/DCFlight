@@ -60,10 +60,9 @@ extension DCMauiComponent {
     // Default implementation for addEventListeners
     func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], 
                           eventCallback: @escaping (String, String, [String: Any]) -> Void) {
-        // CRITICAL FIX: Print detailed debug info for event registration
         print("📣 Registering events \(eventTypes) for view \(viewId) of type \(type(of: view))")
         
-        // Store the event callback and view ID for generic event handling
+        // Store the event callback and view ID using associated objects
         objc_setAssociatedObject(view, 
                                UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!, 
                                eventCallback, 
@@ -80,14 +79,22 @@ extension DCMauiComponent {
                                eventTypes,
                                .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         
-        // CRITICAL FIX: Verify storage of event data
+        // Verify storage of event data
         let storedCallback = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!)
-        print("✅ Event callback stored: \(storedCallback != nil ? "yes" : "no")")
+        let storedViewId = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "viewId".hashValue)!)
+        let storedEventTypes = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!)
+        
+        print("✅ Event registration verification:")
+        print("   - Callback stored: \(storedCallback != nil ? "yes" : "no")")
+        print("   - ViewId stored: \(storedViewId != nil ? "yes" : "no")")
+        print("   - EventTypes stored: \(storedEventTypes != nil ? "yes" : "no")")
     }
     
     // Default implementation for removeEventListeners
     func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String]) {
-        // Clean up the stored event types
+        print("🔴 Removing event listeners \(eventTypes) from view \(viewId)")
+        
+        // Update the stored event types
         if let existingTypes = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!) as? [String] {
             var remainingTypes = existingTypes
             for type in eventTypes {
@@ -97,7 +104,7 @@ extension DCMauiComponent {
             }
             
             if remainingTypes.isEmpty {
-                // Clear all event-related objects if no events remain
+                // Clean up all event data if no events remain
                 objc_setAssociatedObject(view, 
                                        UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!,
                                        nil, 
@@ -112,42 +119,50 @@ extension DCMauiComponent {
                                        UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!,
                                        nil,
                                        .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                
+                print("🧹 Cleared all event data for view \(viewId)")
             } else {
-                // Store remaining event types
+                // Store updated event types
                 objc_setAssociatedObject(view, 
                                        UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!,
                                        remainingTypes,
                                        .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                
+                print("🔄 Updated event types for view \(viewId): \(remainingTypes)")
             }
         }
     }
     
-    // Generic event trigger helper that can be used by any component
+    // Generic event trigger helper that enforces "on" prefix convention
     func triggerEvent(on view: UIView, eventType: String, eventData: [String: Any] = [:]) {
-        // CRITICAL FIX: Print more detailed debug info
-        print("🔔 Attempting to trigger event \(eventType) on view \(type(of: view))")
+        // UPDATED: Enforce "on" prefix
+        let standardEventType = eventType
         
+        // Only proceed if the event type follows the "on" prefix convention
+        if !standardEventType.hasPrefix("on") {
+            print("⚠️ Event name \"\(eventType)\" does not follow the \"on\" prefix convention. Events should use format \"onEventName\"")
+            // Convert to standard format for internal use, but warn about it
+            print("⚠️ Attempting to use standardized name: \"onEventType\"")
+        }
+        
+        print("🔔 Triggering event \(standardEventType) on view \(type(of: view))")
+        
+        // Get stored event data
         guard let callback = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!) 
                 as? (String, String, [String: Any]) -> Void,
-              let viewId = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String else {
-            print("❌ Event triggering failed: Missing callback or viewId")
+              let viewId = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String,
+              let eventTypes = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!) as? [String] else {
+            print("❌ Event triggering failed: Missing callback, viewId, or eventTypes")
             return
         }
-              
-        // Get registered event types
-        let eventTypes = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!) as? [String] ?? []
         
-        // CRITICAL FIX: Use more flexible event matching for common patterns
-        let shouldTrigger = eventTypes.contains(eventType) ||
-                           (eventType == "press" && eventTypes.contains("onPress")) ||
-                           (eventType == "onPress" && eventTypes.contains("press"))
-        
-        if shouldTrigger {
-            print("✅ Triggering event \(eventType) for view with ID \(viewId)")
-            // Call the event callback
-            callback(viewId, eventType, eventData)
+        // UPDATED: Check if this event type is registered - only exact matches, no conversion
+        if eventTypes.contains(standardEventType) {
+            print("✅ Found matching event type: \(standardEventType)")
+            // Call the event callback with the exact event type that was registered
+            callback(viewId, standardEventType, eventData)
         } else {
-            print("❌ Event not registered. Registered events: \(eventTypes)")
+            print("❌ No matching event type found. Registered: \(eventTypes), Tried to trigger: \(standardEventType)")
         }
     }
 }

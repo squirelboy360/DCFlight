@@ -284,13 +284,20 @@ class ViewRegistry {
 
     // Send events to Dart using method channel
     func sendEventToDart(viewId: String, eventName: String, eventData: [String: Any]) {
+        print("📣 Sending event to Dart - viewId: \(viewId), eventName: \(eventName), data: \(eventData)")
+        
         if let callback = self.eventCallback {
             // Use the stored callback if available
             callback(viewId, eventName, eventData)
+            print("✅ Event sent via direct callback")
         } else {
             // Fall back to method channel
-            guard let channel = eventChannel else { return }
+            guard let channel = eventChannel else {
+                print("❌ No method channel available for sending events")
+                return
+            }
             
+            print("📲 Sending event via method channel")
             channel.invokeMethod("onEvent", arguments: [
                 "viewId": viewId,
                 "eventType": eventName,

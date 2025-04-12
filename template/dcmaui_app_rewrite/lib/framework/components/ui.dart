@@ -110,32 +110,16 @@ class UI {
       propsMap.addAll(buttonProps.toMap());
     }
 
-    // CRITICAL FIX: Create an events map for the button press event
+    // Create events map specifically for event handling
     final eventsMap = <String, dynamic>{};
 
-    // CRITICAL FIX: Add onPress directly to events map
+    // Add onPress event handler if provided
     if (onPress != null) {
-      eventsMap['press'] = onPress;
-      eventsMap['onPress'] = onPress; // Add both formats for compatibility
+      // UPDATED: Use standard "onPress" event name with "on" prefix
+      eventsMap['onPress'] = onPress;
 
-      // Debugging info
+      // Log event registration for debugging
       print("Button created with onPress handler: $onPress");
-    }
-
-    // CRITICAL FIX: Set default visible styles if not provided
-    if (!propsMap.containsKey('backgroundColor')) {
-      propsMap['backgroundColor'] = '#3498db'; // Default blue
-    }
-
-    // CRITICAL FIX: Ensure minimum size
-    if (!propsMap.containsKey('width') ||
-        (propsMap['width'] is num && propsMap['width'] < 80)) {
-      propsMap['width'] = 120;
-    }
-
-    if (!propsMap.containsKey('height') ||
-        (propsMap['height'] is num && propsMap['height'] < 30)) {
-      propsMap['height'] = 44;
     }
 
     return VDomElement(
