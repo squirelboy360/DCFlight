@@ -14,8 +14,11 @@ class AppDelegate: FlutterAppDelegate {
         flutterEngine.run(withEntrypoint: nil, initialRoute: "/")
         GeneratedPluginRegistrant.register(with: flutterEngine)
         
-        // CRITICAL FIX: Set up the method channel for events EARLIER in startup process
+        // CRITICAL FIX: Set up the method channels EARLIER in startup process
         DCMauiNativeBridgeCoordinator.shared.setupEventChannel(binaryMessenger: flutterEngine.binaryMessenger)
+        
+        // NEW: Initialize layout method channel
+        DCMauiLayoutMethodHandler.shared.initialize(with: flutterEngine.binaryMessenger)
         
         // CRITICAL FIX: Setup Native-to-Dart event forwarding
         DCMauiNativeBridgeCoordinator.shared.setEventCallback { viewId, eventType, eventData in

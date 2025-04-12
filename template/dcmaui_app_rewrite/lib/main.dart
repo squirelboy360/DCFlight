@@ -69,7 +69,7 @@ class DCMauiDemoApp extends StatefulComponent {
 
     //   // Return cleanup function
     //   return () => timer.cancel();
-    // }, dependencies: []); 
+    // }, dependencies: []);
 
     // Menu animation value based on isMenuOpen state
     final menuSlideValue = isMenuOpen.value ? 0.0 : -250.0;
@@ -82,7 +82,7 @@ class DCMauiDemoApp extends StatefulComponent {
     ];
 
     // Main app structure with side menu
-    return UI.ScrollView(
+    return UI.View(
       layout: LayoutProps(
         width: '100%',
         height: '100%',
@@ -148,7 +148,7 @@ class DCMauiDemoApp extends StatefulComponent {
             height: '100%',
           ),
           style: StyleSheet(
-            backgroundColor: Colors.white,
+            backgroundColor: Colors.red,
             shadowColor: Colors.black,
             shadowOffsetX: 2,
             shadowOffsetY: 0,
@@ -284,8 +284,11 @@ class DCMauiDemoApp extends StatefulComponent {
           style: StyleSheet(
             backgroundColor: Colors.grey.shade200,
           ),
-          buttonProps:
-              ButtonProps(title: icon, disabled: false, activeOpacity: 0.1,),
+          buttonProps: ButtonProps(
+            title: icon,
+            disabled: false,
+            activeOpacity: 0.1,
+          ),
           onPress: () => {onPress(), print("pressed button $label")},
         ),
         UI.Text(

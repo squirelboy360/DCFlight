@@ -37,17 +37,8 @@ class FFINativeBridge implements NativeBridge {
   late final int Function(Pointer<Utf8>, Pointer<Utf8>) _setChildren;
 
   // New function pointers for layout updates and text measurement
-  late final int Function(Pointer<Utf8>, double, double, double, double)
-      _updateViewLayout;
   late final Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>)
       _measureText;
-
-  // Add the calculate layout function pointer
-  late final CalculateLayoutDart _calculateLayoutNative;
-
-  // Add the node hierarchy functions
-  late final SyncNodeHierarchyDart _syncNodeHierarchy;
-  late final GetNodeHierarchyDart _getNodeHierarchy;
 
   // Add batch update state
   bool _batchUpdateInProgress = false;
@@ -57,8 +48,9 @@ class FFINativeBridge implements NativeBridge {
   Function(String viewId, String eventType, Map<String, dynamic> eventData)?
       _eventHandler;
 
-  // Method channel for events - PUBLIC so it can be accessed directly
+  // Method channels
   static const MethodChannel eventChannel = MethodChannel('com.dcmaui.events');
+  static const MethodChannel layoutChannel = MethodChannel('com.dcmaui.layout');
 
   // Map to store callbacks for each view and event type
   final Map<String, Map<String, Function>> _eventCallbacks = {};
@@ -96,32 +88,14 @@ class FFINativeBridge implements NativeBridge {
         Int8 Function(Pointer<Utf8>, Pointer<Utf8>),
         int Function(Pointer<Utf8>, Pointer<Utf8>)>('dcmaui_set_children');
 
-    // Get function pointers for new layout methods
-    _updateViewLayout = _nativeLib.lookupFunction<
-        Int8 Function(Pointer<Utf8>, Float, Float, Float, Float),
-        int Function(Pointer<Utf8>, double, double, double,
-            double)>('dcmaui_update_view_layout');
-
     _measureText = _nativeLib.lookupFunction<
         Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>),
         Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>,
             Pointer<Utf8>)>('dcmaui_measure_text');
 
-    // Initialize the calculate layout function
-    _calculateLayoutNative =
-        _nativeLib.lookupFunction<CalculateLayoutNative, CalculateLayoutDart>(
-            'dcmaui_calculate_layout');
-
-    // Initialize the node hierarchy sync functions
-    _syncNodeHierarchy = _nativeLib.lookupFunction<SyncNodeHierarchyNative,
-        SyncNodeHierarchyDart>('dcmaui_sync_node_hierarchy');
-
-    _getNodeHierarchy =
-        _nativeLib.lookupFunction<GetNodeHierarchyNative, GetNodeHierarchyDart>(
-            'dcmaui_get_node_hierarchy');
-
-    // Set up method channel for handling events
+    // Set up method channels for events and layout
     _setupMethodChannelEventHandling();
+    _setupLayoutMethodChannel();
   }
 
   // Set up method channel for event handling
@@ -152,6 +126,12 @@ class FFINativeBridge implements NativeBridge {
     });
 
     print('Method channel event handling initialized');
+  }
+
+  // Set up method channel for layout operations
+  void _setupLayoutMethodChannel() {
+    // Nothing to set up for incoming messages, this channel is for outbound calls
+    print('Layout method channel initialized');
   }
 
   @override
@@ -309,7 +289,8 @@ class FFINativeBridge implements NativeBridge {
       String viewId, List<String> eventTypes) async {
     // DIRECT METHOD CHANNEL ONLY - No FFI for events
     try {
-      final result = await eventChannel.invokeMethod<bool>('unregisterEvents', {
+      final result =
+          await eventChannel.invokeMethod<bool>('removeEventListeners', {
         'viewId': viewId,
         'eventTypes': eventTypes,
       });
@@ -339,22 +320,23 @@ class FFINativeBridge implements NativeBridge {
   Future<bool> updateViewLayout(String viewId, double left, double top,
       double width, double height) async {
     try {
-      // ADD THIS DETAILED LOGGING:
+      // CHANGED: Use method channel instead of FFI for layout operations
       developer.log(
-          '🔄 LAYOUT UPDATE: $viewId - EXACT VALUES: left=$left, top=$top, width=$width, height=$height',
-          name: 'FFI_LAYOUT');
+          '🔄 LAYOUT UPDATE VIA METHOD CHANNEL: $viewId - left=$left, top=$top, width=$width, height=$height',
+          name: 'LAYOUT');
 
-      final viewIdPtr = viewId.toNativeUtf8();
       final result =
-          _updateViewLayout(viewIdPtr.cast(), left, top, width, height);
-      calloc.free(viewIdPtr);
+          await layoutChannel.invokeMethod<bool>('updateViewLayout', {
+        'viewId': viewId,
+        'left': left,
+        'top': top,
+        'width': width,
+        'height': height,
+      });
 
-      developer.log(
-          '${result != 0 ? '✅' : '❌'} FFI layout result: $result for view: $viewId',
-          name: 'FFI_LAYOUT');
-      return result != 0;
+      return result ?? false;
     } catch (e, stack) {
-      developer.log('❌ FFI: Error updating view layout: $e',
+      developer.log('❌ Error updating view layout: $e',
           name: 'FFINativeBridge', error: e, stackTrace: stack);
       return false;
     }
@@ -364,17 +346,19 @@ class FFINativeBridge implements NativeBridge {
   Future<bool> calculateLayout(
       {required double screenWidth, required double screenHeight}) async {
     try {
+      // CHANGED: Use method channel instead of FFI for layout calculations
       developer.log(
-          '🔄 Calculating layout via FFI: screenWidth=$screenWidth, screenHeight=$screenHeight',
-          name: 'FFI_LAYOUT');
+          '🔄 Calculating layout via METHOD CHANNEL: screenWidth=$screenWidth, screenHeight=$screenHeight',
+          name: 'LAYOUT');
 
-      final result = _calculateLayoutNative(screenWidth, screenHeight);
-      developer.log(
-          '${result != 0 ? '✅' : '❌'} FFI calculate layout result: $result',
-          name: 'FFI_LAYOUT');
-      return result != 0;
+      final result = await layoutChannel.invokeMethod<bool>('calculateLayout', {
+        'screenWidth': screenWidth,
+        'screenHeight': screenHeight,
+      });
+
+      return result ?? false;
     } catch (e, stack) {
-      developer.log('❌ FFI: Error calculating layout: $e',
+      developer.log('❌ Error calculating layout: $e',
           name: 'FFINativeBridge', error: e, stackTrace: stack);
       return false;
     }
@@ -386,27 +370,16 @@ class FFINativeBridge implements NativeBridge {
     required String nodeTree,
   }) async {
     try {
-      // Convert the Dart node tree to JSON string for FFI
-      final Pointer<Utf8> rootIdPtr = rootId.toNativeUtf8();
-      final Pointer<Utf8> nodeTreePtr = nodeTree.toNativeUtf8();
+      // CHANGED: Use method channel for hierarchy sync
+      final result = await layoutChannel
+          .invokeMapMethod<String, dynamic>('syncNodeHierarchy', {
+        'rootId': rootId,
+        'nodeTree': nodeTree,
+      });
 
-      // Call the native function
-      final resultPtr = _syncNodeHierarchy(rootIdPtr, nodeTreePtr);
-
-      // Parse the result
-      final resultJson = resultPtr.toDartString();
-      calloc.free(rootIdPtr);
-      calloc.free(nodeTreePtr);
-
-      // Parse JSON result into Map
-      final result = jsonDecode(resultJson);
-      if (result is Map<String, dynamic>) {
-        return result;
-      } else {
-        return {'success': false, 'error': 'Invalid response format'};
-      }
+      return result ?? {'success': false, 'error': 'Invalid response'};
     } catch (e) {
-      print("[FFI] Error during node hierarchy sync: $e");
+      print("[METHOD_CHANNEL] Error during node hierarchy sync: $e");
       return {'success': false, 'error': e.toString()};
     }
   }
@@ -415,21 +388,15 @@ class FFINativeBridge implements NativeBridge {
   Future<Map<String, dynamic>> getNodeHierarchy(
       {required String nodeId}) async {
     try {
-      // Use FFI to get hierarchy, not method channel
-      final Pointer<Utf8> nodeIdPtr = nodeId.toNativeUtf8();
-      final resultPtr = _getNodeHierarchy(nodeIdPtr);
+      // CHANGED: Use method channel for hierarchy retrieval
+      final result = await layoutChannel
+          .invokeMapMethod<String, dynamic>('getNodeHierarchy', {
+        'nodeId': nodeId,
+      });
 
-      // Parse JSON result into Map
-      final resultJson = resultPtr.toDartString();
-      calloc.free(nodeIdPtr);
-      final result = jsonDecode(resultJson);
-      if (result is Map<String, dynamic>) {
-        return result;
-      } else {
-        return {'error': 'Invalid response format'};
-      }
+      return result ?? {'error': 'Invalid response'};
     } catch (e) {
-      print("[FFI] Error getting node hierarchy: $e");
+      print("[METHOD_CHANNEL] Error getting node hierarchy: $e");
       return {'error': e.toString()};
     }
   }
@@ -575,11 +542,12 @@ class FFINativeBridge implements NativeBridge {
   @override
   Future<bool> setVisualDebugEnabled(bool enabled) async {
     try {
-      // Use invokeMethod from the base class instead
-      await invokeMethod('setVisualDebugEnabled', {'enabled': enabled});
+      // Use layoutChannel for debug features
+      await layoutChannel
+          .invokeMethod('setVisualDebugEnabled', {'enabled': enabled});
       return true;
     } catch (e) {
-      print("[FFI] Error enabling visual debugging: $e");
+      print("[METHOD_CHANNEL] Error enabling visual debugging: $e");
       return false;
     }
   }

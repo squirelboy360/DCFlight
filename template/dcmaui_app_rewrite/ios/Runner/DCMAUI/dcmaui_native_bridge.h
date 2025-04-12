@@ -26,20 +26,11 @@ int8_t dcmaui_attach_view(const char* child_id, const char* parent_id, int32_t i
 // Set all children for a view
 int8_t dcmaui_set_children(const char* view_id, const char* children_json);
 
-// Apply layout to a view directly (used ONLY for backward compatibility)
-int8_t dcmaui_update_view_layout(const char* view_id, float left, float top, float width, float height);
-
 // Measure text
 const char* dcmaui_measure_text(const char* view_id, const char* text, const char* attributes_json);
 
-// Calculate layout for the entire UI tree
-int8_t dcmaui_calculate_layout(float screen_width, float screen_height);
-
-// Synchronize node hierarchy between Dart and native
-const char* dcmaui_sync_node_hierarchy(const char* root_id, const char* node_tree_json);
-
-// Get node hierarchy as JSON
-const char* dcmaui_get_node_hierarchy(const char* node_id);
+// NOTE: Layout operations removed from FFI interface
+// They will be handled via method channels instead
 
 #ifdef __cplusplus
 }
