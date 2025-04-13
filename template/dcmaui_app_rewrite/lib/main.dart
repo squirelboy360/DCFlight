@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart' hide View, Text, Image, ScrollView;
 import 'dart:developer' as developer;
 
@@ -990,14 +989,16 @@ class DCMauiDemoApp extends StatefulComponent {
         // Header and close button
         UI.View(
           layout: LayoutProps(
-            width: '100%',
-            flexDirection: YogaFlexDirection.row,
-            alignItems: YogaAlign.center,
-            paddingHorizontal: 16,
-            paddingBottom: 20,
-            marginBottom: 20,
-          ),
+              width: '100%',
+              height: 220,
+              flexDirection: YogaFlexDirection.row,
+              alignItems: YogaAlign.center,
+              paddingHorizontal: 16,
+              paddingBottom: 20,
+              marginBottom: 20,
+              flexWrap: YogaWrap.wrap),
           style: StyleSheet(
+            backgroundColor: Colors.pink,
             borderWidth: 1,
             borderColor: Colors.grey.shade200,
           ),
@@ -1066,7 +1067,7 @@ class DCMauiDemoApp extends StatefulComponent {
             backgroundColor: Colors.transparent,
           ),
           buttonProps: ButtonProps(
-            title: "",
+            title: title,
           ),
           onPress: () {
             developer.log('Menu item pressed: $title', name: 'UI');
@@ -1084,15 +1085,6 @@ class DCMauiDemoApp extends StatefulComponent {
           style: StyleSheet(),
           textProps: TextProps(
             fontSize: 20,
-          ),
-        ),
-        UI.Text(
-          content: title,
-          layout: LayoutProps(),
-          style: StyleSheet(),
-          textProps: TextProps(
-            color: Colors.black,
-            fontSize: 16,
           ),
         ),
       ],

@@ -53,25 +53,12 @@ class YogaShadowTree {
         }
         
         // Check if debug layout is enabled via environment variable or user defaults
-        if ProcessInfo.processInfo.environment["DCMAUI_DEBUG_LAYOUT"] == "1" || 
+        if ProcessInfo.processInfo.environment["DCMAUI_DEBUG_LAYOUT"] == "1" ||
            UserDefaults.standard.bool(forKey: "DCMauiDebugLayout") {
             debugLayoutEnabled = true
         }
         
         print("YogaShadowTree initialized with root node")
-    }
-    
-    // ADDED: Optimized initialization method
-    func optimizedInitialization() {
-        print("YogaShadowTree optimized initialization")
-        
-        // Configure root node with device bounds only, skip other initialization
-        if let root = rootNode {
-            YGNodeStyleSetDirection(root, YGDirection.LTR)
-            YGNodeStyleSetFlexDirection(root, YGFlexDirection.column)
-            YGNodeStyleSetWidth(root, Float(UIScreen.main.bounds.width))
-            YGNodeStyleSetHeight(root, Float(UIScreen.main.bounds.height))
-        }
     }
     
     // Create a new node in the shadow tree
@@ -144,7 +131,7 @@ class YogaShadowTree {
     
     // Remove a node from the shadow tree
     func removeNode(nodeId: String) {
-        guard let node = nodes[nodeId] else { 
+        guard let node = nodes[nodeId] else {
             // NEW: Track removal of non-existent node
             print("⚠️ Attempted to remove non-existent node: \(nodeId)")
             return
@@ -204,9 +191,11 @@ class YogaShadowTree {
     
 
     
-    // OPTIMIZED: More efficient layout calculation with less logging
+    // ENHANCED: Calculate and apply layout in one call with better performance monitoring
     func calculateAndApplyLayout(width: CGFloat, height: CGFloat) -> Bool {
-        print("🚀 Layout calculation with dimensions: \(width)×\(height)")
+        print("🚀 Complete layout calculation and application started for dimensions: \(width)×\(height)")
+        
+        let startTime = Date().timeIntervalSince1970
         
         // CRITICAL FIX: Make sure root node exists before proceeding
         guard let root = nodes["root"] else {
@@ -214,61 +203,83 @@ class YogaShadowTree {
             return false
         }
         
-        // Debug the nodes
-        print("📊 Total nodes before layout: \(nodes.count)")
+        // CRITICAL DEBUGGING: Print node hierarchy before calculation
+        print("📊 Node hierarchy before calculation:")
+        printNodeHierarchy()
         
-        // Set proper width and height on root
+        // CRITICAL FIX: Reset any cached layout data to ensure fresh calculation
+        YGNodeCalculateLayout(root, Float.nan, Float.nan, YGDirection.LTR)
+        
+        // CRITICAL FIX: Set proper width and height on root
         YGNodeStyleSetWidth(root, Float(width))
         YGNodeStyleSetHeight(root, Float(height))
         
-        // CRITICAL FIX: Use dedicated background queue for layout calculation
-        let layoutQueue = DispatchQueue(label: "com.dcmaui.layoutCalculation", qos: .userInitiated)
-        let layoutSemaphore = DispatchSemaphore(value: 0)
+        print("📏 ROOT NODE DIMENSIONS SET: \(width)×\(height)")
         
-        // Store success state
-        var calculationSucceeded = false
+        // Calculate layout with proper dimensions
+        YGNodeCalculateLayout(root, Float(width), Float(height), YGDirection.LTR)
         
-        // Run layout calculation on background queue
-        layoutQueue.async {
-            // Calculate layout in background
-            YGNodeCalculateLayout(root, Float(width), Float(height), YGDirection.LTR)
-            calculationSucceeded = true
+        // DEBUG: Check what the calculated root layout is
+        let rootWidth = YGNodeLayoutGetWidth(root)
+        let rootHeight = YGNodeLayoutGetHeight(root)
+        print("📐 ROOT LAYOUT CALCULATED: \(rootWidth)×\(rootHeight)")
+        
+        // CRITICAL FIX: Force immediate application of layout to all views in a specific order
+        // Starting from root which must exist
+        let allNodeIds = nodes.keys.sorted()
+        
+        print("🔄 Applying layout to \(allNodeIds.count) nodes...")
+        
+        // CRITICAL FIX: Process nodes in parent-first order to ensure proper positioning
+        var processedNodes = Set<String>()
+        
+        // First apply to root node
+        if let rootLayout = getNodeLayout(nodeId: "root") {
+            applyLayoutToView(viewId: "root", frame: rootLayout)
+            processedNodes.insert("root")
+            print("✅ Applied layout to root: \(rootLayout)")
+        }
+        
+        // Process remaining nodes in parent-child order
+        // This ensures parents are positioned before children
+        var nodesToProcess = ["root"]
+        while !nodesToProcess.isEmpty {
+            let parentId = nodesToProcess.removeFirst()
+            processedNodes.insert(parentId)
             
-            print("✅ Layout calculation completed on background thread")
-            
-            // Signal completion
-            layoutSemaphore.signal()
-        }
-        
-        // Wait with timeout for layout calculation to finish
-        let waitResult = layoutSemaphore.wait(timeout: .now() + 1.0)
-        if waitResult == .timedOut {
-            print("⚠️ Layout calculation timed out")
-            return false
-        }
-        
-        if !calculationSucceeded {
-            print("❌ Layout calculation failed")
-            return false
-        }
-        
-        // Apply layout separately on the main thread
-        DispatchQueue.main.async {
-            // Apply layouts to all views
-            for (nodeId, node) in self.nodes {
-                // Get layout values from the node
-                let left = CGFloat(YGNodeLayoutGetLeft(node))
-                let top = CGFloat(YGNodeLayoutGetTop(node))
-                let width = CGFloat(YGNodeLayoutGetWidth(node))
-                let height = CGFloat(YGNodeLayoutGetHeight(node))
-                
-                if let view = DCMauiLayoutManager.shared.getView(withId: nodeId) {
-                    view.frame = CGRect(x: left, y: top, width: max(1, width), height: max(1, height))
-                    view.setNeedsLayout()
-                    print("📏 Applied layout to \(nodeId): (\(left), \(top), \(width), \(height))")
+            // Find all direct children of this parent
+            for (childId, currentParentId) in nodeParents where currentParentId == parentId {
+                if !processedNodes.contains(childId) {
+                    if let layout = getNodeLayout(nodeId: childId) {
+                        applyLayoutToView(viewId: childId, frame: layout)
+                        processedNodes.insert(childId)
+                        print("✅ Applied layout to child \(childId) of \(parentId): \(layout)")
+                    }
+                    // Add this child as next parent to process
+                    nodesToProcess.append(childId)
                 }
             }
         }
+        
+        // CRITICAL DEBUGGING: Print node hierarchy after calculation
+        print("📊 Node hierarchy after calculation:")
+        printNodeHierarchy()
+        
+        // Force views to be updated on main thread
+        DispatchQueue.main.async {
+            // Force root view to layout its subviews
+            if let rootView = DCMauiLayoutManager.shared.getView(withId: "root") {
+                rootView.setNeedsLayout()
+                rootView.layoutIfNeeded()
+                print("🔄 Forced layout of root view: \(rootView.frame)")
+            }
+        }
+        
+        // Performance reporting
+        let endTime = Date().timeIntervalSince1970
+        let duration = endTime - startTime
+        
+        print("✅ Complete layout calculation and application finished in \(String(format: "%.2f", duration * 1000))ms")
         
         return true
     }
@@ -418,7 +429,7 @@ class YogaShadowTree {
         case "width":
             if let width = convertToFloat(value) {
                 YGNodeStyleSetWidth(node, width)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 // Directly use Yoga's percentage API
                 YGNodeStyleSetWidthPercent(node, percentValue)
@@ -432,7 +443,7 @@ class YogaShadowTree {
         case "height":
             if let height = convertToFloat(value) {
                 YGNodeStyleSetHeight(node, height)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 // Directly use Yoga's percentage API
                 YGNodeStyleSetHeightPercent(node, percentValue)
@@ -446,98 +457,98 @@ class YogaShadowTree {
         case "minWidth":
             if let minWidth = convertToFloat(value) {
                 YGNodeStyleSetMinWidth(node, minWidth)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetMinWidthPercent(node, percentValue)
             }
         case "maxWidth":
             if let maxWidth = convertToFloat(value) {
                 YGNodeStyleSetMaxWidth(node, maxWidth)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetMaxWidthPercent(node, percentValue)
             }
         case "minHeight":
             if let minHeight = convertToFloat(value) {
                 YGNodeStyleSetMinHeight(node, minHeight)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetMinHeightPercent(node, percentValue)
             }
         case "maxHeight":
             if let maxHeight = convertToFloat(value) {
                 YGNodeStyleSetMaxHeight(node, maxHeight)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetMaxHeightPercent(node, percentValue)
             }
         case "margin":
             if let margin = convertToFloat(value) {
                 YGNodeStyleSetMargin(node, YGEdge.all, margin)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetMarginPercent(node, YGEdge.all, percentValue)
             }
         case "marginTop":
             if let marginTop = convertToFloat(value) {
                 YGNodeStyleSetMargin(node, YGEdge.top, marginTop)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetMarginPercent(node, YGEdge.top, percentValue)
             }
         case "marginRight":
             if let marginRight = convertToFloat(value) {
                 YGNodeStyleSetMargin(node, YGEdge.right, marginRight)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetMarginPercent(node, YGEdge.right, percentValue)
             }
         case "marginBottom":
             if let marginBottom = convertToFloat(value) {
                 YGNodeStyleSetMargin(node, YGEdge.bottom, marginBottom)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetMarginPercent(node, YGEdge.bottom, percentValue)
             }
         case "marginLeft":
             if let marginLeft = convertToFloat(value) {
                 YGNodeStyleSetMargin(node, YGEdge.left, marginLeft)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetMarginPercent(node, YGEdge.left, percentValue)
             }
         case "padding":
             if let padding = convertToFloat(value) {
                 YGNodeStyleSetPadding(node, YGEdge.all, padding)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetPaddingPercent(node, YGEdge.all, percentValue)
             }
         case "paddingTop":
             if let paddingTop = convertToFloat(value) {
                 YGNodeStyleSetPadding(node, YGEdge.top, paddingTop)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetPaddingPercent(node, YGEdge.top, percentValue)
             }
         case "paddingRight":
             if let paddingRight = convertToFloat(value) {
                 YGNodeStyleSetPadding(node, YGEdge.right, paddingRight)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetPaddingPercent(node, YGEdge.right, percentValue)
             }
         case "paddingBottom":
             if let paddingBottom = convertToFloat(value) {
                 YGNodeStyleSetPadding(node, YGEdge.bottom, paddingBottom)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetPaddingPercent(node, YGEdge.bottom, percentValue)
             }
         case "paddingLeft":
             if let paddingLeft = convertToFloat(value) {
                 YGNodeStyleSetPadding(node, YGEdge.left, paddingLeft)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetPaddingPercent(node, YGEdge.left, percentValue)
             }
@@ -555,28 +566,28 @@ class YogaShadowTree {
         case "left":
             if let left = convertToFloat(value) {
                 YGNodeStyleSetPosition(node, YGEdge.left, left)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetPositionPercent(node, YGEdge.left, percentValue)
             }
         case "top":
             if let top = convertToFloat(value) {
                 YGNodeStyleSetPosition(node, YGEdge.top, top)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetPositionPercent(node, YGEdge.top, percentValue)
             }
         case "right":
             if let right = convertToFloat(value) {
                 YGNodeStyleSetPosition(node, YGEdge.right, right)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetPositionPercent(node, YGEdge.right, percentValue)
             }
         case "bottom":
             if let bottom = convertToFloat(value) {
                 YGNodeStyleSetPosition(node, YGEdge.bottom, bottom)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetPositionPercent(node, YGEdge.bottom, percentValue)
             }
@@ -688,7 +699,7 @@ class YogaShadowTree {
         case "flexBasis":
             if let flexBasis = convertToFloat(value) {
                 YGNodeStyleSetFlexBasis(node, flexBasis)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"), 
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetFlexBasisPercent(node, percentValue)
             }
@@ -817,8 +828,8 @@ class YogaShadowTree {
     
     // NEW: Validate and repair node hierarchy
     func validateAndRepairHierarchy(nodeTree: [String: Any], rootId: String) -> (
-        success: Bool, 
-        errorMessage: String?, 
+        success: Bool,
+        errorMessage: String?,
         nodesChecked: Int,
         nodesMismatched: Int,
         nodesRepaired: Int
@@ -1140,28 +1151,23 @@ class YogaShadowTree {
         return true
     }
     
-    // OPTIMIZED: More efficient layout application
-    private func applyLayoutToView(viewId: String, node: YGNodeRef) {
+    private func applyLayoutToView(viewId: String, frame: CGRect) {
         // Get the view from the layout manager
         guard let view = DCMauiLayoutManager.shared.getView(withId: viewId) else {
+            print("⚠️ View not found for ID \(viewId) when applying layout")
             return
         }
         
-        // Get layout values from the node
-        let left = CGFloat(YGNodeLayoutGetLeft(node))
-        let top = CGFloat(YGNodeLayoutGetTop(node))
-        let width = CGFloat(YGNodeLayoutGetWidth(node))
-        let height = CGFloat(YGNodeLayoutGetHeight(node))
+        print("🎯 Applying layout to view \(viewId): \(frame)")
         
-        // Apply layout directly using layout manager - no animation for better performance
+        // Apply layout directly using layout manager
         DispatchQueue.main.async {
             DCMauiLayoutManager.shared.applyLayout(
-                to: viewId, 
-                left: left, 
-                top: top, 
-                width: width, 
-                height: height,
-                animationDuration: 0
+                to: viewId,
+                left: frame.origin.x,
+                top: frame.origin.y,
+                width: frame.width,
+                height: frame.height
             )
         }
     }
