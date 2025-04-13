@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../packages/vdom/vdom_node.dart';
 import '../packages/vdom/vdom_element.dart';
 import '../constants/layout_properties.dart';
@@ -96,6 +98,8 @@ class UI {
   }) {
     // Merge props from both layout and style
     final propsMap = <String, dynamic>{};
+    // Create events map specifically for event handling
+    final eventsMap = <String, dynamic>{};
 
     // Add layout props
     propsMap.addAll(layout.toMap());
@@ -107,20 +111,18 @@ class UI {
 
     // Add component-specific props
     if (buttonProps != null) {
-      propsMap.addAll(buttonProps.toMap());
+      propsMap.addAll(
+        buttonProps.toMap(),
+      );
     }
-
-    // Create events map specifically for event handling
-    final eventsMap = <String, dynamic>{};
 
     // Add onPress event handler if provided
     if (onPress != null) {
-      // CRITICAL FIX: Use standard "onPress" event name
       eventsMap['onPress'] = onPress;
 
       // DEBUG: Add logging for event registration
-      print("Button created with onPress handler: $onPress");
-      print("Event map: $eventsMap");
+      debugPrint("Button created with onPress handler: $onPress");
+      debugPrint("Event map: $eventsMap");
     }
 
     // CRITICAL FIX: Always return the VDomElement with events map

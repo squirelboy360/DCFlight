@@ -1069,7 +1069,7 @@ class DCMauiDemoApp extends StatefulComponent {
           buttonProps: ButtonProps(
             title: title,
           ),
-          onPress: () {
+          onPress: (v) {
             developer.log('Menu item pressed: $title', name: 'UI');
           },
         ),
