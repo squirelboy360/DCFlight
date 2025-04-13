@@ -14,8 +14,25 @@ class AppDelegate: FlutterAppDelegate {
         flutterEngine.run(withEntrypoint: nil, initialRoute: "/")
         GeneratedPluginRegistrant.register(with: flutterEngine)
         
-        // OPTIMIZED: Initialize both method channels early but with less overhead
-        initializeMethodChannels()
+        // IMPROVED: Initialize both method channels early in startup process
+        // Initialize event handler
+        DCMauiEventMethodHandler.shared.initialize(with: flutterEngine.binaryMessenger)
+        
+        // Initialize layout handler
+        DCMauiLayoutMethodHandler.shared.initialize(with: flutterEngine.binaryMessenger)
+        
+        // IMPROVED: Setup Native-to-Dart event forwarding using the new event handler
+        DCMauiEventMethodHandler.shared.setEventCallback { viewId, eventType, eventData in
+            print("📲 SENDING EVENT TO DART: \(eventType) for \(viewId)")
+            DCMauiEventMethodHandler.shared.methodChannel?.invokeMethod(
+                "onEvent",
+                arguments: [
+                    "viewId": viewId,
+                    "eventType": eventType,
+                    "eventData": eventData
+                ]
+            )
+        }
         
         // Create window with proper frame
         self.window = UIWindow(frame: UIScreen.main.bounds)
@@ -36,89 +53,56 @@ class AppDelegate: FlutterAppDelegate {
         let flutterViewController = FlutterViewController(engine: flutterEngine, nibName: nil, bundle: nil)
         flutterEngine.viewController = flutterViewController
         
-        // OPTIMIZED: Single initial layout calculation with fence
-        DispatchQueue.main.async {
-            // Create a dispatch group to coordinate layout operations
-            let layoutGroup = DispatchGroup()
-            layoutGroup.enter()
+        // Initialize screen utilities
+        _ = DCMauiScreenUtilities.shared
+        
+        print("DC MAUI: Running in headless mode with native UI container")
+        
+        // CRITICAL FIX: Trigger layout calculations on main thread after a very short delay
+        // This ensures the root view is properly set up when running from Flutter CLI
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            self?.performInitialLayoutCalculation()
             
-            // Perform initial layout calculation
-            self.performInitialLayoutCalculation(completion: {
-                layoutGroup.leave()
-            })
-            
-            // Wait with reasonable timeout to prevent hanging
-            let result = layoutGroup.wait(timeout: .now() + 2.0)
-            if result == .timedOut {
-                print("⚠️ Initial layout calculation timed out - continuing anyway")
+            // Schedule another calculation after the Flutter engine is fully initialized
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                self?.performInitialLayoutCalculation()
+                print("🔄 Performed delayed secondary layout calculation")
             }
         }
         
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
     
-    // OPTIMIZED: Separate method channel initialization for better organization
-    private func initializeMethodChannels() {
-        // Minimize logging during initialization
-        let oldLogLevel = OSLog.setLogLevel(.error)
-        defer { OSLog.setLogLevel(oldLogLevel) }
-        
-        // Initialize event handler with minimal logging
-        DCMauiEventMethodHandler.shared.initialize(with: flutterEngine.binaryMessenger)
-        
-        // Initialize layout handler with minimal logging
-        DCMauiLayoutMethodHandler.shared.initialize(with: flutterEngine.binaryMessenger)
-        
-        // Setup Native-to-Dart event forwarding with minimal overhead
-        DCMauiEventMethodHandler.shared.setEventCallback { [weak self] viewId, eventType, eventData in
-            // Only log on debug builds
-            #if DEBUG
-            print("📲 Event to Dart: \(eventType) for \(viewId)")
-            #endif
-            
-            DCMauiEventMethodHandler.shared.methodChannel?.invokeMethod(
-                "onEvent",
-                arguments: [
-                    "viewId": viewId,
-                    "eventType": eventType,
-                    "eventData": eventData
-                ]
-            )
-        }
-    }
-    
-    // OPTIMIZED: Improved layout calculation with completion handler and reduced overhead
-    private func performInitialLayoutCalculation(completion: @escaping () -> Void = {}) {
+    // NEW: Extract initial layout calculation to a separate method for reusability
+    private func performInitialLayoutCalculation() {
         print("🚀 Performing initial layout calculation")
         let screenWidth = UIScreen.main.bounds.width
         let screenHeight = UIScreen.main.bounds.height
         
-        // CRITICAL FIX: Calculate layout immediately and force apply
-        _ = YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
+        // Calculate layout through the method channel instead of directly
+        DCMauiLayoutMethodHandler.shared.methodChannel?.invokeMethod("calculateLayout", arguments: [
+            "screenWidth": screenWidth,
+            "screenHeight": screenHeight
+        ])
         
-        // Ensure root view is properly sized
+        // Ensure we also trigger the direct calculation as a fallback incase user runs the app on another cli like flutter or for future proofing or something like that
+        YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
+        
+        // Force all views to update
         if let rootView = DCMauiLayoutManager.shared.getView(withId: "root") {
-            rootView.frame = CGRect(x: 0, y: 0, width: screenWidth, height: screenHeight)
             rootView.setNeedsLayout()
             rootView.layoutIfNeeded()
-            print("📏 Root view frame after initial layout: \(rootView.frame)")
+            
+            print("📋 View hierarchy after initial layout:")
+            LayoutDebugging.shared.printViewHierarchy(rootView)
         }
-        
-        // IMPORTANT: Use method channel approach which has better synchronization
-        DCMauiLayoutMethodHandler.shared.methodChannel?.invokeMethod(
-            "calculateLayout", 
-            arguments: [
-                "screenWidth": screenWidth,
-                "screenHeight": screenHeight
-            ]
-        )
-        
-        completion()
     }
     
+    // Setup the DCMauiNativeBridge
     private func setupDCMauiNativeBridge(rootView: UIView) {
         // Set up the root container view - FULL SIZE
         let rootContainer = UIView(frame: rootView.bounds)
+        // CRITICAL FIX: Set constraints to make sure rootContainer fills the parent view
         rootContainer.translatesAutoresizingMaskIntoConstraints = false
         rootView.addSubview(rootContainer)
         
@@ -129,29 +113,22 @@ class AppDelegate: FlutterAppDelegate {
             rootContainer.trailingAnchor.constraint(equalTo: rootView.trailingAnchor)
         ])
         
-        // Set up the root with minimal props 
+        // Set up the root with our props
         DCMauiNativeBridgeCoordinator.shared.manuallyCreateRootView(rootContainer, viewId: "root", props: ["flex":1])
         
-        // Register with FFI bridge for direct access
+        // IMPORTANT: Register the root view with FFI bridge for direct access
         DCMauiFFIBridge.shared.registerView(rootContainer, withId: "root")
         
-        // REDUCED LOGGING: Print only essential information
-        print("DC MAUI: Root view registered")
+        print("DC MAUI: Root view registered with ID: root - size: \(rootContainer.bounds)")
         
         // Initialize screen utilities with the Flutter binary messenger
         DCMauiScreenUtilities.shared.initialize(with: flutterEngine.binaryMessenger)
         
-        // OPTIMIZED: Initialize the yoga layout system with fewer operations
-        YogaShadowTree.shared.optimizedInitialization()
+        // Initialize the yoga layout system
+        _ = YogaShadowTree.shared
         _ = DCMauiLayoutManager.shared
         
-        // Register for notifications about layout changes
-        registerLayoutObservers()
-    }
-    
-    // OPTIMIZED: Separate method for registering layout observers
-    private func registerLayoutObservers() {
-        // Register for status bar changes
+        // CRITICAL FIX: Register for notifications about layout changes
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleLayoutChange(_:)),
@@ -159,24 +136,29 @@ class AppDelegate: FlutterAppDelegate {
             object: nil
         )
         
-        // Register for device orientation changes
+        // Add this observer for device orientation changes
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(orientationChanged),
             name: UIDevice.orientationDidChangeNotification,
             object: nil
         )
+        
+        // NOTE: We removed the initial layout calculation here and moved it to the main method
+        // with better timing controls
     }
     
-    // OPTIMIZED: More efficient layout change handler
+    // Add this method to handle layout changes
     @objc private func handleLayoutChange(_ notification: Notification) {
         guard let view = notification.object as? UIView,
               let nodeId = view.getNodeId() else { return }
         
-        // Only process container views with multiple subviews
-        if view.subviews.count > 1 {
-            // Use a more efficient approach with less overhead
-            DispatchQueue.main.async {
+        // Special optimization: we only care about container views changing size
+        if view.subviews.count > 0 {
+            print("📲 View \(nodeId) changed size to: \(view.frame)")
+            
+            // Force recalculation of this subtree
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 YogaShadowTree.shared.performIncrementalLayoutUpdate(
                     nodeId: nodeId,
                     props: ["width": view.frame.width, "height": view.frame.height]
@@ -185,61 +167,24 @@ class AppDelegate: FlutterAppDelegate {
         }
     }
     
-    // OPTIMIZED: More efficient orientation change handler
+    // Add this method to handle orientation changes
     @objc private func orientationChanged() {
-        print("📱 Orientation changed - recalculating layouts")
-        
-        // CRITICAL FIX: Force layout calculation immediately
-        let screenWidth = UIScreen.main.bounds.width
-        let screenHeight = UIScreen.main.bounds.height
-        
-        // Don't use a dispatch - do it immediately
-        if let rootView = DCMauiFFIBridge.shared.views["root"] {
-            print("📏 Root view frame before orientation change: \(rootView.frame)")
-        }
-        
-        // CRITICAL FIX: Calculate layout synchronously
-        _ = YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
-        
-        // Force immediate layout for root view
-        if let rootView = DCMauiFFIBridge.shared.views["root"] {
-            rootView.frame = CGRect(x: 0, y: 0, width: screenWidth, height: screenHeight)
-            rootView.setNeedsLayout()
-            rootView.layoutIfNeeded()
-            print("📏 Root view frame after orientation change: \(rootView.frame)")
-        }
-        
-        // Also use the method channel
-        DCMauiLayoutMethodHandler.shared.methodChannel?.invokeMethod(
-            "calculateLayout", 
-            arguments: [
+        // Allow a moment for the UI to update
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            // Get the current screen dimensions
+            let screenWidth = UIScreen.main.bounds.width
+            let screenHeight = UIScreen.main.bounds.height
+            
+            print("📱 Device orientation changed: \(screenWidth)x\(screenHeight)")
+            
+            // Update layouts with new dimensions - use BOTH methods for reliability
+            YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
+            
+            // Also trigger via method channel
+            DCMauiLayoutMethodHandler.shared.methodChannel?.invokeMethod("calculateLayout", arguments: [
                 "screenWidth": screenWidth,
                 "screenHeight": screenHeight
-            ]
-        )
-    }
-}
-
-// Add OSLog helper for controlling log levels
-class OSLog {
-    enum LogLevel: Int {
-        case verbose = 0
-        case debug = 1
-        case info = 2
-        case warning = 3
-        case error = 4
-        case none = 5
-    }
-    
-    private static var currentLogLevel: LogLevel = .info
-    
-    static func setLogLevel(_ level: LogLevel) -> LogLevel {
-        let oldLevel = currentLogLevel
-        currentLogLevel = level
-        return oldLevel
-    }
-    
-    static func shouldLog(forLevel level: LogLevel) -> Bool {
-        return level.rawValue >= currentLogLevel.rawValue
+            ])
+        }
     }
 }
