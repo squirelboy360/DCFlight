@@ -42,8 +42,6 @@ import Foundation
         ViewRegistry.shared.registerView(view, id: viewId, type: "View")
     }
     
-    // MARK: - FFI Implementation Functions
-    
     /// Initialize the framework
     @objc func initialize() -> Bool {
         NSLog("DCMauiFFIBridge: initialize called")
