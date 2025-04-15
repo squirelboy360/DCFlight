@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' hide View, Text, Image, ScrollView;
+import 'package:flutter/material.dart' hide Image, ScrollView, View;
 import 'dart:developer' as developer;
 
 import 'framework/packages/vdom/vdom.dart';
@@ -17,6 +17,19 @@ import 'framework/utilities/screen_utilities.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   developer.log('Starting DCMAUI Demo Application', name: 'App');
+  runApp(MaterialApp(
+    home: Scaffold(
+      body: Center(
+        child: Wrap(
+          children: [
+            Text('FLUTTER BACKGROUND THREAD FOR EMBEDDING FLUTTER VIEWS'),
+            Text(
+                "Currently not in use, call flutter view adaptor to render in a flutter view")
+          ],
+        ),
+      ),
+    ),
+  ));
   startNativeApp();
 }
 
@@ -24,16 +37,16 @@ void startNativeApp() async {
   // Initialize screen utilities first
   await ScreenUtilities.instance.refreshDimensions();
 
-  // Log actual screen dimensions for debugging
-  developer.log(
-      'Screen dimensions: ${ScreenUtilities.instance.screenWidth} x ${ScreenUtilities.instance.screenHeight}',
-      name: 'App');
-
   // Create VDOM instance
   final vdom = VDom();
 
   // Wait for the VDom to be ready
-  await vdom.isReady;
+  await vdom.isReady.whenComplete(() {
+    print('VDOM is ready with values ');
+    vdom.calculateAndApplyLayout().then((v) {
+      print('VDOM layout applied with value');
+    });
+  });
   developer.log('VDom is ready', name: 'App');
 
   // Create our main app component
