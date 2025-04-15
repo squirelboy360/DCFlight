@@ -32,8 +32,6 @@ target 'Runner' do
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
   target 'RunnerTests' do
     inherit! :search_paths
-    pod 'Yoga', :git => 'https://github.com/squirelboy360/yoga.git'
-    pod 'Kingfisher', '~> 8.3'
   end
 end
 
