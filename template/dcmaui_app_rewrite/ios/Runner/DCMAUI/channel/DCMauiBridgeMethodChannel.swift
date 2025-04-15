@@ -9,6 +9,9 @@ class DCMauiBridgeMethodChannel: NSObject {
     /// Method channel for bridge operations
     var methodChannel: FlutterMethodChannel?
     
+    /// Views dictionary to mimic FFIBridge (for compatibility)
+    var views = [String: UIView]()
+    
     /// Initialize with Flutter binary messenger
     func initialize(with binaryMessenger: FlutterBinaryMessenger) {
         // Create method channel
@@ -20,16 +23,15 @@ class DCMauiBridgeMethodChannel: NSObject {
         // Set up method handler
         methodChannel?.setMethodCallHandler(handleMethodCall)
         
-        print("🌉 Bridge method channel initialized")
+        print("🌉 Bridge method channel initialized directly")
     }
     
     /// Handle method calls from Flutter
-    private func handleMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    func handleMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        print("🔔 Bridge received method call: \(call.method)")
+        
         // Get the arguments
-        guard let args = call.arguments as? [String: Any] else {
-            result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
-            return
-        }
+        let args = call.arguments as? [String: Any]
         
         // Handle methods
         switch call.method {
@@ -37,22 +39,46 @@ class DCMauiBridgeMethodChannel: NSObject {
             handleInitialize(result: result)
             
         case "createView":
-            handleCreateView(args, result: result)
+            if let args = args {
+                handleCreateView(args, result: result)
+            } else {
+                result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
+            }
             
         case "updateView":
-            handleUpdateView(args, result: result)
+            if let args = args {
+                handleUpdateView(args, result: result)
+            } else {
+                result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
+            }
             
         case "deleteView":
-            handleDeleteView(args, result: result)
+            if let args = args {
+                handleDeleteView(args, result: result)
+            } else {
+                result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
+            }
             
         case "attachView":
-            handleAttachView(args, result: result)
+            if let args = args {
+                handleAttachView(args, result: result)
+            } else {
+                result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
+            }
             
         case "setChildren":
-            handleSetChildren(args, result: result)
+            if let args = args {
+                handleSetChildren(args, result: result)
+            } else {
+                result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
+            }
             
         case "commitBatchUpdate":
-            handleCommitBatchUpdate(args, result: result)
+            if let args = args {
+                handleCommitBatchUpdate(args, result: result)
+            } else {
+                result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
+            }
             
         default:
             result(FlutterMethodNotImplemented)
@@ -61,10 +87,13 @@ class DCMauiBridgeMethodChannel: NSObject {
     
     // Initialize the bridge
     private func handleInitialize(result: @escaping FlutterResult) {
+        print("🚀 Bridge initialize method called")
+        
         // Execute on main thread
         DispatchQueue.main.async {
             // Initialize components and systems
-            let success = true
+            let success = DCMauiFFIBridge.shared.initialize()
+            print("🚀 Bridge initialization result: \(success)")
             result(success)
         }
     }
@@ -78,42 +107,17 @@ class DCMauiBridgeMethodChannel: NSObject {
             return
         }
         
+        // Convert props to JSON
+        guard let propsData = try? JSONSerialization.data(withJSONObject: props),
+              let propsJson = String(data: propsData, encoding: .utf8) else {
+            result(FlutterError(code: "JSON_ERROR", message: "Failed to serialize props", details: nil))
+            return
+        }
+        
         // Execute on main thread
         DispatchQueue.main.async {
-            // Get the component type from registry
-            guard let componentType = DCMauiComponentRegistry.shared.getComponentType(for: viewType) else {
-                print("DCMauiNativeBridge: Unknown component type: \(viewType)")
-                result(false)
-                return
-            }
-            
-            // Create an instance of the component type
-            let component = componentType.init()
-            
-            // Create the view using the component
-            let view = component.createView(props: props)
-            
-            // Register the view
-            ViewRegistry.shared.registerView(view, id: viewId, type: viewType)
-            
-            // Create node in shadow tree
-            YogaShadowTree.shared.createNode(id: viewId, componentType: viewType)
-            
-            // Register with layout manager
-            DCMauiLayoutManager.shared.registerView(view, withId: viewId)
-            
-            // Apply initial layout props
-            let layoutProps = props.filter { SupportedLayoutsProps.supportedLayoutProps.contains($0.key) }
-            if (!layoutProps.isEmpty) {
-                DCMauiLayoutManager.shared.updateNodeWithLayoutProps(
-                    nodeId: viewId,
-                    componentType: viewType,
-                    props: layoutProps
-                )
-            }
-            
-            print("View created successfully via method channel: \(viewId)")
-            result(true)
+            let success = DCMauiFFIBridge.shared.createView(viewId: viewId, viewType: viewType, propsJson: propsJson)
+            result(success)
         }
     }
     
@@ -125,41 +129,17 @@ class DCMauiBridgeMethodChannel: NSObject {
             return
         }
         
+        // Convert props to JSON
+        guard let propsData = try? JSONSerialization.data(withJSONObject: props),
+              let propsJson = String(data: propsData, encoding: .utf8) else {
+            result(FlutterError(code: "JSON_ERROR", message: "Failed to serialize props", details: nil))
+            return
+        }
+        
         // Execute on main thread
         DispatchQueue.main.async {
-            // Get the view
-            guard let viewInfo = ViewRegistry.shared.getViewInfo(id: viewId) else {
-                print("View not found for update: \(viewId)")
-                result(false)
-                return
-            }
-            
-            let view = viewInfo.view
-            let componentType = viewInfo.type
-            
-            // Separate layout props from style props
-            let layoutProps = props.filter { SupportedLayoutsProps.supportedLayoutProps.contains($0.key) }
-            let styleProps = props.filter { !layoutProps.keys.contains($0.key) }
-            
-            // Update layout props
-            if !layoutProps.isEmpty {
-                DCMauiLayoutManager.shared.updateNodeWithLayoutProps(
-                    nodeId: viewId,
-                    componentType: componentType,
-                    props: layoutProps
-                )
-            }
-            
-            // Update style props
-            if !styleProps.isEmpty {
-                if let handlerType = DCMauiComponentRegistry.shared.getComponentType(for: componentType) {
-                    // Create an instance of the component handler
-                    let handler = handlerType.init()
-                    _ = handler.updateView(view, withProps: styleProps)
-                }
-            }
-            
-            result(true)
+            let success = DCMauiFFIBridge.shared.updateView(viewId: viewId, propsJson: propsJson)
+            result(success)
         }
     }
     
@@ -172,24 +152,8 @@ class DCMauiBridgeMethodChannel: NSObject {
         
         // Execute on main thread
         DispatchQueue.main.async {
-            guard let viewInfo = ViewRegistry.shared.getViewInfo(id: viewId) else {
-                print("View not found for deletion: \(viewId)")
-                result(false)
-                return
-            }
-            
-            let view = viewInfo.view
-            
-            // Remove from parent view
-            view.removeFromSuperview()
-            
-            // Clean up from registry
-            ViewRegistry.shared.removeView(id: viewId)
-            
-            // Remove from shadow tree
-            YogaShadowTree.shared.removeNode(nodeId: viewId)
-            
-            result(true)
+            let success = DCMauiFFIBridge.shared.deleteView(viewId: viewId)
+            result(success)
         }
     }
     
@@ -204,20 +168,8 @@ class DCMauiBridgeMethodChannel: NSObject {
         
         // Execute on main thread
         DispatchQueue.main.async {
-            guard let childView = ViewRegistry.shared.getView(id: childId),
-                  let parentView = ViewRegistry.shared.getView(id: parentId) else {
-                print("Failed to find child or parent view: \(childId) -> \(parentId)")
-                result(false)
-                return
-            }
-            
-            // Add child to parent
-            parentView.addSubview(childView)
-            
-            // Update shadow tree
-            YogaShadowTree.shared.addChildNode(parentId: parentId, childId: childId, index: index)
-            
-            result(true)
+            let success = DCMauiFFIBridge.shared.attachView(childId: childId, parentId: parentId, index: index)
+            result(success)
         }
     }
     
@@ -229,25 +181,17 @@ class DCMauiBridgeMethodChannel: NSObject {
             return
         }
         
+        // Convert children to JSON
+        guard let childrenData = try? JSONSerialization.data(withJSONObject: childrenIds),
+              let childrenJson = String(data: childrenData, encoding: .utf8) else {
+            result(FlutterError(code: "JSON_ERROR", message: "Failed to serialize children", details: nil))
+            return
+        }
+        
         // Execute on main thread
         DispatchQueue.main.async {
-            guard let parentView = ViewRegistry.shared.getView(id: viewId) else {
-                print("Parent view not found: \(viewId)")
-                result(false)
-                return
-            }
-            
-            // Set z-order of children based on array order
-            for (index, childId) in childrenIds.enumerated() {
-                if let childView = ViewRegistry.shared.getView(id: childId) {
-                    parentView.insertSubview(childView, at: index)
-                    
-                    // Update shadow tree
-                    YogaShadowTree.shared.addChildNode(parentId: viewId, childId: childId, index: index)
-                }
-            }
-            
-            result(true)
+            let success = DCMauiFFIBridge.shared.setChildren(viewId: viewId, childrenJson: childrenJson)
+            result(success)
         }
     }
     
@@ -268,72 +212,47 @@ class DCMauiBridgeMethodChannel: NSObject {
                     case "createView":
                         if let viewId = update["viewId"] as? String,
                            let viewType = update["viewType"] as? String,
-                           let props = update["props"] as? [String: Any] {
-                            
-                            // Call the create view handler with the same arguments
-                            let createArgs: [String: Any] = [
-                                "viewId": viewId,
-                                "viewType": viewType,
-                                "props": props
-                            ]
-                            
-                            var createSuccess = false
-                            let semaphore = DispatchSemaphore(value: 0)
-                            
-                            self.handleCreateView(createArgs) { result in
-                                if let boolResult = result as? Bool {
-                                    createSuccess = boolResult
-                                }
-                                semaphore.signal()
-                            }
-                            
-                            semaphore.wait()
-                            
-                            if !createSuccess {
+                           let props = update["props"] as? [String: Any],
+                           let propsData = try? JSONSerialization.data(withJSONObject: props),
+                           let propsJson = String(data: propsData, encoding: .utf8) {
+                            let success = DCMauiFFIBridge.shared.createView(viewId: viewId, viewType: viewType, propsJson: propsJson)
+                            if !success {
                                 allSucceeded = false
                             }
                         }
-                        
                     case "updateView":
                         if let viewId = update["viewId"] as? String,
-                           let props = update["props"] as? [String: Any] {
-                            
-                            // Call the update view handler with the same arguments
-                            let updateArgs: [String: Any] = [
-                                "viewId": viewId,
-                                "props": props
-                            ]
-                            
-                            var updateSuccess = false
-                            let semaphore = DispatchSemaphore(value: 0)
-                            
-                            self.handleUpdateView(updateArgs) { result in
-                                if let boolResult = result as? Bool {
-                                    updateSuccess = boolResult
-                                }
-                                semaphore.signal()
-                            }
-                            
-                            semaphore.wait()
-                            
-                            if !updateSuccess {
+                           let props = update["props"] as? [String: Any],
+                           let propsData = try? JSONSerialization.data(withJSONObject: props),
+                           let propsJson = String(data: propsData, encoding: .utf8) {
+                            let success = DCMauiFFIBridge.shared.updateView(viewId: viewId, propsJson: propsJson)
+                            if !success {
                                 allSucceeded = false
                             }
                         }
-                        
                     default:
                         print("Unknown batch operation: \(operation)")
                     }
                 }
             }
             
-            // Calculate layout after batch update
-            YogaShadowTree.shared.calculateAndApplyLayout(
-                width: UIScreen.main.bounds.width,
-                height: UIScreen.main.bounds.height
-            )
-            
             result(allSucceeded)
         }
+    }
+    
+    /// Helper to get a view by ID - needed for compatibility
+    func getViewById(_ viewId: String) -> UIView? {
+        // First try our local views dictionary
+        if let view = views[viewId] {
+            return view
+        }
+        
+        // Then try DCMauiFFIBridge's views
+        if let view = DCMauiFFIBridge.shared.views[viewId] {
+            return view
+        }
+        
+        // Finally try ViewRegistry
+        return ViewRegistry.shared.getView(id: viewId)
     }
 }

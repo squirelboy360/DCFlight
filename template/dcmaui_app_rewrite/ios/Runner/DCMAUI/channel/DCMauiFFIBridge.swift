@@ -2,6 +2,7 @@ import UIKit
 import Foundation
 
 /// Bridge between Dart FFI and native Swift/Objective-C code
+/// Now adapted to work with method channels
 @objc class DCMauiFFIBridge: NSObject {
     
     // Singleton instance
@@ -28,7 +29,7 @@ import Foundation
     // Private initializer for singleton
     private override init() {
         super.init()
-        NSLog("DCMauiFFIBridge initialized")
+        NSLog("DCMauiFFIBridge initialized (method channel compatible version)")
     }
     
     // MARK: - Public Registration Methods
@@ -37,6 +38,8 @@ import Foundation
     @objc func registerView(_ view: UIView, withId viewId: String) {
         NSLog("DCMauiFFIBridge: Manually registering view with ID: \(viewId)")
         views[viewId] = view
+        // Also register with ViewRegistry for method channel
+        ViewRegistry.shared.registerView(view, id: viewId, type: "View")
     }
     
     // MARK: - FFI Implementation Functions
