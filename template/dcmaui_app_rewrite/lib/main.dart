@@ -335,7 +335,7 @@ class DCMauiDemoApp extends StatefulComponent {
             width: '100%',
             padding: 20,
           ),
-          style: StyleSheet(),
+          style: StyleSheet(backgroundColor: Colors.deepPurple),
           children: [
             UI.Text(
               content: "Welcome to DCMAUI",

@@ -194,3 +194,40 @@ class DCMauiLayoutManager {
         }
     }
 }
+
+
+//consoidate in the main class later
+extension DCMauiLayoutManager {
+    // Register view with layout system
+    func registerView(_ view: UIView, withNodeId nodeId: String, componentType: String, componentInstance: DCMauiComponent) {
+        // First, register the view for direct access
+        registerView(view, withId: nodeId)
+        
+        // Associate the view with its Yoga node
+        print("Associated view with node \(nodeId) of type \(componentType)")
+        
+        // Set up special handling for nodes that need to self-measure
+        if componentType == "Text" {
+            // Don't actually set a measure function, but mark it specially
+            view.accessibilityIdentifier = "text_\(nodeId)"
+        }
+        
+        // Let the component know it's registered
+        componentInstance.viewRegisteredWithShadowTree(view, nodeId: nodeId)
+    }
+    
+    // Add a child node to a parent in the layout tree
+    func addChildNode(parentId: String, childId: String, index: Int) {
+        YogaShadowTree.shared.addChildNode(parentId: parentId, childId: childId, index: index)
+    }
+    
+    // Remove a node from the layout tree
+    func removeNode(nodeId: String) {
+        YogaShadowTree.shared.removeNode(nodeId: nodeId)
+    }
+    
+    // Update a node's layout properties
+    func updateNodeWithLayoutProps(nodeId: String, componentType: String, props: [String: Any]) {
+        YogaShadowTree.shared.updateNodeLayoutProps(nodeId: nodeId, props: props)
+    }
+}

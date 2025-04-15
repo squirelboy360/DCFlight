@@ -68,9 +68,8 @@ class YogaShadowTree {
         // Create new node
         let node = YGNodeNew()
         
-        // Configure default properties based on component type
-        if let node = node {  // Safely unwrap the optional
-            configureNodeDefaults(node, forComponentType: componentType)
+        
+        if let node = node {
             
             // Store node
             nodes[id] = node
@@ -180,7 +179,7 @@ class YogaShadowTree {
             applyLayoutProp(node: node, key: key, value: value)
         }
         
-        // NEW: Update modification time
+
         nodeModificationTimes[nodeId] = Date().timeIntervalSince1970
         nodeSyncState[nodeId] = true
         
@@ -203,9 +202,9 @@ class YogaShadowTree {
             return false
         }
         
-        // CRITICAL DEBUGGING: Print node hierarchy before calculation
-        print("📊 Node hierarchy before calculation:")
-        printNodeHierarchy()
+//        // CRITICAL DEBUGGING: Print node hierarchy before calculation
+//        print("📊 Node hierarchy before calculation:")
+//        printNodeHierarchy()
         
         // CRITICAL FIX: Reset any cached layout data to ensure fresh calculation
         YGNodeCalculateLayout(root, Float.nan, Float.nan, YGDirection.LTR)
@@ -255,27 +254,12 @@ class YogaShadowTree {
                         processedNodes.insert(childId)
                         print("✅ Applied layout to child \(childId) of \(parentId): \(layout)")
                     }
-                    // Add this child as next parent to process
                     nodesToProcess.append(childId)
                 }
             }
         }
-        
-        // CRITICAL DEBUGGING: Print node hierarchy after calculation
-        print("📊 Node hierarchy after calculation:")
-        printNodeHierarchy()
-        
-        // Force views to be updated on main thread
-        DispatchQueue.main.async {
-            // Force root view to layout its subviews
-            if let rootView = DCMauiLayoutManager.shared.getView(withId: "root") {
-                rootView.setNeedsLayout()
-                rootView.layoutIfNeeded()
-                print("🔄 Forced layout of root view: \(rootView.frame)")
-            }
-        }
-        
-        // Performance reporting
+    
+       
         let endTime = Date().timeIntervalSince1970
         let duration = endTime - startTime
         
@@ -284,133 +268,7 @@ class YogaShadowTree {
         return true
     }
     
-    // ADD THIS DEBUG METHOD: print full node hierarchy with layout info
-    func printNodeHierarchy() {
-        print("📋 FULL NODE HIERARCHY:")
-        printNodeHierarchyRecursive(nodeId: "root", depth: 0)
-    }
-    
-    private func printNodeHierarchyRecursive(nodeId: String, depth: Int) {
-        guard let node = nodes[nodeId] else {
-            print("\(String(repeating: "  ", count: depth))❓ Node not found: \(nodeId)")
-            return
-        }
-        
-        let indent = String(repeating: "  ", count: depth)
-        let layout = getNodeLayout(nodeId: nodeId) ?? CGRect.zero
-        let view = DCMauiLayoutManager.shared.getView(withId: nodeId)
-        let viewFrame = view?.frame ?? CGRect.zero
-        
-        print("\(indent)📍 \(nodeId) (\(nodeTypes[nodeId] ?? "unknown"))")
-        print("\(indent)   Yoga: \(layout)")
-        print("\(indent)   View: \(viewFrame)")
-        
-        // Print all children
-        let childNodeIds = nodeParents.filter { $0.value == nodeId }.map { $0.key }
-        for childId in childNodeIds {
-            printNodeHierarchyRecursive(nodeId: childId, depth: depth + 1)
-        }
-    }
-    
-    // NEW: Enable or disable layout debugging
-    func setDebugLayoutEnabled(_ enabled: Bool) {
-        debugLayoutEnabled = enabled
-        UserDefaults.standard.set(enabled, forKey: "DCMauiDebugLayout")
-        
-        // Apply debug visualization immediately if enabled
-        if enabled {
-            applyDebugVisualization()
-        } else {
-            // Remove debug vsualizations
-            removeDebugVisualization()
-        }
-    }
-    
-    // NEW: Apply debug visualization to all views
-    private func applyDebugVisualization() {
-        print("🔍 Applying layout debug visualization")
-        
-        for (nodeId, _) in nodes {
-            guard let view = DCMauiLayoutManager.shared.getView(withId: nodeId) else { continue }
-            
-            // Apply debug border
-            DispatchQueue.main.async {
-                // Add colorful border to help visualize layout
-                view.layer.borderColor = UIColor(
-                    hue: CGFloat(nodeId.hashValue % 100) / 100.0,
-                    saturation: 0.8,
-                    brightness: 0.8,
-                    alpha: 1.0
-                ).cgColor
-                view.layer.borderWidth = 1.0
-                
-                // Add a debug label with node info
-                let label = UILabel()
-                label.tag = 99999 // Special tag to identify debug labels
-                label.font = UIFont.systemFont(ofSize: 10)
-                label.textColor = .white
-                label.backgroundColor = UIColor.black.withAlphaComponent(0.5)
-                label.text = "ID: \(nodeId)\n\(Int(view.frame.width))×\(Int(view.frame.height))"
-                label.numberOfLines = 2
-                label.textAlignment = .right
-                label.layer.cornerRadius = 4
-                label.clipsToBounds = true
-                
-                // Remove existing debug label if any
-                view.subviews.forEach { subview in
-                    if subview.tag == 99999 { subview.removeFromSuperview() }
-                }
-                
-                // Add label to view
-                view.addSubview(label)
-                
-                // Position label
-                label.translatesAutoresizingMaskIntoConstraints = false
-                NSLayoutConstraint.activate([
-                    label.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -2),
-                    label.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -2),
-                    label.widthAnchor.constraint(lessThanOrEqualTo: view.widthAnchor, multiplier: 0.8)
-                ])
-            }
-        }
-    }
-    
-    // NEW: Remove debug visualization from all views
-    private func removeDebugVisualization() {
-        print("🧹 Removing layout debug visualization")
-        
-        for (nodeId, _) in nodes {
-            guard let view = DCMauiLayoutManager.shared.getView(withId: nodeId) else { continue }
-            
-            // Remove debug elements
-            DispatchQueue.main.async {
-                // Remove border
-                view.layer.borderWidth = 0
-                
-                // Remove debug labels
-                view.subviews.forEach { subview in
-                    if subview.tag == 99999 { subview.removeFromSuperview() }
-                }
-            }
-        }
-    }
-    
-    // NEW: Log performance metrics
-    private func logPerformanceMetrics() {
-        guard !layoutCalculationTimes.isEmpty else { return }
-        
-        let avgTime = layoutCalculationTimes.reduce(0, +) / Double(layoutCalculationTimes.count)
-        let maxTime = layoutCalculationTimes.max() ?? 0
-        
-        print("📊 Layout Performance:")
-        print("  - Total layouts: \(layoutCount)")
-        print("  - Last layout: \(String(format: "%.2f", lastLayoutTime * 1000))ms")
-        print("  - Average time: \(String(format: "%.2f", avgTime * 1000))ms")
-        print("  - Maximum time: \(String(format: "%.2f", maxTime * 1000))ms")
-        print("  - Nodes in tree: \(nodes.count)")
-    }
-    
-    // Get layout for a node after calculation
+
     func getNodeLayout(nodeId: String) -> CGRect? {
         guard let node = nodes[nodeId] else { return nil }
         
@@ -772,33 +630,7 @@ class YogaShadowTree {
         }
         return nil
     }
-    
-    // Set default properties based on component type
-    private func configureNodeDefaults(_ node: YGNodeRef, forComponentType componentType: String) {
-        // Set common defaults
-        YGNodeStyleSetFlexDirection(node, YGFlexDirection.column)
-        
-        // Set component-specific defaults
-        switch componentType {
-        case "Text":
-            // Texts are leaf nodes by default
-            YGNodeStyleSetFlexShrink(node, 1.0)
-            
-        case "Image":
-            // Images are also leaf nodes
-            YGNodeStyleSetAlignSelf(node, YGAlign.flexStart)
-            
-        case "ScrollView":
-            // ScrollViews have special layout behavior
-            YGNodeStyleSetOverflow(node, YGOverflow.scroll)
-            YGNodeStyleSetFlexGrow(node, 1.0)
-            
-        default:
-            // Default container behavior
-            break
-        }
-    }
-    
+
     // Set a custom measure function for nodes that need to self-measure
     func setCustomMeasureFunction(nodeId: String, measureFunc: @escaping YGMeasureFunc) {
         guard let node = nodes[nodeId] else { return }
@@ -1181,38 +1013,3 @@ class YogaShadowTree {
     }
 }
 
-// Layout Manager extension for DCMauiLayoutManager
-extension DCMauiLayoutManager {
-    // Register view with layout system
-    func registerView(_ view: UIView, withNodeId nodeId: String, componentType: String, componentInstance: DCMauiComponent) {
-        // First, register the view for direct access
-        registerView(view, withId: nodeId)
-        
-        // Associate the view with its Yoga node
-        print("Associated view with node \(nodeId) of type \(componentType)")
-        
-        // Set up special handling for nodes that need to self-measure
-        if componentType == "Text" {
-            // Don't actually set a measure function, but mark it specially
-            view.accessibilityIdentifier = "text_\(nodeId)"
-        }
-        
-        // Let the component know it's registered
-        componentInstance.viewRegisteredWithShadowTree(view, nodeId: nodeId)
-    }
-    
-    // Add a child node to a parent in the layout tree
-    func addChildNode(parentId: String, childId: String, index: Int) {
-        YogaShadowTree.shared.addChildNode(parentId: parentId, childId: childId, index: index)
-    }
-    
-    // Remove a node from the layout tree
-    func removeNode(nodeId: String) {
-        YogaShadowTree.shared.removeNode(nodeId: nodeId)
-    }
-    
-    // Update a node's layout properties
-    func updateNodeWithLayoutProps(nodeId: String, componentType: String, props: [String: Any]) {
-        YogaShadowTree.shared.updateNodeLayoutProps(nodeId: nodeId, props: props)
-    }
-}
