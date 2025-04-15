@@ -11,8 +11,13 @@ extension AppDelegate {
         flutterEngine.run(withEntrypoint: nil, initialRoute: "/")
         let flutterViewController = FlutterViewController(engine: flutterEngine, nibName: nil, bundle: nil)
         flutterEngine.viewController = flutterViewController
+        
+        // Initialize method channels
+        DCMauiBridgeMethodChannel.shared.initialize(with: flutterEngine.binaryMessenger)
         DCMauiEventMethodHandler.shared.initialize(with: flutterEngine.binaryMessenger)
         DCMauiLayoutMethodHandler.shared.initialize(with: flutterEngine.binaryMessenger)
+        
+        // Setup event callback
         DCMauiEventMethodHandler.shared.setEventCallback { viewId, eventType, eventData in
             print("📲 SENDING EVENT TO DART: \(eventType) for \(viewId)")
             DCMauiEventMethodHandler.shared.methodChannel?.invokeMethod(
@@ -31,20 +36,9 @@ extension AppDelegate {
         nativeRootVC.title = "Root View (DCMAUI)"
         self.window.rootViewController = nativeRootVC
         setupDCMauiNativeBridge(rootView: nativeRootVC.view)
+        
         // Initialize screen utilities
         _ = DCMauiScreenUtilities.shared
-//??        Defer the trigger to tghe dart side. Only uncomment if you know what you are doing else you may leave this unchanged. Removing the comment is allowed but it's only here for reference in case there is a          layout issue and u want to quickly debug
-        // CRITICAL FIX: Trigger layout calculations on main thread after a very short delay
-        // This ensures the root view is properly set up when running from Flutter CLI
-//        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-//            self?.performInitialLayoutCalculation()
-//            
-//            // Schedule another calculation after the Flutter engine is fully initialized
-//            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-//                self?.performInitialLayoutCalculation()
-//                print("🔄 Performed delayed secondary layout calculation")
-//            }
-//        }
     }
     
     // Setup the DCMauiNativeBridge
@@ -94,3 +88,5 @@ extension AppDelegate {
         }
     }
 }
+
+

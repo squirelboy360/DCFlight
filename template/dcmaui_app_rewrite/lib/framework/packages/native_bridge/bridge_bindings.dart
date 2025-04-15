@@ -1,45 +1,18 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ffi';
 import 'dart:io';
-import 'package:ffi/ffi.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import 'native_bridge.dart';
 import 'dart:developer' as developer;
 
-// Define typedefs at the top level, not inside the class
-typedef CalculateLayoutNative = Int8 Function(
-    Float screenWidth, Float screenHeight);
-typedef CalculateLayoutDart = int Function(
-    double screenWidth, double screenHeight);
-
-// NEW: Typedefs for node hierarchy sync functions
-typedef SyncNodeHierarchyNative = Pointer<Utf8> Function(
-    Pointer<Utf8> rootId, Pointer<Utf8> nodeTreeJson);
-typedef SyncNodeHierarchyDart = Pointer<Utf8> Function(
-    Pointer<Utf8> rootId, Pointer<Utf8> nodeTreeJson);
-
-typedef GetNodeHierarchyNative = Pointer<Utf8> Function(Pointer<Utf8> nodeId);
-typedef GetNodeHierarchyDart = Pointer<Utf8> Function(Pointer<Utf8> nodeId);
-
-/// FFI-based implementation of NativeBridge for iOS/macOS
+/// Method channel-based implementation of NativeBridge
 class FFINativeBridge implements NativeBridge {
-  late final DynamicLibrary _nativeLib;
-
-  // Function pointers for native UI operations (ONLY)
-  late final int Function() _initialize;
-  late final int Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>)
-      _createView;
-  late final int Function(Pointer<Utf8>, Pointer<Utf8>) _updateView;
-  late final int Function(Pointer<Utf8>) _deleteView;
-  late final int Function(Pointer<Utf8>, Pointer<Utf8>, int) _attachView;
-  late final int Function(Pointer<Utf8>, Pointer<Utf8>) _setChildren;
-
-  // New function pointers for layout updates and text measurement
-  late final Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>)
-      _measureText;
+  // Method channels
+  static const MethodChannel bridgeChannel = MethodChannel('com.dcmaui.bridge');
+  static const MethodChannel eventChannel = MethodChannel('com.dcmaui.events');
+  static const MethodChannel layoutChannel = MethodChannel('com.dcmaui.layout');
 
   // Add batch update state
   bool _batchUpdateInProgress = false;
@@ -49,54 +22,14 @@ class FFINativeBridge implements NativeBridge {
   Function(String viewId, String eventType, Map<String, dynamic> eventData)?
       _eventHandler;
 
-  // Method channels
-  static const MethodChannel eventChannel = MethodChannel('com.dcmaui.events');
-  static const MethodChannel layoutChannel = MethodChannel('com.dcmaui.layout');
-
   // Map to store callbacks for each view and event type
   final Map<String, Map<String, Function>> _eventCallbacks = {};
 
   // Sets up communication with native code
   FFINativeBridge() {
-    // Load the native library
-    if (Platform.isIOS || Platform.isMacOS) {
-      _nativeLib = DynamicLibrary.process();
-    } else {
-      throw UnsupportedError('FFI bridge only supports iOS and macOS');
-    }
-
-    // Get function pointers for UI operations ONLY
-    _initialize = _nativeLib
-        .lookupFunction<Int8 Function(), int Function()>('dcmaui_initialize');
-
-    _createView = _nativeLib.lookupFunction<
-        Int8 Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>),
-        int Function(
-            Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>)>('dcmaui_create_view');
-
-    _updateView = _nativeLib.lookupFunction<
-        Int8 Function(Pointer<Utf8>, Pointer<Utf8>),
-        int Function(Pointer<Utf8>, Pointer<Utf8>)>('dcmaui_update_view');
-
-    _deleteView = _nativeLib.lookupFunction<Int8 Function(Pointer<Utf8>),
-        int Function(Pointer<Utf8>)>('dcmaui_delete_view');
-
-    _attachView = _nativeLib.lookupFunction<
-        Int8 Function(Pointer<Utf8>, Pointer<Utf8>, Int32),
-        int Function(Pointer<Utf8>, Pointer<Utf8>, int)>('dcmaui_attach_view');
-
-    _setChildren = _nativeLib.lookupFunction<
-        Int8 Function(Pointer<Utf8>, Pointer<Utf8>),
-        int Function(Pointer<Utf8>, Pointer<Utf8>)>('dcmaui_set_children');
-
-    _measureText = _nativeLib.lookupFunction<
-        Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>),
-        Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>,
-            Pointer<Utf8>)>('dcmaui_measure_text');
-
     // Set up method channels for events and layout
     _setupMethodChannelEventHandling();
-    _setupLayoutMethodChannel();
+    print('Method channel bridge initialized');
   }
 
   // Set up method channel for event handling
@@ -118,8 +51,7 @@ class FFINativeBridge implements NativeBridge {
 
         // Forward to the appropriate handler
         if (_eventHandler != null) {
-          var handler = _eventHandler!(viewId, eventType, typedEventData);
-          debugPrint("here is the handler: $handler");
+          _eventHandler!(viewId, eventType, typedEventData);
         } else {
           print('WARNING: No event handler registered to process event');
         }
@@ -130,21 +62,15 @@ class FFINativeBridge implements NativeBridge {
     print('Method channel event handling initialized');
   }
 
-  // Set up method channel for layout operations
-  void _setupLayoutMethodChannel() {
-    // Nothing to set up for incoming messages, this channel is for outbound calls
-    print('Layout method channel initialized');
-  }
-
   @override
   Future<bool> initialize() async {
     try {
-      developer.log('Initializing FFI bridge', name: 'FFI');
-      final result = _initialize() != 0;
-      developer.log('FFI bridge initialization result: $result', name: 'FFI');
-      return result;
+      developer.log('Initializing method channel bridge', name: 'BRIDGE');
+      final result = await bridgeChannel.invokeMethod<bool>('initialize');
+      developer.log('Bridge initialization result: $result', name: 'BRIDGE');
+      return result ?? false;
     } catch (e) {
-      developer.log('Failed to initialize FFI bridge: $e', name: 'FFI');
+      developer.log('Failed to initialize bridge: $e', name: 'BRIDGE');
       return false;
     }
   }
@@ -164,32 +90,26 @@ class FFINativeBridge implements NativeBridge {
     }
 
     try {
-      developer.log('Creating view via FFI: $viewId, $type', name: 'FFI');
+      developer.log('Creating view via method channel: $viewId, $type',
+          name: 'BRIDGE');
 
-      // ADD THIS DETAILED LOGGING:
-      developer.log('DETAILED PROPS BEING SENT: ${jsonEncode(props)}',
-          name: 'FFI_PROPS');
+      // Preprocess props to handle special types before encoding to JSON
+      final processedProps = _preprocessProps(props);
 
-      return using((arena) {
-        // Preprocess props to handle special types before encoding to JSON
-        final processedProps = _preprocessProps(props);
+      developer.log('PROCESSED PROPS BEING SENT: ${jsonEncode(processedProps)}',
+          name: 'BRIDGE_PROPS');
 
-        // ADD THIS DETAILED LOGGING:
-        developer.log(
-            'PROCESSED PROPS BEING SENT: ${jsonEncode(processedProps)}',
-            name: 'FFI_PROPS');
-
-        final viewIdPointer = viewId.toNativeUtf8(allocator: arena);
-        final typePointer = type.toNativeUtf8(allocator: arena);
-        final propsJson = jsonEncode(processedProps);
-        final propsPointer = propsJson.toNativeUtf8(allocator: arena);
-
-        final result = _createView(viewIdPointer, typePointer, propsPointer);
-        developer.log('FFI createView result: $result', name: 'FFI');
-        return result != 0;
+      final result = await bridgeChannel.invokeMethod<bool>('createView', {
+        'viewId': viewId,
+        'viewType': type,
+        'props': processedProps,
       });
+
+      developer.log('Method channel createView result: $result',
+          name: 'BRIDGE');
+      return result ?? false;
     } catch (e) {
-      developer.log('FFI createView error: $e', name: 'FFI');
+      developer.log('Method channel createView error: $e', name: 'BRIDGE');
       return false;
     }
   }
@@ -207,65 +127,72 @@ class FFINativeBridge implements NativeBridge {
       return true;
     }
 
-    developer.log('FFI updateView: viewId=$viewId, props=$propPatches',
-        name: 'FFI');
-
-    // ADD THIS DETAILED LOGGING:
     developer.log(
-        'DETAILED UPDATE PROPS BEING SENT: ${jsonEncode(propPatches)}',
-        name: 'FFI_PROPS');
+        'Method channel updateView: viewId=$viewId, props=$propPatches',
+        name: 'BRIDGE');
 
-    return using((arena) {
-      final viewIdPointer = viewId.toNativeUtf8(allocator: arena);
-
+    try {
       // Process props for updates
       final processedProps = _preprocessProps(propPatches);
-      final propsJson = jsonEncode(processedProps);
 
-      // ADD THIS DETAILED LOGGING:
       developer.log(
           'PROCESSED UPDATE PROPS BEING SENT: ${jsonEncode(processedProps)}',
-          name: 'FFI_PROPS');
+          name: 'BRIDGE_PROPS');
 
-      developer.log('FFI updateView sending JSON: $propsJson', name: 'FFI');
-      final propsPointer = propsJson.toNativeUtf8(allocator: arena);
+      final result = await bridgeChannel.invokeMethod<bool>('updateView', {
+        'viewId': viewId,
+        'props': processedProps,
+      });
 
-      final result = _updateView(viewIdPointer, propsPointer);
-      developer.log('FFI updateView result: $result', name: 'FFI');
-      return result != 0;
-    });
+      developer.log('Method channel updateView result: $result',
+          name: 'BRIDGE');
+      return result ?? false;
+    } catch (e) {
+      developer.log('Method channel updateView error: $e', name: 'BRIDGE');
+      return false;
+    }
   }
 
   @override
   Future<bool> deleteView(String viewId) async {
-    return using((arena) {
-      final viewIdPointer = viewId.toNativeUtf8(allocator: arena);
-      final result = _deleteView(viewIdPointer);
-      return result != 0;
-    });
+    try {
+      final result = await bridgeChannel.invokeMethod<bool>('deleteView', {
+        'viewId': viewId,
+      });
+      return result ?? false;
+    } catch (e) {
+      developer.log('Method channel deleteView error: $e', name: 'BRIDGE');
+      return false;
+    }
   }
 
   @override
   Future<bool> attachView(String childId, String parentId, int index) async {
-    return using((arena) {
-      final childIdPointer = childId.toNativeUtf8(allocator: arena);
-      final parentIdPointer = parentId.toNativeUtf8(allocator: arena);
-
-      final result = _attachView(childIdPointer, parentIdPointer, index);
-      return result != 0;
-    });
+    try {
+      final result = await bridgeChannel.invokeMethod<bool>('attachView', {
+        'childId': childId,
+        'parentId': parentId,
+        'index': index,
+      });
+      return result ?? false;
+    } catch (e) {
+      developer.log('Method channel attachView error: $e', name: 'BRIDGE');
+      return false;
+    }
   }
 
   @override
   Future<bool> setChildren(String viewId, List<String> childrenIds) async {
-    return using((arena) {
-      final viewIdPointer = viewId.toNativeUtf8(allocator: arena);
-      final childrenJson = jsonEncode(childrenIds);
-      final childrenPointer = childrenJson.toNativeUtf8(allocator: arena);
-
-      final result = _setChildren(viewIdPointer, childrenPointer);
-      return result != 0;
-    });
+    try {
+      final result = await bridgeChannel.invokeMethod<bool>('setChildren', {
+        'viewId': viewId,
+        'childrenIds': childrenIds,
+      });
+      return result ?? false;
+    } catch (e) {
+      developer.log('Method channel setChildren error: $e', name: 'BRIDGE');
+      return false;
+    }
   }
 
   @override
@@ -289,7 +216,6 @@ class FFINativeBridge implements NativeBridge {
   @override
   Future<bool> removeEventListeners(
       String viewId, List<String> eventTypes) async {
-    // DIRECT METHOD CHANNEL ONLY - No FFI for events
     try {
       final result =
           await eventChannel.invokeMethod<bool>('removeEventListeners', {
@@ -297,16 +223,10 @@ class FFINativeBridge implements NativeBridge {
         'eventTypes': eventTypes,
       });
 
-      if (result == true) {
-        return true;
-      } else {
-        developer.log('Method channel event unregistration failed',
-            name: 'FFI');
-        return false;
-      }
+      return result ?? false;
     } catch (e) {
       developer.log('Method channel event unregistration error: $e',
-          name: 'FFI');
+          name: 'BRIDGE');
       return false;
     }
   }
@@ -322,7 +242,6 @@ class FFINativeBridge implements NativeBridge {
   Future<bool> updateViewLayout(String viewId, double left, double top,
       double width, double height) async {
     try {
-      // CHANGED: Use method channel instead of FFI for layout operations
       developer.log(
           '🔄 LAYOUT UPDATE VIA METHOD CHANNEL: $viewId - left=$left, top=$top, width=$width, height=$height',
           name: 'LAYOUT');
@@ -339,7 +258,7 @@ class FFINativeBridge implements NativeBridge {
       return result ?? false;
     } catch (e, stack) {
       developer.log('❌ Error updating view layout: $e',
-          name: 'FFINativeBridge', error: e, stackTrace: stack);
+          name: 'MethodChannelBridge', error: e, stackTrace: stack);
       return false;
     }
   }
@@ -348,7 +267,6 @@ class FFINativeBridge implements NativeBridge {
   Future<bool> calculateLayout(
       {required double screenWidth, required double screenHeight}) async {
     try {
-      // CHANGED: Use method channel instead of FFI for layout calculations
       developer.log(
           '🔄 Calculating layout via METHOD CHANNEL: screenWidth=$screenWidth, screenHeight=$screenHeight',
           name: 'LAYOUT');
@@ -361,7 +279,7 @@ class FFINativeBridge implements NativeBridge {
       return result ?? false;
     } catch (e, stack) {
       developer.log('❌ Error calculating layout: $e',
-          name: 'FFINativeBridge', error: e, stackTrace: stack);
+          name: 'MethodChannelBridge', error: e, stackTrace: stack);
       return false;
     }
   }
@@ -372,7 +290,6 @@ class FFINativeBridge implements NativeBridge {
     required String nodeTree,
   }) async {
     try {
-      // CHANGED: Use method channel for hierarchy sync
       final result = await layoutChannel
           .invokeMapMethod<String, dynamic>('syncNodeHierarchy', {
         'rootId': rootId,
@@ -390,7 +307,6 @@ class FFINativeBridge implements NativeBridge {
   Future<Map<String, dynamic>> getNodeHierarchy(
       {required String nodeId}) async {
     try {
-      // CHANGED: Use method channel for hierarchy retrieval
       final result = await layoutChannel
           .invokeMapMethod<String, dynamic>('getNodeHierarchy', {
         'nodeId': nodeId,
@@ -406,28 +322,29 @@ class FFINativeBridge implements NativeBridge {
   @override
   Future<Map<String, double>> measureText(
       String viewId, String text, Map<String, dynamic> textAttributes) async {
-    developer.log('FFI measureText: viewId=$viewId, text=$text', name: 'FFI');
+    try {
+      developer.log('Method channel measureText: viewId=$viewId, text=$text',
+          name: 'BRIDGE');
 
-    return using((arena) {
-      final viewIdPointer = viewId.toNativeUtf8(allocator: arena);
-      final textPointer = text.toNativeUtf8(allocator: arena);
-      final attributesJson = jsonEncode(textAttributes);
-      final attributesPointer = attributesJson.toNativeUtf8(allocator: arena);
+      final result =
+          await layoutChannel.invokeMapMethod<String, dynamic>('measureText', {
+        'viewId': viewId,
+        'text': text,
+        'attributes': textAttributes,
+      });
 
-      final resultPointer =
-          _measureText(viewIdPointer, textPointer, attributesPointer);
-
-      if (resultPointer.address == 0) {
+      if (result == null) {
         return {'width': 0.0, 'height': 0.0};
       }
 
-      final resultString = resultPointer.toDartString();
-      final Map<String, dynamic> resultMap = jsonDecode(resultString);
       return {
-        'width': resultMap['width']?.toDouble() ?? 0.0,
-        'height': resultMap['height']?.toDouble() ?? 0.0
+        'width': (result['width'] as num).toDouble(),
+        'height': (result['height'] as num).toDouble(),
       };
-    });
+    } catch (e) {
+      developer.log('Method channel measureText error: $e', name: 'BRIDGE');
+      return {'width': 0.0, 'height': 0.0};
+    }
   }
 
   // Helper method to preprocess props for JSON serialization
@@ -436,7 +353,7 @@ class FFINativeBridge implements NativeBridge {
 
     // ADD THIS DETAILED LOGGING:
     developer.log('PREPROCESSING PROPS: ${props.keys.join(", ")}',
-        name: 'FFI_PROPS');
+        name: 'BRIDGE_PROPS');
 
     props.forEach((key, value) {
       if (value is Function) {
@@ -445,26 +362,26 @@ class FFINativeBridge implements NativeBridge {
           final eventType = key.substring(2).toLowerCase();
           processedProps['_has${key.substring(2)}Handler'] = true;
           developer.log('Found function handler for event: $eventType',
-              name: 'FFI');
+              name: 'BRIDGE');
         }
       } else if (value is Color) {
         // Convert Color objects to hex strings with alpha
         processedProps[key] =
             '#${value.value.toRadixString(16).padLeft(8, '0')}';
         developer.log('Converting color prop $key to: ${processedProps[key]}',
-            name: 'FFI_PROPS');
+            name: 'BRIDGE_PROPS');
       } else if (value == double.infinity) {
         // Convert infinity to 100% string for percentage sizing
         processedProps[key] = '100%';
         developer.log(
             'Converting infinity prop $key to: ${processedProps[key]}',
-            name: 'FFI_PROPS');
+            name: 'BRIDGE_PROPS');
       } else if (value is String &&
           (value.endsWith('%') || value.startsWith('#'))) {
         // Pass percentage strings and color strings through directly
         processedProps[key] = value;
         developer.log('Passing through special value: $key=$value',
-            name: 'FFI');
+            name: 'BRIDGE');
       } else if (key == 'width' ||
           key == 'height' ||
           key.startsWith('margin') ||
@@ -474,12 +391,12 @@ class FFINativeBridge implements NativeBridge {
           processedProps[key] = value.toDouble();
           developer.log(
               'Converting numeric layout prop $key to double: ${processedProps[key]}',
-              name: 'FFI_PROPS');
+              name: 'BRIDGE_PROPS');
         } else {
           processedProps[key] = value;
           developer.log(
               'Layout prop $key kept as is: $value (${value.runtimeType})',
-              name: 'FFI_PROPS');
+              name: 'BRIDGE_PROPS');
         }
       } else if (value != null) {
         processedProps[key] = value;
@@ -492,11 +409,8 @@ class FFINativeBridge implements NativeBridge {
   @override
   Future<dynamic> invokeMethod(String method,
       [Map<String, dynamic>? arguments]) async {
-    // Create a method channel if needed
-    final methodChannel = MethodChannel('com.dcmaui.bridge');
-
     try {
-      return await methodChannel.invokeMethod(method, arguments);
+      return await bridgeChannel.invokeMethod(method, arguments);
     } catch (e) {
       print('Error invoking method $method: $e');
       return null;
@@ -520,13 +434,20 @@ class FFINativeBridge implements NativeBridge {
       return false;
     }
 
-    final success = await invokeMethod('commitBatchUpdate', {
-      'updates': _pendingBatchUpdates,
-    });
+    try {
+      final success =
+          await bridgeChannel.invokeMethod<bool>('commitBatchUpdate', {
+        'updates': _pendingBatchUpdates,
+      });
 
-    _batchUpdateInProgress = false;
-    _pendingBatchUpdates.clear();
-    return success == true;
+      _batchUpdateInProgress = false;
+      _pendingBatchUpdates.clear();
+      return success ?? false;
+    } catch (e) {
+      _batchUpdateInProgress = false;
+      _pendingBatchUpdates.clear();
+      return false;
+    }
   }
 
   @override

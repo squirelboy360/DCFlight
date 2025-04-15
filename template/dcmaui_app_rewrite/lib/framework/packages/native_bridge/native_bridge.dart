@@ -1,7 +1,4 @@
 import 'dart:async';
-import 'dart:io' show Platform;
-
-import 'ffi_bridge.dart';
 
 /// Abstract interface for platform-specific native bridges
 abstract class NativeBridge {
@@ -75,16 +72,5 @@ abstract class NativeBridge {
       String viewId, String eventType, Function callback) {
     _eventCallbacks[viewId] ??= {};
     _eventCallbacks[viewId]![eventType] = callback;
-  }
-}
-
-/// Factory for creating platform-specific native bridges
-class NativeBridgeFactory {
-  static NativeBridge create() {
-    if (Platform.isIOS || Platform.isMacOS) {
-      return FFINativeBridge();
-    } else {
-      throw UnsupportedError('Unsupported platform for native bridge');
-    }
   }
 }
