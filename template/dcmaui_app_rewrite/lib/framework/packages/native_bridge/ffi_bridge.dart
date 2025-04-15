@@ -57,7 +57,6 @@ class FFINativeBridge implements NativeBridge {
   final Map<String, Map<String, Function>> _eventCallbacks = {};
 
   // Sets up communication with native code
-  @pragma('vm:entry-point')
   FFINativeBridge() {
     // Load the native library
     if (Platform.isIOS || Platform.isMacOS) {
@@ -138,7 +137,6 @@ class FFINativeBridge implements NativeBridge {
   }
 
   @override
-  @pragma('vm:entry-point')
   Future<bool> initialize() async {
     try {
       developer.log('Initializing FFI bridge', name: 'FFI');
@@ -152,7 +150,6 @@ class FFINativeBridge implements NativeBridge {
   }
 
   @override
-  @pragma('vm:entry-point')
   Future<bool> createView(
       String viewId, String type, Map<String, dynamic> props) async {
     // Track operation for batch updates if needed
@@ -198,7 +195,6 @@ class FFINativeBridge implements NativeBridge {
   }
 
   @override
-  @pragma('vm:entry-point')
   Future<bool> updateView(
       String viewId, Map<String, dynamic> propPatches) async {
     // Track operation for batch updates if needed
@@ -241,7 +237,6 @@ class FFINativeBridge implements NativeBridge {
   }
 
   @override
-  @pragma('vm:entry-point')
   Future<bool> deleteView(String viewId) async {
     return using((arena) {
       final viewIdPointer = viewId.toNativeUtf8(allocator: arena);
@@ -251,7 +246,6 @@ class FFINativeBridge implements NativeBridge {
   }
 
   @override
-  @pragma('vm:entry-point')
   Future<bool> attachView(String childId, String parentId, int index) async {
     return using((arena) {
       final childIdPointer = childId.toNativeUtf8(allocator: arena);
@@ -263,7 +257,6 @@ class FFINativeBridge implements NativeBridge {
   }
 
   @override
-  @pragma('vm:entry-point')
   Future<bool> setChildren(String viewId, List<String> childrenIds) async {
     return using((arena) {
       final viewIdPointer = viewId.toNativeUtf8(allocator: arena);
@@ -411,7 +404,6 @@ class FFINativeBridge implements NativeBridge {
   }
 
   @override
-  @pragma('vm:entry-point')
   Future<Map<String, double>> measureText(
       String viewId, String text, Map<String, dynamic> textAttributes) async {
     developer.log('FFI measureText: viewId=$viewId, text=$text', name: 'FFI');
@@ -570,7 +562,6 @@ class FFINativeBridge implements NativeBridge {
   }
 
   @override
-  @pragma('vm:entry-point')
   void handleNativeEvent(
       String viewId, String eventType, Map<String, dynamic> eventData) {
     print(
