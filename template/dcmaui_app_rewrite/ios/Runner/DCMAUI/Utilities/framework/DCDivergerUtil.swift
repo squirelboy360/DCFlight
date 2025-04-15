@@ -1,15 +1,12 @@
-import UIKit
-import Flutter
-import yoga
+//
+//  DCDivergerUtil.swift
+//  
+//
+//  Created by Tahiru Agbanwa on 4/15/25.
+//
 
-@UIApplicationMain
-class AppDelegate: FlutterAppDelegate {
-    lazy var flutterEngine = FlutterEngine(name: "main engine")
-    
-    override func application(
-        _ application: UIApplication,
-        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
-    ) -> Bool {
+extension AppDelegate {
+    internal func DivergeToDCMAUI() {
         // Initialize and run the Flutter engine
         flutterEngine.run(withEntrypoint: nil, initialRoute: "/")
         GeneratedPluginRegistrant.register(with: flutterEngine)
@@ -69,11 +66,8 @@ class AppDelegate: FlutterAppDelegate {
                 print("🔄 Performed delayed secondary layout calculation")
             }
         }
-        
-        return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
     
-    // NEW: Extract initial layout calculation to a separate method for reusability
     private func performInitialLayoutCalculation() {
         print("🚀 Performing initial layout calculation")
         let screenWidth = UIScreen.main.bounds.width
@@ -143,12 +137,9 @@ class AppDelegate: FlutterAppDelegate {
             name: UIDevice.orientationDidChangeNotification,
             object: nil
         )
-        
-        // NOTE: We removed the initial layout calculation here and moved it to the main method
-        // with better timing controls
     }
     
-    // Add this method to handle layout changes
+    //??     handle layout changes (probaly handy for desktops or larger displays in the future that are not       orienational based
     @objc private func handleLayoutChange(_ notification: Notification) {
         guard let view = notification.object as? UIView,
               let nodeId = view.getNodeId() else { return }

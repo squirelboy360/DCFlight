@@ -118,9 +118,8 @@ class Reconciler {
 
         await vdom.updateView(oldElement.nativeViewId!, changedProps);
 
-        // Mark layout as dirty if any layout props have changed
         if (changedProps.keys.any((key) => _isLayoutProp(key))) {
-          vdom.markLayoutDirty();
+          vdom.calculateAndApplyLayout();
         }
       }
 

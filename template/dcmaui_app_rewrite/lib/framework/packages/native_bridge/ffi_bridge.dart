@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
 import 'package:ffi/ffi.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import 'native_bridge.dart';
@@ -117,7 +118,8 @@ class FFINativeBridge implements NativeBridge {
 
         // Forward to the appropriate handler
         if (_eventHandler != null) {
-          _eventHandler!(viewId, eventType, typedEventData);
+          var handler = _eventHandler!(viewId, eventType, typedEventData);
+          debugPrint("here is the handler: $handler");
         } else {
           print('WARNING: No event handler registered to process event');
         }

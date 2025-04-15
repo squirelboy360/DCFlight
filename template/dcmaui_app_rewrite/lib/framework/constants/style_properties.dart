@@ -94,13 +94,12 @@ class StyleSheet {
       // FIXED: Check for transparency and handle it specially
       if (backgroundColor!.alpha == 0) {
         map['backgroundColor'] = 'transparent';
-        print("Sending transparent color correctly: 'transparent'");
+
       } else {
         final hexValue = backgroundColor!.value & 0xFFFFFF;
         map['backgroundColor'] =
             '#${hexValue.toRadixString(16).padLeft(6, '0')}';
-        print(
-            "Sending solid color: '#${hexValue.toRadixString(16).padLeft(6, '0')}'");
+      
       }
     }
     if (opacity != null) map['opacity'] = opacity;

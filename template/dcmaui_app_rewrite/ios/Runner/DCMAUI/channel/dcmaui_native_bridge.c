@@ -9,8 +9,8 @@ extern int8_t dcmaui_set_children_impl(const char* view_id, const char* children
 extern const char* dcmaui_measure_text_impl(const char* view_id, const char* text, const char* attributes_json);
 
 // NOTE: Layout-related functions removed from FFI implementation
-// They will be handled via method channels instead
-
+//?? They will be handled via method channels instead
+//Why? cause method channels dispatch immediately asychronously thread jumping if in the rare possible case the vdom is busy using the synchronous ffi bridge for UI updates, cause UI is of higher priority.
 // Implement the C interface functions
 int8_t dcmaui_initialize(void) {
     return dcmaui_initialize_impl();

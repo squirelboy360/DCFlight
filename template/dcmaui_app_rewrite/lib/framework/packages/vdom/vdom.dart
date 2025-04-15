@@ -171,10 +171,6 @@ class VDom {
   /// Reconciliation engine
   late final Reconciler _reconciler;
 
-  /// Flag to track if layout recalculation is needed
-  // This is a placeholder for future use in case current layout arch is revised
-  bool _layoutDirty = false;
-
   /// Node synchronization manager
   late final VDomNodeSync _nodeSync;
 
@@ -541,11 +537,8 @@ class VDom {
     final screenWidth = width ?? ScreenUtilities.instance.screenWidth;
     final screenHeight = height ?? ScreenUtilities.instance.screenHeight;
 
-    // SIMPLIFIED: Delegate EVERYTHING to native side
-    // Remove any Dart-side layout calculations completely
     _performanceMonitor.startTimer('native_layout_calculation');
 
-    // Send command to native to calculate and apply layout
     final success = await _nativeBridge.calculateLayout(
       screenWidth: screenWidth,
       screenHeight: screenHeight,
@@ -560,9 +553,6 @@ class VDom {
 
     developer.log('✅ Layout calculation delegated to native side',
         name: 'VDom');
-
-    // Reset layout dirty flag
-    _layoutDirty = false;
   }
 
   /// Schedule a component update for batching
@@ -679,9 +669,6 @@ class VDom {
     if (component is StatefulComponent) {
       component.componentDidUpdate({});
     }
-
-    // Calculate layout again
-    calculateLayout();
   }
 
   /// Find parent view ID for a component node
@@ -902,20 +889,6 @@ class VDom {
     );
   }
 
-  /// Extract event types from props
-  List<String> _extractEventTypes(Map<String, dynamic> props) {
-    final eventTypes = <String>[];
-
-    for (final key in props.keys) {
-      if (key.startsWith('on') && props[key] is Function) {
-        final eventType = key.substring(2).toLowerCase();
-        eventTypes.add(eventType);
-      }
-    }
-
-    return eventTypes;
-  }
-
   /// Call lifecycle methods for components
   void _callLifecycleMethodsIfNeeded(VDomNode node) {
     // Find component owning this node by traversing up the tree
@@ -979,11 +952,6 @@ class VDom {
     return result;
   }
 
-  /// Mark layout as dirty
-  void markLayoutDirty() {
-    _layoutDirty = true;
-  }
-
   /// Update a view's properties
   Future<bool> updateView(String viewId, Map<String, dynamic> props) async {
     return await _nativeBridge.updateView(viewId, props);
@@ -1016,11 +984,6 @@ class VDom {
       node.nativeViewId = null;
       _nodesByViewId.remove(viewId);
     }
-  }
-
-  /// Calculate layout (helper method for ease of use)
-  Future<void> calculateLayout() async {
-    await calculateAndApplyLayout();
   }
 
   /// Attach a child view to a parent view at specific index

@@ -87,7 +87,7 @@ class DCMauiDemoApp extends StatefulComponent {
         height: '100%',
       ),
       style: StyleSheet(
-        backgroundColor: Colors.amber,
+        backgroundColor: Colors.black,
       ),
       children: [
         // Main content area
@@ -288,7 +288,7 @@ class DCMauiDemoApp extends StatefulComponent {
             disabled: false,
             activeOpacity: 0.1,
           ),
-          onPress: () => {onPress(), print("pressed button $label")},
+          onPress: () => onPress(),
         ),
         UI.Text(
           content: label,
@@ -333,6 +333,7 @@ class DCMauiDemoApp extends StatefulComponent {
         UI.View(
           layout: LayoutProps(
             width: '100%',
+            height: 250,
             padding: 20,
           ),
           style: StyleSheet(backgroundColor: Colors.deepPurple),
@@ -345,20 +346,21 @@ class DCMauiDemoApp extends StatefulComponent {
               ),
               style: StyleSheet(),
               textProps: TextProps(
-                color: Colors.black,
+                color: Colors.white,
                 fontSize: 28,
                 fontWeight: "bold",
               ),
             ),
             UI.Text(
-              content: "A cross-platform UI framework inspired by React Native",
+              content:
+                  "A cross-platform UI framework that renders actual native UI builtfrom scratch on the Dart language 🤯",
               layout: LayoutProps(
                 width: '100%',
                 marginBottom: 20,
               ),
               style: StyleSheet(),
               textProps: TextProps(
-                color: Colors.grey,
+                color: Colors.white,
                 fontSize: 16,
               ),
             ),
