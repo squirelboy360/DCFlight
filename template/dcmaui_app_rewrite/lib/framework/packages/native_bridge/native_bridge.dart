@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:io' show Platform;
+
+import 'dispatcher.dart';
 
 /// Abstract interface for platform-specific native bridges
 abstract class NativeBridge {
@@ -72,5 +75,12 @@ abstract class NativeBridge {
       String viewId, String eventType, Function callback) {
     _eventCallbacks[viewId] ??= {};
     _eventCallbacks[viewId]![eventType] = callback;
+  }
+}
+
+/// Factory for creating platform-specific native bridges
+class NativeBridgeFactory {
+  static NativeBridge create() {
+    return PlatformDispatcher();
   }
 }

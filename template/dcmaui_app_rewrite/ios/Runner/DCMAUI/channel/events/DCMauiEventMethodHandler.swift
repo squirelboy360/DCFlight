@@ -93,16 +93,8 @@ class DCMauiEventMethodHandler: NSObject {
         
         print("🎯 Native: Received addEventListeners call for view \(viewId): \(eventTypes)")
         
-        // CRITICAL FIX: Use BOTH registries to locate the view - first the FFI bridge
-        var view: UIView?
-        
-        // First try the FFI bridge registry
-        view = DCMauiFFIBridge.shared.getViewById(viewId)
-        
-        // If not found, try the ViewRegistry
-        if view == nil {
-            view = ViewRegistry.shared.getView(id: viewId)
-        }
+        // Get view from the registry
+        var view: UIView? = ViewRegistry.shared.getView(id: viewId)
         
         // If still not found, try the LayoutManager
         if view == nil {
@@ -138,16 +130,8 @@ class DCMauiEventMethodHandler: NSObject {
         
         print("🎯 Native: Received removeEventListeners call for view \(viewId): \(eventTypes)")
         
-        // CRITICAL FIX: Use BOTH registries to locate the view - first the FFI bridge
-        var view: UIView?
-        
-        // First try the FFI bridge registry
-        view = DCMauiFFIBridge.shared.getViewById(viewId)
-        
-        // If not found, try the ViewRegistry
-        if view == nil {
-            view = ViewRegistry.shared.getView(id: viewId)
-        }
+        // Get view from the registry
+        var view: UIView? = ViewRegistry.shared.getView(id: viewId)
         
         // If still not found, try the LayoutManager
         if view == nil {
@@ -287,13 +271,5 @@ class DCMauiEventMethodHandler: NSObject {
                 "timestamp": Date().timeIntervalSince1970
             ])
         }
-    }
-}
-
-// MARK: - Extension for DCMauiFFIBridge
-extension DCMauiFFIBridge {
-    // Helper method to get view by ID
-    func getViewById(_ viewId: String) -> UIView? {
-        return views[viewId]
     }
 }

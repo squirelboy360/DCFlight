@@ -8,7 +8,7 @@ import 'native_bridge.dart';
 import 'dart:developer' as developer;
 
 /// Method channel-based implementation of NativeBridge
-class FFINativeBridge implements NativeBridge {
+class PlatformDispatcher implements NativeBridge {
   // Method channels
   static const MethodChannel bridgeChannel = MethodChannel('com.dcmaui.bridge');
   static const MethodChannel eventChannel = MethodChannel('com.dcmaui.events');
@@ -26,7 +26,7 @@ class FFINativeBridge implements NativeBridge {
   final Map<String, Map<String, Function>> _eventCallbacks = {};
 
   // Sets up communication with native code
-  FFINativeBridge() {
+  PlatformDispatcher() {
     // Set up method channels for events and layout
     _setupMethodChannelEventHandling();
     print('Method channel bridge initialized');
