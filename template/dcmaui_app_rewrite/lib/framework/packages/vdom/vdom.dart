@@ -539,10 +539,7 @@ class VDom {
 
     _performanceMonitor.startTimer('native_layout_calculation');
 
-    final success = await _nativeBridge.calculateLayout(
-      screenWidth: screenWidth,
-      screenHeight: screenHeight,
-    );
+    final success = await _nativeBridge.calculateLayout();
 
     if (!success) {
       developer.log('⚠️ Native layout calculation failed', name: 'VDom');

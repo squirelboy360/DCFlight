@@ -3,10 +3,10 @@ import Foundation
 
 /// Bridge between Dart FFI and native Swift/Objective-C code
 /// Now adapted to work with method channels
-@objc class DCMauiFFIBridge: NSObject {
+@objc class DCMauiBridgeImpl: NSObject {
     
     // Singleton instance
-    @objc static let shared = DCMauiFFIBridge()
+    @objc static let shared = DCMauiBridgeImpl()
     
     // Dictionary to hold view references
     internal var views = [String: UIView]()

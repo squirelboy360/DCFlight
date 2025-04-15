@@ -5,6 +5,7 @@ import UIKit
 class DCMauiLayoutMethodHandler: NSObject {
     /// Singleton instance
     static let shared = DCMauiLayoutMethodHandler()
+    let frame = UIScreen.main.bounds;
     
     /// Method channel for layout operations
     var methodChannel: FlutterMethodChannel?
@@ -52,17 +53,10 @@ class DCMauiLayoutMethodHandler: NSObject {
     
     // Calculate layout for the entire view hierarchy
     private func handleCalculateLayout(_ args: [String: Any], result: @escaping FlutterResult) {
-        // Get dimensions
-        guard let screenWidth = args["screenWidth"] as? CGFloat,
-              let screenHeight = args["screenHeight"] as? CGFloat else {
-            result(FlutterError(code: "LAYOUT_ERROR", message: "Invalid dimensions", details: nil))
-            return
-        }
-        
         // Use dedicated layout background queue - never on UI thread
         DispatchQueue(label: "com.dcmaui.layoutCalculation", qos: .userInitiated).async {
             // Calculate layout
-            let success = YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
+            let success = YogaShadowTree.shared.calculateAndApplyLayout(width: self.frame.width, height: self.frame.height)
             
             // Send result on the main thread
             DispatchQueue.main.async {

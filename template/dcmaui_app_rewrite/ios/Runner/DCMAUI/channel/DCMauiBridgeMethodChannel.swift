@@ -92,7 +92,7 @@ class DCMauiBridgeMethodChannel: NSObject {
         // Execute on main thread
         DispatchQueue.main.async {
             // Initialize components and systems
-            let success = DCMauiFFIBridge.shared.initialize()
+            let success = DCMauiBridgeImpl.shared.initialize()
             print("🚀 Bridge initialization result: \(success)")
             result(success)
         }
@@ -116,7 +116,7 @@ class DCMauiBridgeMethodChannel: NSObject {
         
         // Execute on main thread
         DispatchQueue.main.async {
-            let success = DCMauiFFIBridge.shared.createView(viewId: viewId, viewType: viewType, propsJson: propsJson)
+            let success = DCMauiBridgeImpl.shared.createView(viewId: viewId, viewType: viewType, propsJson: propsJson)
             result(success)
         }
     }
@@ -138,7 +138,7 @@ class DCMauiBridgeMethodChannel: NSObject {
         
         // Execute on main thread
         DispatchQueue.main.async {
-            let success = DCMauiFFIBridge.shared.updateView(viewId: viewId, propsJson: propsJson)
+            let success = DCMauiBridgeImpl.shared.updateView(viewId: viewId, propsJson: propsJson)
             result(success)
         }
     }
@@ -152,7 +152,7 @@ class DCMauiBridgeMethodChannel: NSObject {
         
         // Execute on main thread
         DispatchQueue.main.async {
-            let success = DCMauiFFIBridge.shared.deleteView(viewId: viewId)
+            let success = DCMauiBridgeImpl.shared.deleteView(viewId: viewId)
             result(success)
         }
     }
@@ -168,7 +168,7 @@ class DCMauiBridgeMethodChannel: NSObject {
         
         // Execute on main thread
         DispatchQueue.main.async {
-            let success = DCMauiFFIBridge.shared.attachView(childId: childId, parentId: parentId, index: index)
+            let success = DCMauiBridgeImpl.shared.attachView(childId: childId, parentId: parentId, index: index)
             result(success)
         }
     }
@@ -190,7 +190,7 @@ class DCMauiBridgeMethodChannel: NSObject {
         
         // Execute on main thread
         DispatchQueue.main.async {
-            let success = DCMauiFFIBridge.shared.setChildren(viewId: viewId, childrenJson: childrenJson)
+            let success = DCMauiBridgeImpl.shared.setChildren(viewId: viewId, childrenJson: childrenJson)
             result(success)
         }
     }
@@ -215,7 +215,7 @@ class DCMauiBridgeMethodChannel: NSObject {
                            let props = update["props"] as? [String: Any],
                            let propsData = try? JSONSerialization.data(withJSONObject: props),
                            let propsJson = String(data: propsData, encoding: .utf8) {
-                            let success = DCMauiFFIBridge.shared.createView(viewId: viewId, viewType: viewType, propsJson: propsJson)
+                            let success = DCMauiBridgeImpl.shared.createView(viewId: viewId, viewType: viewType, propsJson: propsJson)
                             if !success {
                                 allSucceeded = false
                             }
@@ -225,7 +225,7 @@ class DCMauiBridgeMethodChannel: NSObject {
                            let props = update["props"] as? [String: Any],
                            let propsData = try? JSONSerialization.data(withJSONObject: props),
                            let propsJson = String(data: propsData, encoding: .utf8) {
-                            let success = DCMauiFFIBridge.shared.updateView(viewId: viewId, propsJson: propsJson)
+                            let success = DCMauiBridgeImpl.shared.updateView(viewId: viewId, propsJson: propsJson)
                             if !success {
                                 allSucceeded = false
                             }
@@ -248,7 +248,7 @@ class DCMauiBridgeMethodChannel: NSObject {
         }
         
         // Then try DCMauiFFIBridge's views
-        if let view = DCMauiFFIBridge.shared.views[viewId] {
+        if let view = DCMauiBridgeImpl.shared.views[viewId] {
             return view
         }
         

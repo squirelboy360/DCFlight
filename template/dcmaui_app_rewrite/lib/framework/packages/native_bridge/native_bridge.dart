@@ -43,8 +43,7 @@ abstract class NativeBridge {
   // Layout methods
   Future<bool> updateViewLayout(
       String viewId, double left, double top, double width, double height);
-  Future<bool> calculateLayout(
-      {required double screenWidth, required double screenHeight});
+  Future<bool> calculateLayout();
 
   // Node synchronization methods
   Future<Map<String, dynamic>> syncNodeHierarchy(

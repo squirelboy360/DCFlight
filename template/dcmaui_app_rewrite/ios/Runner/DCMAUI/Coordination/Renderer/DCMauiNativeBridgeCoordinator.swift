@@ -104,7 +104,7 @@ class ViewRegistry {
         }
         
         // Register with FFI bridge too
-        DCMauiFFIBridge.shared.registerView(view, withId: viewId)
+        DCMauiBridgeImpl.shared.registerView(view, withId: viewId)
         
         print("Root view manually created with ID: \(viewId)")
     }

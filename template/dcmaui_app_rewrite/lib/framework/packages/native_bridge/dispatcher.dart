@@ -264,17 +264,13 @@ class PlatformDispatcher implements NativeBridge {
   }
 
   @override
-  Future<bool> calculateLayout(
-      {required double screenWidth, required double screenHeight}) async {
+  Future<bool> calculateLayout() async {
     try {
       developer.log(
-          '🔄 Calculating layout via METHOD CHANNEL: screenWidth=$screenWidth, screenHeight=$screenHeight',
+          '🔄 Calculating layout via METHOD CHANNEL',
           name: 'LAYOUT');
 
-      final result = await layoutChannel.invokeMethod<bool>('calculateLayout', {
-        'screenWidth': screenWidth,
-        'screenHeight': screenHeight,
-      });
+      final result = await layoutChannel.invokeMethod<bool>('calculateLayout');
 
       return result ?? false;
     } catch (e, stack) {
