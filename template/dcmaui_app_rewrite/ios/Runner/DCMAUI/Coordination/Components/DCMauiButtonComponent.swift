@@ -297,17 +297,8 @@ class DCMauiButtonComponent: NSObject, DCMauiComponent {
                 "direct": true
             ]
             
-            // Invoke callback directly
+            // Invoke callback directly - this should be the only path for events
             callback(viewId, "onPress", eventData)
-            
-            // Also send via coordinator for redundancy
-            DispatchQueue.main.async {
-                DCMauiEventMethodHandler.shared.sendEvent(
-                    viewId: viewId,
-                    eventName: "onPress",
-                    eventData: eventData
-                )
-            }
             
             NSLog("📣 Event sent for button: \(viewId)")
             return
@@ -345,20 +336,6 @@ class DCMauiButtonComponent: NSObject, DCMauiComponent {
             "buttonTitle": sender.title(for: .normal) ?? ""
         ])
         print("📣 Triggered onPress event for button \(viewId)")
-        
-        // CRITICAL FIX: Also send directly via method channel for redundancy
-        DispatchQueue.main.async {
-            DCMauiEventMethodHandler.shared.sendEvent(
-                viewId: viewId,
-                eventName: "onPress",
-                eventData: [
-                    "pressed": true, 
-                    "timestamp": Date().timeIntervalSince1970,
-                    "buttonTitle": sender.title(for: .normal) ?? "",
-                    "direct": true
-                ]
-            )
-        }
     }
     
     @objc func handleButtonTouchDown(_ sender: UIButton) {
@@ -383,7 +360,7 @@ class DCMauiButtonComponent: NSObject, DCMauiComponent {
     }
 }
 
-// CRITICAL FIX: Add a custom button class to ensure touch events are properly captured
+// CRITICAL FIX: a custom button class to ensure touch events are properly captured
 class CustomButton: UIButton {
     var _debugMode = false
     
