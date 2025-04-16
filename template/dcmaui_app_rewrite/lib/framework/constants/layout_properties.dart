@@ -1,5 +1,3 @@
-import 'dart:ui' show Color;
-
 import 'package:dc_test/framework/constants/yoga_enums.dart';
 
 /// Layout properties for components

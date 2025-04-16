@@ -12,7 +12,7 @@ import 'component/component_node.dart';
 import 'reconciler.dart';
 import 'component/context.dart';
 import 'fragment.dart';
-import 'error_boundary.dart';
+import 'component/error_boundary.dart';
 import 'vdom_node_sync.dart';
 import '../../utilities/debug_tools.dart'; // Add this import
 
