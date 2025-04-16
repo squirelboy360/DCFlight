@@ -135,24 +135,25 @@ class VDomElement extends VDomNode {
     }
   }
 
-  // Get all event types this element has handlers for
+  /// Get list of event types from events map
   List<String> get eventTypes {
-    final types = <String>[];
+    List<String> types = [];
 
-    // Add events from the explicit events map
-    if (_events != null && _events!.isNotEmpty) {
-      types.addAll(_events!.keys);
+    // Add explicit events from events map
+    if (events != null) {
+      types.addAll(events!.keys);
     }
 
-    // Add events from props (onX format)
-    for (final key in props.keys) {
-      if (key.startsWith('on') && key.length > 2 && props[key] is Function) {
-        final eventName = key.substring(2, 3).toLowerCase() + key.substring(3);
+    // Also check props for event handlers (onX pattern)
+    props.forEach((key, value) {
+      if (key.startsWith('on') && value is Function) {
+        // Convert camelCase to lowercase (e.g. onPress -> press)
+        final eventName = key[2].toLowerCase() + key.substring(3);
         if (!types.contains(eventName)) {
           types.add(eventName);
         }
       }
-    }
+    });
 
     return types;
   }

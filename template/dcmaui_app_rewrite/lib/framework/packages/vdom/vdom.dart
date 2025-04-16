@@ -494,6 +494,16 @@ class VDom {
     if (eventTypes.isNotEmpty) {
       _performanceMonitor.startTimer('add_event_listeners');
       await _nativeBridge.addEventListeners(viewId, eventTypes);
+
+      // Also register callbacks with dispatcher
+      if (element.events != null) {
+        element.events!.forEach((eventName, callback) {
+          if (callback is Function) {
+            _nativeBridge.registerEventCallback(viewId, eventName, callback);
+          }
+        });
+      }
+
       _performanceMonitor.endTimer('add_event_listeners');
     }
 

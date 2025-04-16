@@ -47,10 +47,40 @@ class PlatformDispatcherIml implements PlatformDispatcher {
         debugPrint(
             'EVENT RECEIVED FROM NATIVE: $eventType for $viewId with data: $typedEventData');
 
-        if (_eventHandler != null) {
-          _eventHandler!(viewId, eventType, typedEventData);
+        // CRITICAL FIX: First try to find the callback in _eventCallbacks
+        final callback = _eventCallbacks[viewId]?[eventType];
+        if (callback != null) {
+          try {
+            // CRITICAL FIX: Handle parameter count mismatch by checking function parameters
+            // Get the function's parameter count using reflection
+            final Function func = callback;
+            if (func is Function()) {
+              // No parameters - just call it directly
+              func();
+              debugPrint(
+                  'Event callback executed for $eventType on $viewId (no params)');
+            } else if (func is Function(Map<String, dynamic>)) {
+              // One parameter - pass the event data
+              func(typedEventData);
+              debugPrint(
+                  'Event callback executed for $eventType on $viewId (with event data)');
+            } else {
+              // Try anyway with a general approach
+              Function.apply(callback, [], {});
+              debugPrint(
+                  'Event callback executed for $eventType on $viewId (direct apply)');
+            }
+          } catch (e) {
+            debugPrint('Error executing callback: $e');
+          }
         } else {
-          debugPrint('WARNING: No event handler registered to process event');
+          // If no direct callback found, fall back to the global handler
+          if (_eventHandler != null) {
+            _eventHandler!(viewId, eventType, typedEventData);
+            debugPrint('Event forwarded to global handler');
+          } else {
+            debugPrint('WARNING: No event handler registered to process event');
+          }
         }
       }
       return null;
