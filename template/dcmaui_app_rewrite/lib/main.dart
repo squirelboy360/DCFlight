@@ -1,67 +1,22 @@
-import 'package:flutter/material.dart' hide Image, ScrollView, View;
+import 'package:dc_test/framework/utilities/entry.dart';
+import 'package:flutter/material.dart';
 import 'dart:developer' as developer;
-
-import 'framework/packages/vdom/vdom.dart';
 import 'framework/packages/vdom/vdom_node.dart';
 import 'framework/packages/vdom/component.dart';
 import 'framework/components/comp_props/text_props.dart';
 import 'framework/components/comp_props/button_props.dart';
 import 'framework/components/comp_props/image_props.dart';
 import 'framework/components/comp_props/scroll_view_props.dart';
-import 'framework/components/ui.dart';
+import 'framework/components/dc_ui.dart';
 import 'framework/constants/layout_properties.dart';
 import 'framework/constants/style_properties.dart';
 import 'framework/constants/yoga_enums.dart';
 import 'framework/utilities/screen_utilities.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  developer.log('Starting DCMAUI Demo Application', name: 'App');
-  runApp(MaterialApp(
-    home: Scaffold(
-      body: Center(
-        child: Wrap(
-          children: [
-            Text('FLUTTER BACKGROUND THREAD FOR EMBEDDING FLUTTER VIEWS'),
-            Text(
-                "Currently not in use, call flutter view adaptor to render in a flutter view")
-          ],
-        ),
-      ),
-    ),
-  ));
-  startNativeApp();
+  startApp(DCMauiDemoApp());
 }
 
-void startNativeApp() async {
-  // Initialize screen utilities first
-  await ScreenUtilities.instance.refreshDimensions();
-
-  // Create VDOM instance
-  final vdom = VDom();
-
-  // Wait for the VDom to be ready
-  await vdom.isReady.whenComplete(() {
-    print('VDOM is ready with values ');
-    vdom.calculateAndApplyLayout().then((v) {
-      print('VDOM layout applied with value');
-    });
-  });
-  developer.log('VDom is ready', name: 'App');
-
-  // Create our main app component
-  final mainApp = DCMauiDemoApp();
-
-  // Create a component node
-  final appNode = vdom.createComponent(mainApp);
-
-  // Render the component to native UI
-  await vdom.renderToNative(appNode, parentId: "root", index: 0);
-  developer.log('DCMAUI Demo Application successfully initialized and running',
-      name: 'App');
-}
-
-/// Demo app showing DCMAUI capabilities
 class DCMauiDemoApp extends StatefulComponent {
   @override
   VDomNode render() {
@@ -94,7 +49,7 @@ class DCMauiDemoApp extends StatefulComponent {
     ];
 
     // Main app structure with side menu
-    return UI.View(
+    return DC.View(
       layout: LayoutProps(
         width: '100%',
         height: '100%',
@@ -104,7 +59,7 @@ class DCMauiDemoApp extends StatefulComponent {
       ),
       children: [
         // Main content area
-        UI.View(
+        DC.View(
           layout: LayoutProps(
             position: YogaPositionType.absolute,
             left: 0,
@@ -120,7 +75,7 @@ class DCMauiDemoApp extends StatefulComponent {
                 onMenuPress: () => isMenuOpen.setValue(!isMenuOpen.value)),
 
             // Tab content
-            UI.View(
+            DC.View(
               layout: LayoutProps(flex: 1, width: '100%'),
               style: StyleSheet(),
               children: [tabContent[currentTabIndex.value]],
@@ -135,7 +90,7 @@ class DCMauiDemoApp extends StatefulComponent {
 
         // Side menu overlay (shown when menu is open)
         isMenuOpen.value
-            ? UI.View(
+            ? DC.View(
                 layout: LayoutProps(
                   position: YogaPositionType.absolute,
                   left: 0,
@@ -148,10 +103,10 @@ class DCMauiDemoApp extends StatefulComponent {
                 ),
                 // REMOVED: events property since View doesn't support them natively
               )
-            : UI.View(layout: LayoutProps()),
+            : DC.View(layout: LayoutProps()),
 
         // Side menu
-        UI.View(
+        DC.View(
           layout: LayoutProps(
             position: YogaPositionType.absolute,
             left: menuSlideValue,
@@ -176,7 +131,7 @@ class DCMauiDemoApp extends StatefulComponent {
   // App bar with title and menu button
   VDomNode renderAppBar(
       {required bool isMenuOpen, required Function onMenuPress}) {
-    return UI.View(
+    return DC.View(
       layout: LayoutProps(
         paddingVertical: ScreenUtilities.instance.statusBarHeight,
         width: '100%',
@@ -195,7 +150,7 @@ class DCMauiDemoApp extends StatefulComponent {
       ),
       children: [
         // Menu button
-        UI.Button(
+        DC.Button(
           layout: LayoutProps(
             width: 40,
             height: 40,
@@ -212,7 +167,7 @@ class DCMauiDemoApp extends StatefulComponent {
         ),
 
         // Title
-        UI.Text(
+        DC.Text(
           content: "DCMAUI Demo App",
           layout: LayoutProps(
             flex: 1,
@@ -232,7 +187,7 @@ class DCMauiDemoApp extends StatefulComponent {
   // Bottom tab bar
   VDomNode renderTabBar(
       {required int currentIndex, required Function onTabPress}) {
-    return UI.View(
+    return DC.View(
       layout: LayoutProps(
         width: '100%',
         height: 120,
@@ -277,7 +232,7 @@ class DCMauiDemoApp extends StatefulComponent {
     required Function onPress,
   }) {
     // For tab buttons, we use a View with a Button inside since the View doesn't support events
-    return UI.View(
+    return DC.View(
       layout: LayoutProps(
         width: 80,
         height: 60,
@@ -286,7 +241,7 @@ class DCMauiDemoApp extends StatefulComponent {
       ),
       style: StyleSheet(),
       children: [
-        UI.Button(
+        DC.Button(
           layout: LayoutProps(
             width: '100%',
             height: '60%',
@@ -303,7 +258,7 @@ class DCMauiDemoApp extends StatefulComponent {
           ),
           onPress: () => onPress(),
         ),
-        UI.Text(
+        DC.Text(
           content: label,
           layout: LayoutProps(height: '40%'),
           style: StyleSheet(backgroundColor: Colors.transparent),
@@ -330,7 +285,7 @@ class DCMauiDemoApp extends StatefulComponent {
         ) ??
         Colors.blue;
 
-    return UI.ScrollView(
+    return DC.ScrollView(
       layout: LayoutProps(
         flex: 1,
         width: '100%',
@@ -343,7 +298,7 @@ class DCMauiDemoApp extends StatefulComponent {
       ),
       children: [
         // Welcome section
-        UI.View(
+        DC.View(
           layout: LayoutProps(
             width: '100%',
             height: 250,
@@ -351,7 +306,7 @@ class DCMauiDemoApp extends StatefulComponent {
           ),
           style: StyleSheet(backgroundColor: Colors.deepPurple),
           children: [
-            UI.Text(
+            DC.Text(
               content: "Welcome to DCMAUI",
               layout: LayoutProps(
                 width: '100%',
@@ -364,7 +319,7 @@ class DCMauiDemoApp extends StatefulComponent {
                 fontWeight: "bold",
               ),
             ),
-            UI.Text(
+            DC.Text(
               content:
                   "A cross-platform UI framework that renders actual native UI builtfrom scratch on the Dart language 🤯",
               layout: LayoutProps(
@@ -381,7 +336,7 @@ class DCMauiDemoApp extends StatefulComponent {
         ),
 
         // Animated card
-        UI.View(
+        DC.View(
           layout: LayoutProps(
             width: 300 * cardScale, // Apply scale animation directly
             height: 200 * cardScale, // Apply scale animation directly
@@ -401,7 +356,7 @@ class DCMauiDemoApp extends StatefulComponent {
             shadowRadius: 8,
           ),
           children: [
-            UI.Text(
+            DC.Text(
               content: "Animated Card",
               layout: LayoutProps(),
               style: StyleSheet(),
@@ -411,7 +366,7 @@ class DCMauiDemoApp extends StatefulComponent {
                 fontWeight: "bold",
               ),
             ),
-            UI.Text(
+            DC.Text(
               content: "Using state-based animations",
               layout: LayoutProps(
                 marginTop: 8,
@@ -426,14 +381,14 @@ class DCMauiDemoApp extends StatefulComponent {
         ),
 
         // Features section
-        UI.View(
+        DC.View(
           layout: LayoutProps(
             width: '100%',
             padding: 20,
           ),
           style: StyleSheet(),
           children: [
-            UI.Text(
+            DC.Text(
               content: "Features",
               layout: LayoutProps(
                 width: '100%',
@@ -480,7 +435,7 @@ class DCMauiDemoApp extends StatefulComponent {
     required String title,
     required String description,
   }) {
-    return UI.View(
+    return DC.View(
       layout: LayoutProps(
         width: '100%',
         flexDirection: YogaFlexDirection.row,
@@ -499,7 +454,7 @@ class DCMauiDemoApp extends StatefulComponent {
       ),
       children: [
         // Icon
-        UI.Text(
+        DC.Text(
           content: icon,
           layout: LayoutProps(
             width: 48,
@@ -514,14 +469,14 @@ class DCMauiDemoApp extends StatefulComponent {
         ),
 
         // Text content
-        UI.View(
+        DC.View(
           layout: LayoutProps(
             flex: 1,
             marginLeft: 16,
           ),
           style: StyleSheet(),
           children: [
-            UI.Text(
+            DC.Text(
               content: title,
               layout: LayoutProps(
                 width: '100%',
@@ -534,7 +489,7 @@ class DCMauiDemoApp extends StatefulComponent {
                 fontWeight: "bold",
               ),
             ),
-            UI.Text(
+            DC.Text(
               content: description,
               layout: LayoutProps(
                 width: '100%',
@@ -562,7 +517,7 @@ class DCMauiDemoApp extends StatefulComponent {
       "https://images.unsplash.com/photo-1559511260-66a654ae982a?ixlib=rb-4.0.3&w=800&q=80",
     ];
 
-    return UI.ScrollView(
+    return DC.ScrollView(
       layout: LayoutProps(
         flex: 1,
         width: '100%',
@@ -575,14 +530,14 @@ class DCMauiDemoApp extends StatefulComponent {
       ),
       children: [
         // Gallery header
-        UI.View(
+        DC.View(
           layout: LayoutProps(
             width: '100%',
             padding: 20,
           ),
           style: StyleSheet(),
           children: [
-            UI.Text(
+            DC.Text(
               content: "Image Gallery",
               layout: LayoutProps(
                 width: '100%',
@@ -595,7 +550,7 @@ class DCMauiDemoApp extends StatefulComponent {
                 fontWeight: "bold",
               ),
             ),
-            UI.Text(
+            DC.Text(
               content: "Beautiful images from Unsplash",
               layout: LayoutProps(
                 width: '100%',
@@ -611,7 +566,7 @@ class DCMauiDemoApp extends StatefulComponent {
         ),
 
         // Image grid
-        UI.View(
+        DC.View(
           layout: LayoutProps(
             width: '100%',
             flexDirection: YogaFlexDirection.row,
@@ -631,7 +586,7 @@ class DCMauiDemoApp extends StatefulComponent {
     final screenWidth = ScreenUtilities.instance.screenWidth;
     final imageSize = (screenWidth / 2) - 24; // Account for padding
 
-    return UI.View(
+    return DC.View(
       layout: LayoutProps(
         width: imageSize,
         height: imageSize,
@@ -647,7 +602,7 @@ class DCMauiDemoApp extends StatefulComponent {
         shadowRadius: 3,
       ),
       children: [
-        UI.Image(
+        DC.Image(
           layout: LayoutProps(
             width: '100%',
             height: '100%',
@@ -678,7 +633,7 @@ class DCMauiDemoApp extends StatefulComponent {
       "posts": "128",
     };
 
-    return UI.ScrollView(
+    return DC.ScrollView(
       layout: LayoutProps(
         flex: 1,
         width: '100%',
@@ -689,7 +644,7 @@ class DCMauiDemoApp extends StatefulComponent {
       scrollViewProps: ScrollViewProps(),
       children: [
         // Profile header
-        UI.View(
+        DC.View(
           layout: LayoutProps(
             width: '100%',
             alignItems: YogaAlign.center,
@@ -700,7 +655,7 @@ class DCMauiDemoApp extends StatefulComponent {
           ),
           children: [
             // Profile image
-            UI.View(
+            DC.View(
               layout: LayoutProps(
                 width: 100,
                 height: 100,
@@ -711,7 +666,7 @@ class DCMauiDemoApp extends StatefulComponent {
                 borderRadius: 50,
               ),
               children: [
-                UI.Text(
+                DC.Text(
                   content: "JD",
                   layout: LayoutProps(
                     width: '100%',
@@ -730,7 +685,7 @@ class DCMauiDemoApp extends StatefulComponent {
             ),
 
             // Name and username
-            UI.Text(
+            DC.Text(
               content: user["name"]!,
               layout: LayoutProps(
                 marginBottom: 4,
@@ -742,7 +697,7 @@ class DCMauiDemoApp extends StatefulComponent {
                 fontWeight: "bold",
               ),
             ),
-            UI.Text(
+            DC.Text(
               content: user["username"]!,
               layout: LayoutProps(
                 marginBottom: 12,
@@ -755,7 +710,7 @@ class DCMauiDemoApp extends StatefulComponent {
             ),
 
             // Bio
-            UI.Text(
+            DC.Text(
               content: user["bio"]!,
               layout: LayoutProps(
                 marginBottom: 16,
@@ -770,7 +725,7 @@ class DCMauiDemoApp extends StatefulComponent {
             ),
 
             // Location
-            UI.View(
+            DC.View(
               layout: LayoutProps(
                 flexDirection: YogaFlexDirection.row,
                 alignItems: YogaAlign.center,
@@ -778,7 +733,7 @@ class DCMauiDemoApp extends StatefulComponent {
               ),
               style: StyleSheet(),
               children: [
-                UI.Text(
+                DC.Text(
                   content: "📍",
                   layout: LayoutProps(
                     marginRight: 4,
@@ -788,7 +743,7 @@ class DCMauiDemoApp extends StatefulComponent {
                     fontSize: 16,
                   ),
                 ),
-                UI.Text(
+                DC.Text(
                   content: user["location"]!,
                   layout: LayoutProps(),
                   style: StyleSheet(),
@@ -801,7 +756,7 @@ class DCMauiDemoApp extends StatefulComponent {
             ),
 
             // Stats row
-            UI.View(
+            DC.View(
               layout: LayoutProps(
                 width: '100%',
                 flexDirection: YogaFlexDirection.row,
@@ -817,7 +772,7 @@ class DCMauiDemoApp extends StatefulComponent {
             ),
 
             // Edit profile button
-            UI.Button(
+            DC.Button(
               layout: LayoutProps(
                 width: 200,
                 height: 40,
@@ -841,14 +796,14 @@ class DCMauiDemoApp extends StatefulComponent {
         ),
 
         // Activity section
-        UI.View(
+        DC.View(
           layout: LayoutProps(
             width: '100%',
             padding: 20,
           ),
           style: StyleSheet(),
           children: [
-            UI.Text(
+            DC.Text(
               content: "Recent Activity",
               layout: LayoutProps(
                 marginBottom: 16,
@@ -890,13 +845,13 @@ class DCMauiDemoApp extends StatefulComponent {
 
   // Profile stat item
   VDomNode renderStatItem(String label, String value) {
-    return UI.View(
+    return DC.View(
       layout: LayoutProps(
         alignItems: YogaAlign.center,
       ),
       style: StyleSheet(),
       children: [
-        UI.Text(
+        DC.Text(
           content: value,
           layout: LayoutProps(
             marginBottom: 4,
@@ -908,7 +863,7 @@ class DCMauiDemoApp extends StatefulComponent {
             fontWeight: "bold",
           ),
         ),
-        UI.Text(
+        DC.Text(
           content: label,
           layout: LayoutProps(),
           style: StyleSheet(),
@@ -927,7 +882,7 @@ class DCMauiDemoApp extends StatefulComponent {
     required String title,
     required String time,
   }) {
-    return UI.View(
+    return DC.View(
       layout: LayoutProps(
         width: '100%',
         flexDirection: YogaFlexDirection.row,
@@ -945,7 +900,7 @@ class DCMauiDemoApp extends StatefulComponent {
       ),
       children: [
         // Icon
-        UI.Text(
+        DC.Text(
           content: icon,
           layout: LayoutProps(
             width: 32,
@@ -959,13 +914,13 @@ class DCMauiDemoApp extends StatefulComponent {
         ),
 
         // Content
-        UI.View(
+        DC.View(
           layout: LayoutProps(
             flex: 1,
           ),
           style: StyleSheet(),
           children: [
-            UI.Text(
+            DC.Text(
               content: title,
               layout: LayoutProps(
                 marginBottom: 4,
@@ -976,7 +931,7 @@ class DCMauiDemoApp extends StatefulComponent {
                 fontSize: 16,
               ),
             ),
-            UI.Text(
+            DC.Text(
               content: time,
               layout: LayoutProps(),
               style: StyleSheet(),
@@ -993,7 +948,7 @@ class DCMauiDemoApp extends StatefulComponent {
 
   // Side menu content
   VDomNode renderSideMenu({required Function onClose}) {
-    return UI.View(
+    return DC.View(
       layout: LayoutProps(
         width: '100%',
         height: '100%',
@@ -1002,7 +957,7 @@ class DCMauiDemoApp extends StatefulComponent {
       style: StyleSheet(),
       children: [
         // Header and close button
-        UI.View(
+        DC.View(
           layout: LayoutProps(
               width: '100%',
               height: 220,
@@ -1018,7 +973,7 @@ class DCMauiDemoApp extends StatefulComponent {
             borderColor: Colors.grey.shade200,
           ),
           children: [
-            UI.Text(
+            DC.Text(
               content: "Menu",
               layout: LayoutProps(
                 flex: 1,
@@ -1030,7 +985,7 @@ class DCMauiDemoApp extends StatefulComponent {
                 fontWeight: "bold",
               ),
             ),
-            UI.Button(
+            DC.Button(
               layout: LayoutProps(
                 width: 40,
                 height: 40,
@@ -1062,7 +1017,7 @@ class DCMauiDemoApp extends StatefulComponent {
   // Menu item with a button for proper event handling
   VDomNode renderMenuItemWithButton(
       {required String icon, required String title}) {
-    return UI.View(
+    return DC.View(
       layout: LayoutProps(
         width: '100%',
         height: 50,
@@ -1072,7 +1027,7 @@ class DCMauiDemoApp extends StatefulComponent {
       style: StyleSheet(),
       children: [
         // The button fills the view but is transparent
-        UI.Button(
+        DC.Button(
           layout: LayoutProps(
             position: YogaPositionType.absolute,
             width: '100%',
@@ -1089,7 +1044,7 @@ class DCMauiDemoApp extends StatefulComponent {
           },
         ),
         // Icon and title displayed over the button
-        UI.Text(
+        DC.Text(
           content: icon,
           layout: LayoutProps(
             width: 24,

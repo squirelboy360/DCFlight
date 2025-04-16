@@ -57,7 +57,7 @@ extension AppDelegate {
         ])
         
         // Set up the root with the props
-        DCMauiNativeBridgeCoordinator.shared.manuallyCreateRootView(rootContainer, viewId: "root", props: ["flex":1])
+        DCMauiBridgeImpl.shared.registerView(rootContainer, withId: "root")
         // Initialize screen utilities with the Flutter binary messenger
         DCMauiScreenUtilities.shared.initialize(with: flutterEngine.binaryMessenger)
         
@@ -65,8 +65,7 @@ extension AppDelegate {
         _ = YogaShadowTree.shared
         _ = DCMauiLayoutManager.shared
 
-        
-        // Add this observer for device orientation changes
+    
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(orientationChanged),
@@ -81,9 +80,6 @@ extension AppDelegate {
             // Get the current screen dimensions
             let screenWidth = UIScreen.main.bounds.width
             let screenHeight = UIScreen.main.bounds.height
-            
-            print("📱 Device orientation changed: \(screenWidth)x\(screenHeight)")
-            // Update layouts with new dimensions - use BOTH methods for reliability
             YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
         }
     }

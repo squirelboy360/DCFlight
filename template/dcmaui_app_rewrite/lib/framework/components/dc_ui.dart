@@ -11,7 +11,7 @@ import 'comp_props/image_props.dart';
 import 'comp_props/scroll_view_props.dart';
 
 /// Factory for creating UI components with unified styling approach
-class UI {
+class DC {
   /// Create a View component
   static VDomElement View({
     required LayoutProps layout,

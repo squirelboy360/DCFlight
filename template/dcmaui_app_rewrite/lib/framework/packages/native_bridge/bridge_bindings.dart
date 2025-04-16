@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import 'native_bridge.dart';
@@ -264,18 +262,13 @@ class FFINativeBridge implements NativeBridge {
   }
 
   @override
-  Future<bool> calculateLayout(
-      {required double screenWidth, required double screenHeight}) async {
+  Future<bool> calculateLayout() async {
     try {
-      developer.log(
-          '🔄 Calculating layout via METHOD CHANNEL: screenWidth=$screenWidth, screenHeight=$screenHeight',
+      developer.log('🔄 Calculating layout via METHOD CHANNEL', name: 'LAYOUT');
+
+      final result = await layoutChannel.invokeMethod<bool>('calculateLayout');
+      developer.log('🔄 Calculating layout via METHOD CHANNEL success',
           name: 'LAYOUT');
-
-      final result = await layoutChannel.invokeMethod<bool>('calculateLayout', {
-        'screenWidth': screenWidth,
-        'screenHeight': screenHeight,
-      });
-
       return result ?? false;
     } catch (e, stack) {
       developer.log('❌ Error calculating layout: $e',

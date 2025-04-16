@@ -528,14 +528,10 @@ class VDom {
   }
 
   /// Calculate and apply layout
-  Future<void> calculateAndApplyLayout({double? width, double? height}) async {
+  Future<void> calculateAndApplyLayout() async {
     developer.log(
-        '🔥 Starting layout calculation with dimensions: ${width ?? '100%'} x ${height ?? '100%'}',
+        '🔥 Starting layout calculation with dimensions',
         name: 'VDom');
-
-    // Get screen dimensions if not provided
-    final screenWidth = width ?? ScreenUtilities.instance.screenWidth;
-    final screenHeight = height ?? ScreenUtilities.instance.screenHeight;
 
     _performanceMonitor.startTimer('native_layout_calculation');
 

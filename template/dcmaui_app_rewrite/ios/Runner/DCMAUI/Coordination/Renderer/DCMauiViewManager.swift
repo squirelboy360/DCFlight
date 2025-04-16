@@ -76,39 +76,7 @@ class ViewRegistry {
         NSLog("DCMauiNativeBridgeCoordinator initialized")
     }
     
-    // Manually create root view
-    @objc public func manuallyCreateRootView(_ view: UIView, viewId: String, props: [String: Any]) {
-        // Register with view registry
-        ViewRegistry.shared.registerView(view, id: viewId, type: "View")
-        
-        // Create node in shadow tree
-        YogaShadowTree.shared.createNode(id: viewId, componentType: "View")
-        
-        // Register with layout manager
-        DCMauiLayoutManager.shared.registerView(view, withId: viewId)
-        
-        // Apply initial layout props
-        let layoutProps = extractLayoutProps(from: props)
-        if (!layoutProps.isEmpty) {
-            DCMauiLayoutManager.shared.updateNodeWithLayoutProps(
-                nodeId: viewId,
-                componentType: "View",
-                props: layoutProps
-            )
-        }
-        
-        // Apply initial style props
-        let styleProps = props.filter { !layoutProps.keys.contains($0.key) }
-        if (!styleProps.isEmpty) {
-            view.applyStyles(props: styleProps)
-        }
-        
-        // Register with FFI bridge too
-        DCMauiBridgeImpl.shared.registerView(view, withId: viewId)
-        
-        print("Root view manually created with ID: \(viewId)")
-    }
-    
+  
     // Extract layout props from props dictionary
     private func extractLayoutProps(from props: [String: Any]) -> [String: Any] {
         // No need to create an instance - access the static property directly
