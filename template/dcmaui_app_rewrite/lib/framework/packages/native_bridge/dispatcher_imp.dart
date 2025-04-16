@@ -295,7 +295,8 @@ class PlatformDispatcherIml implements PlatformDispatcher {
     try {
       developer.log('🔄 Calculating layout via METHOD CHANNEL', name: 'LAYOUT');
 
-      final result = await layoutChannel.invokeMethod<bool>('calculateLayout');
+      final result =
+          await layoutChannel.invokeMethod<bool>('calculateLayout', {});
       return result ?? false;
     } catch (e, stack) {
       developer.log('❌ Error calculating layout: $e',

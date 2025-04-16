@@ -53,6 +53,7 @@ class DCMauiLayoutMethodHandler: NSObject {
     
     // Calculate layout for the entire view hierarchy
     private func handleCalculateLayout(_ args: [String: Any], result: @escaping FlutterResult) {
+        
         // Use dedicated layout background queue - never on UI thread
         DispatchQueue(label: "com.dcmaui.layoutCalculation", qos: .userInitiated).async {
             // Calculate layout

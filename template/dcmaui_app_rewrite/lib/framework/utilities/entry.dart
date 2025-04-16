@@ -34,20 +34,19 @@ void startApp(Component app) {
 void startNativeApp({required Component app}) async {
   // Create VDOM instance
   final vdom = VDom();
-  // Wait for the VDom to be ready
-  await vdom.isReady.whenComplete(() {
-    print('VDOM is ready with values ');
-    vdom.calculateAndApplyLayout().then((v) {
-      print('VDOM layout applied with value');
-    });
-  });
-  debugPrint('VDom/UICoordinator is ready');
-
   // Create our main app component
   final Component mainApp = app;
   // Create a component node
   final appNode = vdom.createComponent(mainApp);
   // Render the component to native UI
   await vdom.renderToNative(appNode, parentId: "root", index: 0);
+  // Wait for the VDom to be ready
+  vdom.isReady.whenComplete(() async {
+    print('VDOM is ready with values ');
+    await vdom.calculateAndApplyLayout().then((v) {
+      print('VDOM layout applied from enry point');
+    });
+  });
+  debugPrint('VDom/UICoordinator is ready');
 }
 // Todo: Dev tools setup

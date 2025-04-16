@@ -39,9 +39,12 @@ abstract class PlatformDispatcher {
   }
 
   // Layout methods
+//
+  Future<bool> calculateLayout();
+  //
+
   Future<bool> updateViewLayout(
       String viewId, double left, double top, double width, double height);
-  Future<bool> calculateLayout();
 
   // Node synchronization methods
   Future<Map<String, dynamic>> syncNodeHierarchy(
