@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-
-import 'native_bridge.dart';
+import 'dispatcher.dart';
 import 'dart:developer' as developer;
 
 /// Method channel-based implementation of NativeBridge
-class FFINativeBridge implements NativeBridge {
+class PlatformDispatcherIml implements PlatformDispatcher {
   // Method channels
   static const MethodChannel bridgeChannel = MethodChannel('com.dcmaui.bridge');
   static const MethodChannel eventChannel = MethodChannel('com.dcmaui.events');
@@ -24,7 +24,7 @@ class FFINativeBridge implements NativeBridge {
   final Map<String, Map<String, Function>> _eventCallbacks = {};
 
   // Sets up communication with native code
-  FFINativeBridge() {
+  PlatformDispatcherIml() {
     // Set up method channels for events and layout
     _setupMethodChannelEventHandling();
     print('Method channel bridge initialized');
@@ -44,20 +44,19 @@ class FFINativeBridge implements NativeBridge {
           (key, value) => MapEntry(key.toString(), value),
         );
 
-        print(
+        debugPrint(
             'EVENT RECEIVED FROM NATIVE: $eventType for $viewId with data: $typedEventData');
 
-        // Forward to the appropriate handler
         if (_eventHandler != null) {
           _eventHandler!(viewId, eventType, typedEventData);
         } else {
-          print('WARNING: No event handler registered to process event');
+          debugPrint('WARNING: No event handler registered to process event');
         }
       }
       return null;
     });
 
-    print('Method channel event handling initialized');
+    debugPrint('Method channel event handling initialized');
   }
 
   @override
@@ -69,7 +68,7 @@ class FFINativeBridge implements NativeBridge {
       return result ?? false;
     } catch (e) {
       developer.log('Failed to initialize bridge: $e', name: 'BRIDGE');
-      throw Exception('Failed to initialize native bridge');
+      return false;
     }
   }
 
@@ -267,8 +266,6 @@ class FFINativeBridge implements NativeBridge {
       developer.log('🔄 Calculating layout via METHOD CHANNEL', name: 'LAYOUT');
 
       final result = await layoutChannel.invokeMethod<bool>('calculateLayout');
-      developer.log('🔄 Calculating layout via METHOD CHANNEL success',
-          name: 'LAYOUT');
       return result ?? false;
     } catch (e, stack) {
       developer.log('❌ Error calculating layout: $e',

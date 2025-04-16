@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 
-import '../packages/native_bridge/native_bridge.dart';
+import '../packages/native_bridge/dispatcher.dart';
 import '../packages/vdom/vdom.dart';
 
 /// Tools for debugging the VDOM
@@ -11,7 +11,7 @@ class VDomDebugTools {
   final VDom vdom;
 
   /// Reference to the native bridge
-  final NativeBridge _nativeBridge;
+  final PlatformDispatcher _nativeBridge;
 
   /// Constructor
   VDomDebugTools(this.vdom, this._nativeBridge) {

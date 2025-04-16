@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 
-import '../native_bridge/native_bridge.dart';
+import '../native_bridge/dispatcher.dart';
 import 'vdom.dart';
 import 'vdom_node.dart';
 import 'vdom_element.dart';
@@ -13,7 +13,7 @@ class VDomNodeSync {
   final VDom vdom;
 
   /// Native bridge for UI operations
-  final NativeBridge _nativeBridge;
+  final PlatformDispatcher _nativeBridge;
 
   /// Last synchronization results
   Map<String, dynamic>? _lastSyncResults;

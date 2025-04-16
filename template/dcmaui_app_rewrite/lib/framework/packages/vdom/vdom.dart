@@ -2,7 +2,7 @@
 
 import 'dart:async';
 import 'dart:developer' as developer;
-import '../../packages/native_bridge/native_bridge.dart';
+import '../native_bridge/dispatcher.dart';
 import '../../constants/yoga_enums.dart';
 import '../../constants/layout_properties.dart';
 import 'vdom_node.dart';
@@ -124,7 +124,7 @@ class ComponentInstance {
 /// Virtual DOM implementation
 class VDom {
   /// Native bridge for UI operations
-  late final NativeBridge _nativeBridge;
+  late final PlatformDispatcher _nativeBridge;
 
   /// Whether the VDom is ready for use
   final Completer<void> _readyCompleter = Completer<void>();

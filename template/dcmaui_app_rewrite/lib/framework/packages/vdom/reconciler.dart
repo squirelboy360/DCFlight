@@ -6,7 +6,7 @@ import 'vdom_node.dart';
 import 'vdom_element.dart';
 import 'component/component_node.dart';
 import 'vdom.dart';
-import '../native_bridge/native_bridge.dart';
+import '../native_bridge/dispatcher.dart';
 
 /// Class responsible for reconciling differences between VDOM trees
 class Reconciler {
@@ -374,7 +374,7 @@ class Reconciler {
       final elementId = element.key ?? generateId();
 
       // Create the view
-      await NativeBridge.instance.createView(
+      await PlatformDispatcher.instance.createView(
         elementId,
         element.type,
         element.props,
@@ -382,7 +382,7 @@ class Reconciler {
 
       // If parent is not null, attach this view to the parent
       if (parentId != null) {
-        await NativeBridge.instance.attachView(
+        await PlatformDispatcher.instance.attachView(
           elementId,
           parentId,
           0, // Default index, can be updated later
@@ -393,11 +393,12 @@ class Reconciler {
       if (element.events != null && element.events!.isNotEmpty) {
         // Register event listeners with native side
         List<String> eventTypes = element.events!.keys.toList();
-        await NativeBridge.instance.addEventListeners(elementId, eventTypes);
+        await PlatformDispatcher.instance
+            .addEventListeners(elementId, eventTypes);
 
         // Register callbacks for each event type
         element.events!.forEach((eventType, callback) {
-          NativeBridge.instance
+          PlatformDispatcher.instance
               .registerEventCallback(elementId, eventType, callback);
         });
       }
@@ -418,7 +419,7 @@ class Reconciler {
 
       // Set children in order
       if (childIds.isNotEmpty) {
-        await NativeBridge.instance.setChildren(elementId, childIds);
+        await PlatformDispatcher.instance.setChildren(elementId, childIds);
       }
     } catch (e, st) {
       developer.log('Error mounting element: $e\n$st');
