@@ -2,9 +2,9 @@ import 'package:dc_test/framework/packages/vdom/component/component.dart';
 import 'package:dc_test/framework/packages/vdom/vdom.dart';
 import 'package:flutter/material.dart';
 
-// 
+//
 // Entry point for the app
-// 
+//
 void startApp(Component app) {
   // Ensured method channel is initialized.
   // Previously was not required due to the use of FFI for UI manipulation at the native side
@@ -14,19 +14,19 @@ void startApp(Component app) {
   WidgetsFlutterBinding.ensureInitialized();
   startNativeApp(app: app);
   // we dont need the flutter view to run to get the dart instance but this is just in case as a fallback mechanism
-  runApp(MaterialApp(
-    home: Scaffold(
-      body: Center(
-        child: Wrap(
-          children: [
-            Text('FLUTTER BACKGROUND THREAD FOR EMBEDDING FLUTTER VIEWS'),
-            Text(
-                "Currently not in use, call flutter view adaptor to render in a flutter view")
-          ],
-        ),
-      ),
-    ),
-  ));
+  // runApp(MaterialApp(
+  //   home: Scaffold(
+  //     body: Center(
+  //       child: Wrap(
+  //         children: [
+  //           Text('FLUTTER BACKGROUND THREAD FOR EMBEDDING FLUTTER VIEWS'),
+  //           Text(
+  //               "Currently not in use, call flutter view adaptor to render in a flutter view")
+  //         ],
+  //       ),
+  //     ),
+  //   ),
+  // ));
 }
 
 void startNativeApp({required Component app}) async {
@@ -49,6 +49,3 @@ void startNativeApp({required Component app}) async {
   await vdom.renderToNative(appNode, parentId: "root", index: 0);
 }
 // Todo: Dev tools setup
-
-
-

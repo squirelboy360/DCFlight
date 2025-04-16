@@ -266,12 +266,9 @@ class PlatformDispatcher implements NativeBridge {
   @override
   Future<bool> calculateLayout() async {
     try {
-      developer.log(
-          '🔄 Calculating layout via METHOD CHANNEL',
-          name: 'LAYOUT');
+      developer.log('🔄 Calculating layout via METHOD CHANNEL', name: 'LAYOUT');
 
       final result = await layoutChannel.invokeMethod<bool>('calculateLayout');
-
       return result ?? false;
     } catch (e, stack) {
       developer.log('❌ Error calculating layout: $e',
