@@ -1,4 +1,4 @@
-import 'vdom_node.dart';
+import '../vdom_node.dart';
 import 'component.dart';
 
 /// Node representing a component in the Virtual DOM

@@ -12,7 +12,6 @@ class DCMauiComponentRegistry {
         registerComponent("Button", componentClass: DCMauiButtonComponent.self)
         registerComponent("Text", componentClass: DCMauiTextComponent.self)
         registerComponent("Image", componentClass: DCMauiImageComponent.self)
-        registerComponent("ScrollView", componentClass: DCMauiScrollComponent.self)
         
         // Add debugging function to verify prop handling
         #if DEBUG

@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'vdom_node.dart';
+import '../vdom_node.dart';
 import 'state_hook.dart';
 
 /// Base component class

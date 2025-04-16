@@ -1,5 +1,5 @@
-import 'vdom_node.dart';
-import 'vdom_element.dart';
+import '../vdom_node.dart';
+import '../vdom_element.dart';
 import 'component.dart';
 
 /// Represents a context for sharing data throughout the component tree

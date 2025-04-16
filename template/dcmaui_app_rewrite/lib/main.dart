@@ -2,7 +2,7 @@ import 'package:dc_test/framework/utilities/entry.dart';
 import 'package:flutter/material.dart';
 import 'dart:developer' as developer;
 import 'framework/packages/vdom/vdom_node.dart';
-import 'framework/packages/vdom/component.dart';
+import 'framework/packages/vdom/component/component.dart';
 import 'framework/components/comp_props/text_props.dart';
 import 'framework/components/comp_props/button_props.dart';
 import 'framework/components/comp_props/image_props.dart';
@@ -19,7 +19,7 @@ void main() {
 
 class DCMauiDemoApp extends StatefulComponent {
   @override
-  VDomNode render() {
+  UIComponent render() {
     // State hooks
     final currentTabIndex = useState(0, 'currentTabIndex');
     final isMenuOpen = useState(false, 'isMenuOpen');

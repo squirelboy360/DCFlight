@@ -2,22 +2,19 @@
 
 import 'dart:async';
 import 'dart:developer' as developer;
-
-import 'package:dc_test/framework/utilities/screen_utilities.dart';
-
 import '../../packages/native_bridge/native_bridge.dart';
 import '../../constants/yoga_enums.dart';
 import '../../constants/layout_properties.dart';
 import 'vdom_node.dart';
 import 'vdom_element.dart';
-import 'component.dart';
-import 'component_node.dart';
+import 'component/component.dart';
+import 'component/component_node.dart';
 import 'reconciler.dart';
-import 'context.dart';
+import 'component/context.dart';
 import 'fragment.dart';
 import 'error_boundary.dart';
 import 'vdom_node_sync.dart';
-import 'debug_tools.dart'; // Add this import
+import '../../utilities/debug_tools.dart'; // Add this import
 
 /// Performance monitoring for VDOM operations
 class PerformanceMonitor {
@@ -529,8 +526,7 @@ class VDom {
 
   /// Calculate and apply layout
   Future<void> calculateAndApplyLayout() async {
-    developer.log(
-        '🔥 Starting layout calculation with dimensions',
+    developer.log('🔥 Starting layout calculation with dimensions',
         name: 'VDom');
 
     _performanceMonitor.startTimer('native_layout_calculation');

@@ -50,3 +50,6 @@ class EmptyVDomNode extends VDomNode {
     // Empty node has no cleanup logic
   }
 }
+
+// Dev friendly name
+typedef UIComponent = VDomNode;

@@ -4,7 +4,7 @@ import '../../constants/layout_properties.dart';
 
 import 'vdom_node.dart';
 import 'vdom_element.dart';
-import 'component_node.dart';
+import 'component/component_node.dart';
 import 'vdom.dart';
 import '../native_bridge/native_bridge.dart';
 

@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'vdom_node.dart';
-import 'component.dart';
+import 'component/component.dart';
 import 'vdom_element.dart';
 
 /// Resource for loading async data with suspense

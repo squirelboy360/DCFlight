@@ -1,7 +1,7 @@
 import 'dart:developer' as developer;
 
 import 'vdom_node.dart';
-import 'component.dart';
+import 'component/component.dart';
 
 /// Component that catches errors in its subtree
 abstract class ErrorBoundary extends StatefulComponent {
