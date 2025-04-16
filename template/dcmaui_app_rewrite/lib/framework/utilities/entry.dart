@@ -1,5 +1,6 @@
 import 'package:dc_test/framework/packages/vdom/component/component.dart';
 import 'package:dc_test/framework/packages/vdom/vdom.dart';
+import 'package:dc_test/framework/utilities/screen_utilities.dart';
 import 'package:flutter/material.dart';
 
 //
@@ -12,6 +13,7 @@ void startApp(Component app) {
   // might sound wierd but we are using a forked version of the flutter engine (flutter engine already uses ffi and jni behind the scenes but we optimise it for the minimum overhead).
   // Fan fact, thread hopping is a must for UI rendering as we saw an up to 2x performance increase in rendering time due to frequent thread hops when the vdom really needed to trigger an update while a previous operation was already updating the UI. We still batch but only if needed.
   WidgetsFlutterBinding.ensureInitialized();
+  ScreenUtilities.instance.refreshDimensions();
   startNativeApp(app: app);
   // we dont need the flutter view to run to get the dart instance but this is just in case as a fallback mechanism
   // runApp(MaterialApp(

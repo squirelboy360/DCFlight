@@ -59,7 +59,7 @@ class DCMauiDemoApp extends StatefulComponent {
       ),
       children: [
         // Main content area
-        DC.View(
+        DC.ScrollView(
           layout: LayoutProps(
             position: YogaPositionType.absolute,
             left: 0,
@@ -218,7 +218,10 @@ class DCMauiDemoApp extends StatefulComponent {
           icon: "👤",
           label: "Profile",
           isSelected: currentIndex == 2,
-          onPress: () => onTabPress(2),
+          onPress: () => () {
+            onTabPress(2);
+            developer.log('Profile tab pressed', name: 'UI');
+          },
         ),
       ],
     );
