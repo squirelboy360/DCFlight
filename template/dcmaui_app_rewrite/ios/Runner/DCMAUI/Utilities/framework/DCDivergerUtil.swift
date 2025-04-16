@@ -17,18 +17,6 @@ extension AppDelegate {
         DCMauiEventMethodHandler.shared.initialize(with: flutterEngine.binaryMessenger)
         DCMauiLayoutMethodHandler.shared.initialize(with: flutterEngine.binaryMessenger)
         
-        // Setup event callback
-        DCMauiEventMethodHandler.shared.setEventCallback { viewId, eventType, eventData in
-            print("📲 SENDING EVENT TO DART: \(eventType) for \(viewId)")
-            DCMauiEventMethodHandler.shared.methodChannel?.invokeMethod(
-                "onEvent",
-                arguments: [
-                    "viewId": viewId,
-                    "eventType": eventType,
-                    "eventData": eventData
-                ]
-            )
-        }
    
         self.window = UIWindow(frame: UIScreen.main.bounds)
         let nativeRootVC = UIViewController()
