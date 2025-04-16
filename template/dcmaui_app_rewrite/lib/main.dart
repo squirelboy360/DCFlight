@@ -129,7 +129,7 @@ class DCMauiDemoApp extends StatefulComponent {
   }
 
   // App bar with title and menu button
-  VDomNode renderAppBar(
+  UIComponent renderAppBar(
       {required bool isMenuOpen, required Function onMenuPress}) {
     return DC.View(
       layout: LayoutProps(
@@ -185,7 +185,7 @@ class DCMauiDemoApp extends StatefulComponent {
   }
 
   // Bottom tab bar
-  VDomNode renderTabBar(
+  UIComponent renderTabBar(
       {required int currentIndex, required Function onTabPress}) {
     return DC.View(
       layout: LayoutProps(
@@ -225,7 +225,7 @@ class DCMauiDemoApp extends StatefulComponent {
   }
 
   // Individual tab button
-  VDomNode renderTabButton({
+  UIComponent renderTabButton({
     required String icon,
     required String label,
     required bool isSelected,
@@ -271,7 +271,7 @@ class DCMauiDemoApp extends StatefulComponent {
   }
 
   // Home tab content with animation
-  VDomNode renderHomeTab(double animationValue) {
+  UIComponent renderHomeTab(double animationValue) {
     // Calculate animated properties
     final cardScale = 0.9 + 0.1 * sin(animationValue * 6.28);
     final cardRotation = {
@@ -430,7 +430,7 @@ class DCMauiDemoApp extends StatefulComponent {
   }
 
   // Feature card component
-  VDomNode renderFeatureCard({
+  UIComponent renderFeatureCard({
     required String icon,
     required String title,
     required String description,
@@ -507,7 +507,7 @@ class DCMauiDemoApp extends StatefulComponent {
   }
 
   // Gallery tab content
-  VDomNode renderGalleryTab() {
+  UIComponent renderGalleryTab() {
     final images = [
       "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?ixlib=rb-4.0.3&w=800&q=80",
       "https://images.unsplash.com/photo-1568748141681-ccf431079c0c?ixlib=rb-4.0.3&w=800&q=80",
@@ -581,7 +581,7 @@ class DCMauiDemoApp extends StatefulComponent {
   }
 
   // Gallery image item
-  VDomNode renderGalleryImage(String url) {
+  UIComponent renderGalleryImage(String url) {
     // Calculate image dimensions - 2 columns with padding
     final screenWidth = ScreenUtilities.instance.screenWidth;
     final imageSize = (screenWidth / 2) - 24; // Account for padding
@@ -620,7 +620,7 @@ class DCMauiDemoApp extends StatefulComponent {
   }
 
   // Profile tab content
-  VDomNode renderProfileTab() {
+  UIComponent renderProfileTab() {
     // Demo user data
     final user = {
       "name": "John Doe",
@@ -844,7 +844,7 @@ class DCMauiDemoApp extends StatefulComponent {
   }
 
   // Profile stat item
-  VDomNode renderStatItem(String label, String value) {
+  UIComponent renderStatItem(String label, String value) {
     return DC.View(
       layout: LayoutProps(
         alignItems: YogaAlign.center,
@@ -877,7 +877,7 @@ class DCMauiDemoApp extends StatefulComponent {
   }
 
   // Activity item
-  VDomNode renderActivityItem({
+  UIComponent renderActivityItem({
     required String icon,
     required String title,
     required String time,
@@ -947,7 +947,7 @@ class DCMauiDemoApp extends StatefulComponent {
   }
 
   // Side menu content
-  VDomNode renderSideMenu({required Function onClose}) {
+  UIComponent renderSideMenu({required Function onClose}) {
     return DC.View(
       layout: LayoutProps(
         width: '100%',
@@ -1015,7 +1015,7 @@ class DCMauiDemoApp extends StatefulComponent {
   }
 
   // Menu item with a button for proper event handling
-  VDomNode renderMenuItemWithButton(
+  UIComponent renderMenuItemWithButton(
       {required String icon, required String title}) {
     return DC.View(
       layout: LayoutProps(
