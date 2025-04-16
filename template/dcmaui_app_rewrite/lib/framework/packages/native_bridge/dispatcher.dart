@@ -1,9 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
-import 'package:flutter/rendering.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-
 import 'native_bridge.dart';
 import 'dart:developer' as developer;
 
@@ -46,20 +44,19 @@ class PlatformDispatcher implements NativeBridge {
           (key, value) => MapEntry(key.toString(), value),
         );
 
-        print(
+        debugPrint(
             'EVENT RECEIVED FROM NATIVE: $eventType for $viewId with data: $typedEventData');
 
-        // Forward to the appropriate handler
         if (_eventHandler != null) {
           _eventHandler!(viewId, eventType, typedEventData);
         } else {
-          print('WARNING: No event handler registered to process event');
+          debugPrint('WARNING: No event handler registered to process event');
         }
       }
       return null;
     });
 
-    print('Method channel event handling initialized');
+    debugPrint('Method channel event handling initialized');
   }
 
   @override

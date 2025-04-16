@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:io' show Platform;
-
 import 'dispatcher.dart';
 
 /// Abstract interface for platform-specific native bridges
