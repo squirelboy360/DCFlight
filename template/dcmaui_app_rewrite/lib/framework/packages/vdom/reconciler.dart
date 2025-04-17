@@ -160,22 +160,30 @@ class Reconciler {
     }
   }
 
- 
-
-  // Helper to preserve style props when updating content
+  // IMPROVED: Helper to preserve style props when updating content
+  // Dynamically preserves all non-layout, non-content props to avoid hardcoding
   void _preserveStyleProps(Map<String, dynamic> oldProps, Map<String, dynamic> changedProps) {
-    // List of style properties to always preserve
-    final stylesToPreserve = [
-      'color', 'backgroundColor', 'fontSize', 'fontWeight', 'fontFamily',
-      'textAlign', 'lineHeight', 'letterSpacing'
-    ];
-    
-    for (final styleProp in stylesToPreserve) {
-      if (oldProps.containsKey(styleProp) && !changedProps.containsKey(styleProp)) {
-        // Include this style prop in the update to ensure it's preserved
-        changedProps[styleProp] = oldProps[styleProp];
-        print("🎨 Preserving style prop $styleProp: ${oldProps[styleProp]}");
+    // Iterate through all old props
+    for (final propKey in oldProps.keys) {
+      // Skip if this prop is already in changed props (was explicitly updated)
+      if (changedProps.containsKey(propKey)) {
+        continue;
       }
+      
+      // Skip content props
+      if (propKey == 'content' || propKey == 'text') {
+        continue;
+      }
+      
+      // Skip layout props
+      if (_isLayoutProp(propKey)) {
+        continue;
+      }
+      
+      // This must be a non-layout, non-content prop that wasn't explicitly changed
+      // Added it to changed props to ensure it's preserved
+      changedProps[propKey] = oldProps[propKey];
+      print("🎨 Preserving prop $propKey: ${oldProps[propKey]}");
     }
   }
 
