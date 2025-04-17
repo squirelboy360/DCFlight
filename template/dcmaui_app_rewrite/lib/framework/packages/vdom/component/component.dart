@@ -1,3 +1,5 @@
+import 'package:dc_test/framework/utilities/flutter.dart';
+
 import '../vdom_node.dart';
 import 'state_hook.dart';
 
@@ -63,7 +65,7 @@ abstract class StatefulComponent extends Component {
 
   /// Run effects after render
   void runEffectsAfterRender() {
-    print("🏁 Running effects after render for component: $instanceId");
+    debugPrint("🏁 Running effects after render for component: $instanceId");
 
     // CRITICAL FIX: Use Future.microtask to ensure effects run after render is complete
     Future.microtask(() {
@@ -78,6 +80,7 @@ abstract class StatefulComponent extends Component {
   }
 @override
   /// Build method to be implemented by subclasses
+  // ignore: override_on_non_overriding_member
   UIComponent build();
 }
 

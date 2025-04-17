@@ -18,7 +18,6 @@ void main() {
 }
 
 class DCMauiDemoApp extends StatefulComponent {
-
   @override
   UIComponent build() {
     // State hooks
@@ -57,7 +56,7 @@ class DCMauiDemoApp extends StatefulComponent {
               textProps: TextProps(
                   fontSize: 24, color: Colors.white, textAlign: 'center'),
               content: counter.value.toString(),
-              layout: LayoutProps(paddingHorizontal: counter.value),
+              layout: LayoutProps(width: '100%',height: 100),
               style: StyleSheet(backgroundColor: Colors.teal)),
         ]);
   }
