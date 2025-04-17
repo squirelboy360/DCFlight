@@ -38,5 +38,5 @@ flutter_launcher_icons:
   web: 
      generate: true
 
-  image_path: "assets/app_icon/icon.png"
+  image_path: "assets/app_icon/flight_ico.png"
   min_sdk_android: 21
