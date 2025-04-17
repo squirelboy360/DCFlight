@@ -157,10 +157,10 @@ class Reconciler {
           await vdom.calculateAndApplyLayout();
         }
       }
-
-      // Now reconcile children
-      await _reconcileChildren(oldElement, newElement);
     }
+
+    // Now reconcile children
+    await _reconcileChildren(oldElement, newElement);
   }
 
   // IMPROVED: Helper to preserve style props when updating content
