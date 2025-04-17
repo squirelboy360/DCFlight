@@ -82,25 +82,37 @@ class Reconciler {
     if (oldElement.nativeViewId != null) {
       newElement.nativeViewId = oldElement.nativeViewId;
 
-      // Find changed props with generic diffing - excluding layout props
+      // Find changed props with generic diffing
       final changedProps = <String, dynamic>{};
-
+      
       // Step 1: First copy all existing props from the old element
       final mergedProps = Map<String, dynamic>.from(oldElement.props);
-
+      
       // Step 2: Update or add new props from the new element
       for (final entry in newElement.props.entries) {
         final key = entry.key;
         final value = entry.value;
-
+        
+        // ENHANCED: Create categories of props to handle differently
+        bool isContentProp = key == 'content' || key == 'text';
+      
         // If value has changed or is new
-        if (!oldElement.props.containsKey(key) ||
-            oldElement.props[key] != value) {
+        if (!oldElement.props.containsKey(key) || oldElement.props[key] != value) {
           changedProps[key] = value;
           mergedProps[key] = value;
+          
+          // Debug logging for state transitions
+          if (isContentProp) {
+            print("📝 Content changing from: ${oldElement.props[key]} to: $value");
+          }
+        } else if (isContentProp) {
+          // CRITICAL FIX: Always include content props in changes to ensure update
+          // This addresses the case where content prop is incorrectly considered unchanged
+          changedProps[key] = value;
+          print("🔄 Forcing content update even though same value: $value");
         }
       }
-
+      
       // Step 3: Check for props that have been removed in the new element
       for (final key in oldElement.props.keys) {
         if (!newElement.props.containsKey(key)) {
@@ -109,35 +121,61 @@ class Reconciler {
           mergedProps.remove(key);
         }
       }
-
+      
+      // CRITICAL ENHANCEMENT: Always preserve style props when updating content
+      if (changedProps.containsKey('content') || changedProps.containsKey('text')) {
+        // Ensure style props are preserved by including them in the update even if unchanged
+        _preserveStyleProps(oldElement.props, changedProps);
+      }
+      
       // Step 4: Update newElement.props with merged props for future reconciliations
       newElement.props = mergedProps;
 
       // Update props directly if there are changes
       if (changedProps.isNotEmpty) {
-        // Preserve event handlers from old element
-        if (oldElement.events != null) {
-          newElement.events = Map<String, dynamic>.from(oldElement.events!);
+        // Debug logging for prop changes
+        print("🚀 Updating view ${oldElement.nativeViewId} with changes: ${changedProps.keys.join(", ")}");
+        
+        // Preserve event handlers
+        oldElement.events?.forEach((key, value) {
+          if (value is Function) {
+            newElement.events ??= {};
+            newElement.events![key] = value;
+          }
+        });
 
-          // Also ensure event handlers in props are preserved
-          oldElement.props.forEach((key, value) {
-            if (key.startsWith('on') &&
-                value is Function &&
-                !changedProps.containsKey(key)) {
-              changedProps[key] = value;
-            }
-          });
+        // CRITICAL FIX: Wait for update to complete to ensure native side has processed
+        bool updateSuccess = await vdom.updateView(oldElement.nativeViewId!, changedProps);
+        if (!updateSuccess) {
+          print("❌ Failed to update view ${oldElement.nativeViewId}");
         }
 
-        await vdom.updateView(oldElement.nativeViewId!, changedProps);
-
         if (changedProps.keys.any((key) => _isLayoutProp(key))) {
-          vdom.calculateAndApplyLayout();
+          await vdom.calculateAndApplyLayout();
         }
       }
 
       // Now reconcile children
       await _reconcileChildren(oldElement, newElement);
+    }
+  }
+
+ 
+
+  // Helper to preserve style props when updating content
+  void _preserveStyleProps(Map<String, dynamic> oldProps, Map<String, dynamic> changedProps) {
+    // List of style properties to always preserve
+    final stylesToPreserve = [
+      'color', 'backgroundColor', 'fontSize', 'fontWeight', 'fontFamily',
+      'textAlign', 'lineHeight', 'letterSpacing'
+    ];
+    
+    for (final styleProp in stylesToPreserve) {
+      if (oldProps.containsKey(styleProp) && !changedProps.containsKey(styleProp)) {
+        // Include this style prop in the update to ensure it's preserved
+        changedProps[styleProp] = oldProps[styleProp];
+        print("🎨 Preserving style prop $styleProp: ${oldProps[styleProp]}");
+      }
     }
   }
 

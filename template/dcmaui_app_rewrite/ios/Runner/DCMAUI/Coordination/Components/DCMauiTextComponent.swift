@@ -49,15 +49,45 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
             return false
         }
         
-        // CRITICAL FIX: Apply all styling props to container view first
-        // Extract style properties and apply directly to the view
-        view.applyStyles(props: props)
+        // ENHANCED: Store current style properties before update
+        let currentTextColor = label.textColor
+        let currentFont = label.font
+        let currentTextAlignment = label.textAlignment
+        
+        // CRITICAL FIX: Only apply container styling if specific container props exist
+        if props.keys.contains(where: { $0 != "content" && $0 != "text" }) {
+            // Apply styling props to container view
+            view.applyStyles(props: props)
+        }
         
         // CRITICAL DEBUGGING: Print content before update
         print("📄 Label text BEFORE update: \(label.text ?? "nil")")
         
+        // Check if this is a content-only update
+        let isContentOnlyUpdate = props.count == 1 && (props["content"] != nil || props["text"] != nil)
+        print("🔍 Is content-only update: \(isContentOnlyUpdate)")
+        
         // Apply text-specific props to label
-        let success = updateLabelDirectly(label, withProps: props)
+        let success = updateLabelDirectly(label, withProps: props, isContentOnlyUpdate: isContentOnlyUpdate)
+        
+        // ENHANCED: If content-only update but styles were lost, restore them
+        if isContentOnlyUpdate {
+            // Check if styles were inadvertently reset and restore if needed
+            if label.textColor != currentTextColor {
+                print("🎨 Restoring text color after content update")
+                label.textColor = currentTextColor
+            }
+            
+            if label.font != currentFont {
+                print("🔤 Restoring font after content update")
+                label.font = currentFont
+            }
+            
+            if label.textAlignment != currentTextAlignment {
+                print("📏 Restoring text alignment after content update")
+                label.textAlignment = currentTextAlignment
+            }
+        }
         
         // CRITICAL DEBUGGING: Print content after update
         print("📄 Label text AFTER update: \(label.text ?? "nil")")
@@ -69,25 +99,46 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
         return success
     }
     
-    private func updateLabelDirectly(_ label: UILabel, withProps props: [String: Any]) -> Bool {
+    private func updateLabelDirectly(_ label: UILabel, withProps props: [String: Any], isContentOnlyUpdate: Bool = false) -> Bool {
         // CRITICAL DEBUGGING: Log initial props
         print("🔍 Updating label with props: \(props)")
+        
+        // Track whether content was updated
+        var contentUpdated = false
         
         // Apply text properties - CRITICAL FIX: More explicit content handling
         if let text = props["content"] as? String {
             print("📝 Setting text content directly: '\(text)'")
             label.text = text
+            contentUpdated = true
         } else if let text = props["text"] as? String {
             print("📝 Setting text content via 'text' prop: '\(text)'")
             label.text = text
+            contentUpdated = true
         } else if let numContent = props["content"] as? Int {
             // Handle integer content (common for counters)
             print("📝 Setting numeric content: \(numContent)")
             label.text = String(numContent)
+            contentUpdated = true
         }
         
-        // ADDED CRITICAL DEBUGGING: Check text was set
-        print("📄 Text label now contains: '\(label.text ?? "nil")'")
+        // Skip style updates if this is a content-only update
+        if isContentOnlyUpdate && contentUpdated {
+            print("🔒 Content-only update: preserving existing styles")
+            // CRITICAL FIX: Make sure line height is preserved when using attributed string
+            if let attributedText = label.attributedText, let plainText = label.text {
+                // Create a copy of the attributed text with the new content
+                let newAttributes = attributedText.attributes(at: 0, effectiveRange: nil)
+                label.attributedText = NSAttributedString(string: plainText, attributes: newAttributes)
+                print("📝 Preserved attributed text formatting while updating content")
+            }
+            
+            // ADDED CRITICAL DEBUGGING: Check text was set
+            print("📄 Text label now contains: '\(label.text ?? "nil")'")
+            return true
+        }
+        
+        // Only apply style properties if not a content-only update or if we haven't updated content yet
         
         // Apply text-specific styles
         if let color = props["color"] as? String {
@@ -101,37 +152,42 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
         }
         
         if let fontSize = props["fontSize"] as? CGFloat {
-            label.font = UIFont.systemFont(ofSize: fontSize)
-        } else {
-            // Default font size if not provided
-            label.font = UIFont.systemFont(ofSize: 14)
+            // Preserve font weight when changing size
+            let currentWeight = label.font?.getFontWeight() ?? .regular
+            label.font = UIFont.systemFont(ofSize: fontSize, weight: currentWeight)
+            print("📏 Updated font size to \(fontSize) while preserving weight \(currentWeight)")
         }
         
         if let fontWeight = props["fontWeight"] as? String {
+            // Preserve current font size when changing weight
+            let currentSize = label.font?.pointSize ?? 14.0
+            
             switch fontWeight {
             case "bold":
-                label.font = UIFont.boldSystemFont(ofSize: label.font.pointSize)
+                label.font = UIFont.boldSystemFont(ofSize: currentSize)
             case "100":
-                label.font = UIFont.systemFont(ofSize: label.font.pointSize, weight: .ultraLight)
+                label.font = UIFont.systemFont(ofSize: currentSize, weight: .ultraLight)
             case "200":
-                label.font = UIFont.systemFont(ofSize: label.font.pointSize, weight: .thin)
+                label.font = UIFont.systemFont(ofSize: currentSize, weight: .thin)
             case "300":
-                label.font = UIFont.systemFont(ofSize: label.font.pointSize, weight: .light)
+                label.font = UIFont.systemFont(ofSize: currentSize, weight: .light)
             case "400":
-                label.font = UIFont.systemFont(ofSize: label.font.pointSize, weight: .regular)
+                label.font = UIFont.systemFont(ofSize: currentSize, weight: .regular)
             case "500":
-                label.font = UIFont.systemFont(ofSize: label.font.pointSize, weight: .medium)
+                label.font = UIFont.systemFont(ofSize: currentSize, weight: .medium)
             case "600":
-                label.font = UIFont.systemFont(ofSize: label.font.pointSize, weight: .semibold)
+                label.font = UIFont.systemFont(ofSize: currentSize, weight: .semibold)
             case "700":
-                label.font = UIFont.systemFont(ofSize: label.font.pointSize, weight: .bold)
+                label.font = UIFont.systemFont(ofSize: currentSize, weight: .bold)
             case "800":
-                label.font = UIFont.systemFont(ofSize: label.font.pointSize, weight: .heavy)
+                label.font = UIFont.systemFont(ofSize: currentSize, weight: .heavy)
             case "900":
-                label.font = UIFont.systemFont(ofSize: label.font.pointSize, weight: .black)
+                label.font = UIFont.systemFont(ofSize: currentSize, weight: .black)
             default:
                 break
             }
+            
+            print("🔤 Updated font weight to \(fontWeight) while preserving size \(currentSize)")
         }
         
         if let textAlign = props["textAlign"] as? String {
@@ -152,6 +208,8 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
         if let lineHeight = props["lineHeight"] as? CGFloat {
             let paragraphStyle = NSMutableParagraphStyle()
             paragraphStyle.lineSpacing = lineHeight - label.font.lineHeight
+            
+            // Create attributed string but preserve the current content
             label.attributedText = NSAttributedString(
                 string: label.text ?? "",
                 attributes: [NSAttributedString.Key.paragraphStyle: paragraphStyle]
