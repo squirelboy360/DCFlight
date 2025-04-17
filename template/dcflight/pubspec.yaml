@@ -19,6 +19,7 @@ dependencies:
   flutter_launcher_icons: ^0.14.3
   forui_assets: ^0.9.1
   jni: ^0.14.1
+  rename_app: ^1.6.2
 
 
 
