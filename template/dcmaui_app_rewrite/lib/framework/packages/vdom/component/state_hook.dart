@@ -4,16 +4,16 @@ import 'component.dart';
 // Required globals for hook system
 Component? _currentComponent;
 int _currentHookIndex = 0;
-final Map<String, _HookStore> _hookStores = {};
+final Map<String, HookStore> _hookStores = {};
 
-class _HookStore {
+class HookStore {
   final List<StateHook> stateHooks = [];
   final List<EffectHook> effectHooks = [];
 }
 
 // Get hook store for component
-_HookStore getHookStore(String componentId) {
-  return _hookStores[componentId] ??= _HookStore();
+HookStore getHookStore(String componentId) {
+  return _hookStores[componentId] ??= HookStore();
 }
 
 class StateHook<T> {
