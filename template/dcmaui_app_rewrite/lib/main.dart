@@ -16,21 +16,16 @@ import 'framework/constants/yoga_enums.dart';
 
 void main() {
   initializeApplication(DCMauiDemoApp());
-
 }
 
 class DCMauiDemoApp extends StatefulComponent {
-
-
   @override
   UIComponent build() {
     // State hooks
     final counter = useState(0, 'counter');
 
-    final bg =
-        useState(Color(Colors.indigoAccent.toARGB32()), 'bg');
+    final bg = useState(Color(Colors.indigoAccent.toARGB32()), 'bg');
 
-    
     // Use an effect to update the ScrollView background color every second
     useEffect(() {
       final rnd = math.Random();
@@ -39,7 +34,7 @@ class DCMauiDemoApp extends StatefulComponent {
       final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         // Update the background color
         bg.setValue(color());
-
+        counter.setValue(counter.value + 1);
         developer.log('Updated ScrollView background color to: $color',
             name: 'ColorAnimation');
       });
@@ -51,7 +46,6 @@ class DCMauiDemoApp extends StatefulComponent {
             name: 'ColorAnimation');
       };
     }, dependencies: []);
-
 
     return DC.View(
         layout: LayoutProps(
@@ -71,9 +65,12 @@ class DCMauiDemoApp extends StatefulComponent {
               )),
           DC.Text(
               textProps: TextProps(
-                  fontSize: 24, color: Colors.white, textAlign: 'center',fontWeight: 'bold'),
+                  fontSize: 24,
+                  color: Colors.white,
+                  textAlign: 'center',
+                  fontWeight: 'bold'),
               content: counter.value.toString(),
-              layout: LayoutProps(paddingHorizontal: 50,width: '100%'),
+              layout: LayoutProps(paddingHorizontal: 50, width: '100%'),
               style: StyleSheet(backgroundColor: Colors.teal)),
         ]);
   }
