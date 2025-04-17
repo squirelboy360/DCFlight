@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:dc_test/framework/utilities/entry.dart';
 import 'package:dc_test/framework/utilities/flutter.dart';
@@ -26,9 +27,21 @@ class DCMauiDemoApp extends StatefulComponent {
     // State hooks
     final counter = useState(0, 'counter');
 
+    final bg =
+        useState(Color(Colors.indigoAccent.toARGB32()), 'bg');
+
+    
+    // Use an effect to update the ScrollView background color every second
     useEffect(() {
+      final rnd = math.Random();
+      Color color() => Color(rnd.nextInt(0xffffffff));
+      // Set up a timer to update the color every second
       final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        counter.setValue(counter.value + 1);
+        // Update the background color
+        bg.setValue(color());
+
+        developer.log('Updated ScrollView background color to: $color',
+            name: 'ColorAnimation');
       });
 
       // Clean up the timer when the component is unmounted
@@ -39,12 +52,13 @@ class DCMauiDemoApp extends StatefulComponent {
       };
     }, dependencies: []);
 
+
     return DC.View(
         layout: LayoutProps(
             flex: 1,
             alignContent: YogaAlign.center,
             justifyContent: YogaJustifyContent.center),
-        style: StyleSheet(backgroundColor: Colors.yellow),
+        style: StyleSheet(backgroundColor: bg.value),
         children: [
           DC.Button(
               onPress: () {
