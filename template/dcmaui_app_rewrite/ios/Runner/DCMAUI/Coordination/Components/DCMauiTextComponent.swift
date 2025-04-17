@@ -37,8 +37,6 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        print("📝 Text updateView called with props: \(props)")
-        
         // First find the label inside the container
         guard let label = view.viewWithTag(1001) as? UILabel else {
             // Direct label case (legacy)
@@ -49,31 +47,26 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
             return false
         }
         
-        // Store current style state before any updates
-        let currentState = captureLabelState(label)
+        // Determine if this is a content-only update
+        let isContentOnlyUpdate = isContentOnlyUpdate(props)
         
-        // CRITICAL FIX: Apply container styling if needed
-        if !isContentOnlyUpdate(props) {
+        // Store current style state before any updates
+        let currentState = isContentOnlyUpdate ? captureLabelState(label) : nil
+        
+        // Apply container styling if needed (skip for content-only updates)
+        if !isContentOnlyUpdate {
             view.applyStyles(props: props)
         }
         
-        // CRITICAL DEBUGGING: Print content before update
-        print("📄 Label text BEFORE update: \(label.text ?? "nil")")
-        
         // Apply text-specific props to label
-        let success = updateLabelDirectly(label, withProps: props)
+        let success = updateLabelDirectly(label, withProps: props, isContentOnlyUpdate: isContentOnlyUpdate)
         
-        // Check if we need to restore styles - relies on Dart-side _preserveStyleProps
-        if isContentOnlyUpdate(props) {
-            // If we determined this is content-only, restore style state
-            restoreLabelState(label, state: currentState)
-            print("🔄 Restored label state after content-only update")
+        // Restore styling if this was a content-only update
+        if isContentOnlyUpdate, let state = currentState {
+            restoreLabelState(label, state: state)
         }
         
-        // CRITICAL DEBUGGING: Print content after update
-        print("📄 Label text AFTER update: \(label.text ?? "nil")")
-        
-        // FORCE LAYOUT UPDATE after text content changes
+        // Force layout update after text content changes
         view.setNeedsLayout()
         view.layoutIfNeeded()
         
@@ -82,20 +75,17 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
     
     // Helper to check if this is a content-only update
     private func isContentOnlyUpdate(_ props: [String: Any]) -> Bool {
-        // If props has only content or only text, or both with nothing else
-        let contentOnly = props.count == 1 && (props["content"] != nil || props["text"] != nil)
-        let contentAndText = props.count == 2 && props["content"] != nil && props["text"] != nil
-        return contentOnly || contentAndText
+        return props.count == 1 && (props["content"] != nil || props["text"] != nil) ||
+               props.count == 2 && props["content"] != nil && props["text"] != nil
     }
     
     // Capture all relevant label state
     private func captureLabelState(_ label: UILabel) -> [String: Any] {
-        var state: [String: Any] = [:]
-        
-        // Capture basic properties
-        state["textColor"] = label.textColor
-        state["font"] = label.font
-        state["textAlignment"] = label.textAlignment
+        var state: [String: Any] = [
+            "textColor": label.textColor,
+            "font": label.font,
+            "textAlignment": label.textAlignment
+        ]
         
         // Capture attributed text attributes if available
         if let attributedText = label.attributedText, attributedText.length > 0 {
@@ -107,17 +97,15 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
     
     // Restore label state from captured state
     private func restoreLabelState(_ label: UILabel, state: [String: Any]) {
-        // Restore text color
+        // Restore basic properties
         if let textColor = state["textColor"] as? UIColor {
             label.textColor = textColor
         }
         
-        // Restore font
         if let font = state["font"] as? UIFont {
             label.font = font
         }
         
-        // Restore text alignment
         if let textAlignment = state["textAlignment"] as? NSTextAlignment {
             label.textAlignment = textAlignment
         }
@@ -129,121 +117,25 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
         }
     }
     
-    private func updateLabelDirectly(_ label: UILabel, withProps props: [String: Any]) -> Bool {
-        // CRITICAL DEBUGGING: Log initial props
-        print("🔍 Updating label with props: \(props)")
+    private func updateLabelDirectly(_ label: UILabel, withProps props: [String: Any], isContentOnlyUpdate: Bool = false) -> Bool {
+        // Update content first
+        updateLabelContent(label, props: props)
         
-        // Store font properties before any changes for preserving during updates
-        let currentFontSize = label.font.pointSize
-        let currentFontWeight = label.font.getFontWeight()
-        
-        // Apply text content first
-        var contentUpdated = false
-        
-        if let text = props["content"] as? String {
-            print("📝 Setting text content directly: '\(text)'")
-            label.text = text
-            contentUpdated = true
-        } else if let text = props["text"] as? String {
-            print("📝 Setting text content via 'text' prop: '\(text)'")
-            label.text = text
-            contentUpdated = true
-        } else if let numContent = props["content"] as? Int {
-            // Handle integer content (common for counters)
-            print("📝 Setting numeric content: \(numContent)")
-            label.text = String(numContent)
-            contentUpdated = true
-        }
-        
-        // Only update styles if they are explicitly provided
-        
-        // Color
-        if let color = props["color"] as? String {
-            print("🎨 Setting text color directly: \(color)")
-            if ColorUtilities.isTransparent(color) {
-                label.textColor = UIColor.clear
-            } else {
-                label.textColor = ColorUtilities.color(fromHexString: color) ?? .black
+        // Skip style updates if this is a content-only update
+        if isContentOnlyUpdate {
+            // Preserve attributed formatting if any
+            if let attributedText = label.attributedText, attributedText.length > 0,
+               let plainText = label.text {
+                let attributes = attributedText.attributes(at: 0, effectiveRange: nil)
+                label.attributedText = NSAttributedString(string: plainText, attributes: attributes)
             }
+            return true
         }
         
-        // Process font properties - collect changes first
-        var newFontSize: CGFloat? = nil
-        var newFontWeight: UIFont.Weight? = nil
+        // Update styling
+        updateLabelStyling(label, props: props)
         
-        // Font size
-        if let fontSize = props["fontSize"] as? CGFloat {
-            newFontSize = fontSize
-        }
-        
-        // Font weight
-        if let fontWeight = props["fontWeight"] as? String {
-            // Map string weight to UIFont.Weight
-            switch fontWeight {
-            case "bold", "700":
-                newFontWeight = .bold
-            case "600":
-                newFontWeight = .semibold
-            case "500":
-                newFontWeight = .medium
-            case "400", "normal", "regular":
-                newFontWeight = .regular
-            case "300":
-                newFontWeight = .light
-            case "200":
-                newFontWeight = .thin
-            case "100":
-                newFontWeight = .ultraLight
-            case "800":
-                newFontWeight = .heavy
-            case "900":
-                newFontWeight = .black
-            default:
-                // Preserve current weight
-                break
-            }
-        }
-        
-        // Apply font changes atomically to prevent intermediate states
-        if newFontSize != nil || newFontWeight != nil {
-            // Use the new properties where provided, fall back to current properties
-            let fontSize = newFontSize ?? currentFontSize
-            let fontWeight = newFontWeight ?? currentFontWeight
-            
-            // Create new font with combined properties
-            label.font = UIFont.systemFont(ofSize: fontSize, weight: fontWeight)
-            print("🔤 Applied font - size: \(fontSize), weight: \(fontWeight)")
-        }
-        
-        // Text alignment
-        if let textAlign = props["textAlign"] as? String {
-            switch textAlign {
-            case "left":
-                label.textAlignment = .left
-            case "center":
-                label.textAlignment = .center
-            case "right":
-                label.textAlignment = .right
-            case "justify":
-                label.textAlignment = .justified
-            default:
-                label.textAlignment = .natural
-            }
-        }
-        
-        // Line height
-        if let lineHeight = props["lineHeight"] as? CGFloat {
-            let paragraphStyle = NSMutableParagraphStyle()
-            paragraphStyle.lineSpacing = lineHeight - label.font.lineHeight
-            
-            // Create attributed string
-            label.attributedText = NSAttributedString(
-                string: label.text ?? "",
-                attributes: [NSAttributedString.Key.paragraphStyle: paragraphStyle]
-            )
-        }
-        
-        // Apply proper sizing
+        // Ensure proper sizing
         label.sizeToFit()
         
         // Ensure minimum height
@@ -256,6 +148,102 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
         return true
     }
     
+    // Update just the content of the label
+    private func updateLabelContent(_ label: UILabel, props: [String: Any]) {
+        if let text = props["content"] as? String {
+            label.text = text
+        } else if let text = props["text"] as? String {
+            label.text = text
+        } else if let numContent = props["content"] as? Int {
+            label.text = String(numContent)
+        }
+    }
+    
+    // Update styling of the label
+    private func updateLabelStyling(_ label: UILabel, props: [String: Any]) {
+        // Store font properties for atomic update
+        let currentFontSize = label.font.pointSize
+        let currentFontWeight = label.font.getFontWeight()
+        var newFontSize: CGFloat? = nil
+        var newFontWeight: UIFont.Weight? = nil
+        
+        // Text color
+        if let color = props["color"] as? String {
+            if ColorUtilities.isTransparent(color) {
+                label.textColor = UIColor.clear
+            } else {
+                label.textColor = ColorUtilities.color(fromHexString: color) ?? .black
+            }
+        }
+        
+        // Font size
+        if let fontSize = props["fontSize"] as? CGFloat {
+            newFontSize = fontSize
+        }
+        
+        // Font weight
+        if let fontWeight = props["fontWeight"] as? String {
+            newFontWeight = fontWeightFromString(fontWeight)
+        }
+        
+        // Apply font changes atomically
+        if newFontSize != nil || newFontWeight != nil {
+            let fontSize = newFontSize ?? currentFontSize
+            let fontWeight = newFontWeight ?? currentFontWeight
+            label.font = UIFont.systemFont(ofSize: fontSize, weight: fontWeight)
+        }
+        
+        // Text alignment
+        if let textAlign = props["textAlign"] as? String {
+            label.textAlignment = textAlignmentFromString(textAlign)
+        }
+        
+        // Line height
+        if let lineHeight = props["lineHeight"] as? CGFloat {
+            applyLineHeight(lineHeight, to: label)
+        }
+    }
+    
+    // Helper to convert string alignment to NSTextAlignment
+    private func textAlignmentFromString(_ align: String) -> NSTextAlignment {
+        switch align {
+        case "left":     return .left
+        case "center":   return .center
+        case "right":    return .right
+        case "justify":  return .justified
+        default:         return .natural
+        }
+    }
+    
+    // Helper to convert string weight to UIFont.Weight
+    private func fontWeightFromString(_ weight: String) -> UIFont.Weight {
+        switch weight {
+        case "bold", "700":    return .bold
+        case "600":            return .semibold
+        case "500":            return .medium
+        case "400", "normal":  return .regular
+        case "300":            return .light
+        case "200":            return .thin
+        case "100":            return .ultraLight
+        case "800":            return .heavy
+        case "900":            return .black
+        default:               return .regular
+        }
+    }
+    
+    // Helper to apply line height
+    private func applyLineHeight(_ lineHeight: CGFloat, to label: UILabel) {
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = lineHeight - label.font.lineHeight
+        
+        // Create attributed string preserving the current content
+        label.attributedText = NSAttributedString(
+            string: label.text ?? "",
+            attributes: [NSAttributedString.Key.paragraphStyle: paragraphStyle]
+        )
+    }
+    
+    // Layout methods
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
         // Apply the layout to the container
         view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
@@ -270,7 +258,7 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
     }
     
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        // Get the label - either direct or from container
+        // Get the label
         let label: UILabel?
         if let directLabel = view as? UILabel {
             label = directLabel
@@ -278,44 +266,29 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
             label = view.viewWithTag(1001) as? UILabel
         }
         
-        // If no label found, return zero size
-        guard let textLabel = label else {
-            return .zero
-        }
+        guard let textLabel = label else { return .zero }
         
-        // Use text content if available
+        // Get text content
         let text = props["content"] as? String ?? props["text"] as? String ?? ""
+        if text.isEmpty { return CGSize(width: 0, height: 24) }
         
-        if text.isEmpty {
-            return CGSize(width: 0, height: 24) // Minimum height 
-        }
+        // Get font
+        let font = (props["fontSize"] as? CGFloat).map { 
+            UIFont.systemFont(ofSize: $0)
+        } ?? UIFont.systemFont(ofSize: 14)
         
-        // Use stored font or create one with props
-        let font: UIFont
-        if let fontSize = props["fontSize"] as? CGFloat {
-            font = UIFont.systemFont(ofSize: fontSize)
-        } else {
-            font = UIFont.systemFont(ofSize: 14)
-        }
-        
-        // Create a temporary label to measure text with the same properties
+        // Create temp label for measurement
         let tempLabel = UILabel()
         tempLabel.text = text
         tempLabel.font = font
         tempLabel.numberOfLines = 0
         
         // Calculate size with constraints
-        let maxWidth = props["maxWidth"] as? CGFloat ?? view.superview?.frame.width ?? CGFloat.greatestFiniteMagnitude
-        let constraintSize = CGSize(width: maxWidth, height: CGFloat.greatestFiniteMagnitude)
-        var size = tempLabel.sizeThatFits(constraintSize)
-        
-        // Ensure minimum height
-        if size.height < 24 {
-            size.height = 24
-        }
-        
-        print("📏 Text intrinsic size measurement: \"\(text)\" -> \(size)")
-        
-        return size
+        let maxWidth = props["maxWidth"] as? CGFloat ?? 
+                      view.superview?.frame.width ?? 
+                      CGFloat.greatestFiniteMagnitude
+                      
+        let size = tempLabel.sizeThatFits(CGSize(width: maxWidth, height: .greatestFiniteMagnitude))
+        return CGSize(width: size.width, height: max(size.height, 24))
     }
 }
