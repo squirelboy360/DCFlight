@@ -1,5 +1,8 @@
 import 'dart:developer' as developer;
 import 'dart:math' as math;
+
+import 'package:dc_test/framework/utilities/flutter.dart';
+
 import '../../constants/layout_properties.dart';
 
 import 'vdom_node.dart';
@@ -109,7 +112,7 @@ class Reconciler {
           // CRITICAL FIX: Always include content props in changes to ensure update
           // This addresses the case where content prop is incorrectly considered unchanged
           changedProps[key] = value;
-          print("🔄 Forcing content update even though same value: $value");
+          debugPrint("🔄 Forcing content update even though same value: $value");
         }
       }
       
@@ -134,7 +137,7 @@ class Reconciler {
       // Update props directly if there are changes
       if (changedProps.isNotEmpty) {
         // Debug logging for prop changes
-        print("🚀 Updating view ${oldElement.nativeViewId} with changes: ${changedProps.keys.join(", ")}");
+        debugPrint("🚀 Updating view ${oldElement.nativeViewId} with changes: ${changedProps.keys.join(", ")}");
         
         // Preserve event handlers
         oldElement.events?.forEach((key, value) {
@@ -147,7 +150,7 @@ class Reconciler {
         // CRITICAL FIX: Wait for update to complete to ensure native side has processed
         bool updateSuccess = await vdom.updateView(oldElement.nativeViewId!, changedProps);
         if (!updateSuccess) {
-          print("❌ Failed to update view ${oldElement.nativeViewId}");
+          debugPrint("❌ Failed to update view ${oldElement.nativeViewId}");
         }
 
         if (changedProps.keys.any((key) => _isLayoutProp(key))) {

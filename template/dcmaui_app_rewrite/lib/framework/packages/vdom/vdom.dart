@@ -2,6 +2,8 @@
 
 import 'dart:async';
 import 'dart:developer' as developer;
+import 'package:dc_test/framework/utilities/debug_tools.dart';
+
 import '../native_bridge/dispatcher.dart';
 import '../../constants/yoga_enums.dart';
 import '../../constants/layout_properties.dart';
@@ -14,7 +16,7 @@ import 'component/context.dart';
 import 'fragment.dart';
 import 'component/error_boundary.dart';
 import 'vdom_node_sync.dart';
-import '../../utilities/debug_tools.dart'; // Add this import
+
 
 /// Performance monitoring for VDOM operations
 class PerformanceMonitor {
@@ -953,6 +955,7 @@ class VDom {
 
   /// Update a view's properties
   Future<bool> updateView(String viewId, Map<String, dynamic> props) async {
+   
     return await _nativeBridge.updateView(viewId, props);
   }
 

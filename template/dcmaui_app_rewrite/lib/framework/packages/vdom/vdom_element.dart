@@ -19,9 +19,10 @@ class VDomElement extends VDomNode {
   Map<String, dynamic>? _events;
 
   // Add getter for events
+  // ignore: unnecessary_getters_setters
   Map<String, dynamic>? get events => _events;
 
-  // Add setter for events
+  // setter for events
   set events(Map<String, dynamic>? value) {
     _events = value;
   }

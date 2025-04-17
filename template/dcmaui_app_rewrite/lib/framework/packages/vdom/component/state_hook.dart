@@ -1,4 +1,6 @@
-import 'package:flutter/foundation.dart';
+
+import 'package:dc_test/framework/utilities/flutter.dart';
+
 import 'component.dart';
 
 // Required globals for hook system

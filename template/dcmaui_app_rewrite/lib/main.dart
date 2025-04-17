@@ -29,14 +29,14 @@ class DCMauiDemoApp extends StatefulComponent {
     // Use an effect to update the ScrollView background color every second
     useEffect(() {
       final rnd = math.Random();
-      Color color() => Color(rnd.nextInt(0xffffffff));
+      // Color color() => Color(rnd.nextInt(0xffffffff));
       // Set up a timer to update the color every second
       final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         // Update the background color
-        bg.setValue(color());
+        // bg.setValue(color());
         counter.setValue(counter.value + 1);
-        developer.log('Updated ScrollView background color to: $color',
-            name: 'ColorAnimation');
+        
+        
       });
 
       // Clean up the timer when the component is unmounted

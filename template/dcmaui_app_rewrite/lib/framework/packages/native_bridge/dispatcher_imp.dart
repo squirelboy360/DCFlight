@@ -151,6 +151,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
         'viewId': viewId,
         'props': propPatches,
       });
+      print("executing diffed props to native side $propPatches for view id: $viewId");
       return true;
     }
 
