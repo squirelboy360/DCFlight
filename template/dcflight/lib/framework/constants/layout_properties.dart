@@ -1,4 +1,4 @@
-import 'package:dc_test/framework/constants/yoga_enums.dart';
+import 'package:dcflight/framework/constants/yoga_enums.dart';
 
 /// Layout properties for components
 class LayoutProps {

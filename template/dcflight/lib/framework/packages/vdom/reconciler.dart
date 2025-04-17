@@ -1,7 +1,7 @@
 import 'dart:developer' as developer;
 import 'dart:math' as math;
 
-import 'package:dc_test/framework/utilities/flutter.dart';
+import 'package:dcflight/framework/utilities/flutter.dart';
 
 import '../../constants/layout_properties.dart';
 

@@ -2,7 +2,7 @@
 
 import 'dart:async';
 import 'dart:developer' as developer;
-import 'package:dc_test/framework/utilities/debug_tools.dart';
+import 'package:dcflight/framework/utilities/debug_tools.dart';
 
 import '../native_bridge/dispatcher.dart';
 import '../../constants/yoga_enums.dart';

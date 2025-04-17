@@ -201,6 +201,11 @@ class YogaShadowTree {
             print("⚠️ ERROR: Root node not found. Cannot calculate layout")
             return false
         }
+        
+//        // CRITICAL DEBUGGING: Print node hierarchy before calculation
+//        print("📊 Node hierarchy before calculation:")
+//        printNodeHierarchy()
+        
         // CRITICAL FIX: Reset any cached layout data to ensure fresh calculation
         YGNodeCalculateLayout(root, Float.nan, Float.nan, YGDirection.LTR)
         

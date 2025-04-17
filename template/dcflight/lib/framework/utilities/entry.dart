@@ -1,6 +1,6 @@
-import 'package:dc_test/framework/packages/vdom/component/component.dart';
-import 'package:dc_test/framework/packages/vdom/vdom.dart';
-import 'package:dc_test/framework/utilities/screen_utilities.dart';
+import 'package:dcflight/framework/packages/vdom/component/component.dart';
+import 'package:dcflight/framework/packages/vdom/vdom.dart';
+import 'package:dcflight/framework/utilities/screen_utilities.dart';
 import 'package:flutter/material.dart';
 
 void initializeApplication(Component app) {

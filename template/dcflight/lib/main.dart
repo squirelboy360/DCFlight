@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:dc_test/framework/utilities/entry.dart';
-import 'package:dc_test/framework/utilities/flutter.dart';
+import 'package:dcflight/framework/utilities/entry.dart';
+import 'package:dcflight/framework/utilities/flutter.dart';
 import 'dart:developer' as developer;
 import 'framework/packages/vdom/vdom_node.dart';
 import 'framework/packages/vdom/component/component.dart';
@@ -29,12 +29,13 @@ class DCMauiDemoApp extends StatefulComponent {
     // Use an effect to update the ScrollView background color every second
     useEffect(() {
       final rnd = math.Random();
-      // Color color() => Color(rnd.nextInt(0xffffffff));
+      Color color() => Color(rnd.nextInt(0xffffffff));
       // Set up a timer to update the color every second
-      final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      final timer = Timer.periodic(const Duration(seconds: 5), (timer) {
         // Update the background color
-        // bg.setValue(color());
+        bg.setValue(color());
         counter.setValue(counter.value + 1);
+        print("use effect per 5 second ${timer.tick}");
         
         
       });
@@ -57,7 +58,7 @@ class DCMauiDemoApp extends StatefulComponent {
           DC.Button(
               onPress: () {
                 print(counter.value);
-                counter.setValue(counter.value + 1);
+                // counter.setValue(counter.value + 1);
               },
               layout: LayoutProps(padding: 10),
               buttonProps: ButtonProps(
@@ -68,7 +69,7 @@ class DCMauiDemoApp extends StatefulComponent {
                   fontSize: 24,
                   color: Colors.white,
                   textAlign: 'center',
-                  fontWeight: 'bold'),
+              ),
               content: counter.value.toString(),
               layout: LayoutProps(paddingHorizontal: 50, width: '100%'),
               style: StyleSheet(backgroundColor: Colors.teal)),

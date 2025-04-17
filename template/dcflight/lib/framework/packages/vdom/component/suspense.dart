@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:dc_test/framework/packages/vdom/component/state_hook.dart';
+import 'package:dcflight/framework/packages/vdom/component/state_hook.dart';
 
 import '../vdom_node.dart';
 import 'component.dart';
