@@ -42,11 +42,10 @@ void startNativeApp({required Component app}) async {
   await vdom.renderToNative(appNode, parentId: "root", index: 0);
   // Wait for the VDom to be ready
   vdom.isReady.whenComplete(() async {
-    print('VDOM is ready with values ');
+    debugPrint('VDOM is ready to calculate ');
     await vdom.calculateAndApplyLayout().then((v) {
-      print('VDOM layout applied from enry point');
+      debugPrint('VDOM layout applied from enry point');
     });
   });
-  debugPrint('VDom/UICoordinator is ready');
 }
 // Todo: Dev tools setup
