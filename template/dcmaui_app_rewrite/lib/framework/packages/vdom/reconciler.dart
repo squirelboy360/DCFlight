@@ -85,36 +85,49 @@ class Reconciler {
       // Find changed props with generic diffing - excluding layout props
       final changedProps = <String, dynamic>{};
 
-      // Check for props that have changed or been added
+      // Step 1: First copy all existing props from the old element
+      final mergedProps = Map<String, dynamic>.from(oldElement.props);
+
+      // Step 2: Update or add new props from the new element
       for (final entry in newElement.props.entries) {
         final key = entry.key;
         final value = entry.value;
 
-        // If prop has changed or is new
+        // If value has changed or is new
         if (!oldElement.props.containsKey(key) ||
             oldElement.props[key] != value) {
           changedProps[key] = value;
+          mergedProps[key] = value;
         }
       }
 
-      // Check for removed props
+      // Step 3: Check for props that have been removed in the new element
       for (final key in oldElement.props.keys) {
         if (!newElement.props.containsKey(key)) {
-          // Set to null to indicate removal (handled by native bridge)
+          // Mark for removal in native bridge
           changedProps[key] = null;
+          mergedProps.remove(key);
         }
       }
+
+      // Step 4: Update newElement.props with merged props for future reconciliations
+      newElement.props = mergedProps;
 
       // Update props directly if there are changes
       if (changedProps.isNotEmpty) {
-        // Preserve event handlers
-        oldElement.props.forEach((key, value) {
-          if (key.startsWith('on') &&
-              value is Function &&
-              !changedProps.containsKey(key)) {
-            changedProps[key] = value;
-          }
-        });
+        // Preserve event handlers from old element
+        if (oldElement.events != null) {
+          newElement.events = Map<String, dynamic>.from(oldElement.events!);
+
+          // Also ensure event handlers in props are preserved
+          oldElement.props.forEach((key, value) {
+            if (key.startsWith('on') &&
+                value is Function &&
+                !changedProps.containsKey(key)) {
+              changedProps[key] = value;
+            }
+          });
+        }
 
         await vdom.updateView(oldElement.nativeViewId!, changedProps);
 

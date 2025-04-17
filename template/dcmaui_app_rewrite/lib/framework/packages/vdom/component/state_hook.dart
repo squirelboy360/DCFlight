@@ -155,17 +155,44 @@ void useEffect(Function() effect, {List<dynamic>? dependencies}) {
   final component = _currentComponent!;
   final hookIndex = _currentHookIndex++;
 
+  print("🪝 Registering useEffect hook with dependencies: $dependencies");
+
   // Get the hook store for this component
   final hookStore = getHookStore(component.instanceId);
 
   // If hook doesn't exist yet, create it
   if (hookIndex >= hookStore.effectHooks.length) {
     hookStore.effectHooks.add(EffectHook(effect, dependencies));
+
+    // For first registration, make sure it runs after component is rendered
+    _runEffectsForCurrentComponent();
   } else {
     // Update effect and dependencies
-    hookStore.effectHooks[hookIndex].effect = effect;
-    hookStore.effectHooks[hookIndex].dependencies = dependencies;
+    final EffectHook hook = hookStore.effectHooks[hookIndex];
+    hook.effect = effect;
+
+    // CRITICAL FIX: Check and update dependencies
+    if (!_areListsEqual(hook.dependencies, dependencies)) {
+      print("🪝 Effect dependencies changed, will run on next render");
+      hook.dependencies = dependencies;
+
+      // Schedule effect to run since dependencies changed
+      _runEffectsForCurrentComponent();
+    }
   }
+}
+
+// Helper to check if dependency lists are equal
+bool _areListsEqual(List<dynamic>? list1, List<dynamic>? list2) {
+  if (list1 == null && list2 == null) return true;
+  if (list1 == null || list2 == null) return false;
+  if (list1.length != list2.length) return false;
+
+  for (var i = 0; i < list1.length; i++) {
+    if (list1[i] != list2[i]) return false;
+  }
+
+  return true;
 }
 
 // Run effects for a component
@@ -173,10 +200,29 @@ void runEffects(String componentId) {
   final hookStore = _hookStores[componentId];
   if (hookStore == null) return;
 
+  print("🪝 Running effects for component: $componentId");
+
   for (final hook in hookStore.effectHooks) {
     if (hook.shouldRun()) {
+      print("🪝 Running effect hook (shouldRun=true)");
       hook.run();
+    } else {
+      print("🪝 Skipping effect hook (shouldRun=false)");
     }
+  }
+}
+
+// CRITICAL FIX: Make sure effects are run after render
+void _runEffectsForCurrentComponent() {
+  if (_currentComponent != null) {
+    final compId = _currentComponent!.instanceId;
+    print("🪝 Scheduling effects for component: $compId");
+
+    // Run effects on next frame to ensure render is complete
+    Future.microtask(() {
+      print("🪝 Running scheduled effects for component: $compId");
+      runEffects(compId);
+    });
   }
 }
 

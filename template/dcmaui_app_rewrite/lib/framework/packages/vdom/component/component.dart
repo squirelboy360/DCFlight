@@ -4,9 +4,8 @@ import 'state_hook.dart';
 /// Base class for all components
 abstract class Component {
   /// Unique instance ID for this component
-  final String instanceId = DateTime.now().millisecondsSinceEpoch.toString() +
-      '_' +
-      (++_lastId).toString();
+  final String instanceId =
+      '${DateTime.now().millisecondsSinceEpoch}_${++_lastId}';
 
   /// Type name for this component
   String get typeName => runtimeType.toString();
@@ -61,13 +60,19 @@ abstract class StatefulComponent extends Component {
 
   /// Prepare for rendering - reset hook state
   void prepareForRender() {
+    print("🏁 Preparing component for render: $instanceId");
     prepareComponentForHooks(this);
   }
 
   /// Run effects after render
   void runEffectsAfterRender() {
-    runEffects(instanceId);
-    cleanupAfterRender();
+    print("🏁 Running effects after render for component: $instanceId");
+
+    // CRITICAL FIX: Use Future.microtask to ensure effects run after render is complete
+    Future.microtask(() {
+      runEffects(instanceId);
+      cleanupAfterRender();
+    });
   }
 
   @override
@@ -91,6 +96,31 @@ abstract class StatelessComponent extends Component {
     return result;
   }
 
-  /// Build method to be implemented by subclasses
-  UIComponent build();
+  @override
+  UIComponent build() {
+    prepareForRender();
+    final result = render();
+
+    // CRITICAL FIX: Make sure effects run after build
+    runEffectsAfterRender();
+
+    return result;
+  }
+
+  /// Prepare for rendering - reset hook state
+  void prepareForRender() {
+    print("🏁 Preparing component for render: $instanceId");
+    prepareComponentForHooks(this);
+  }
+
+  /// Run effects after render
+  void runEffectsAfterRender() {
+    print("🏁 Running effects after render for component: $instanceId");
+
+    // CRITICAL FIX: Use Future.microtask to ensure effects run after render is complete
+    Future.microtask(() {
+      runEffects(instanceId);
+      cleanupAfterRender();
+    });
+  }
 }

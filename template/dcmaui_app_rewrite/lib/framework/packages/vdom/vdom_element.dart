@@ -8,7 +8,8 @@ class VDomElement extends VDomNode {
   final String type;
 
   /// Properties of the element
-  final Map<String, dynamic> props;
+  Map<String, dynamic>
+      props; // MODIFIED: Removed 'final' to allow property updates
 
   /// Child nodes
   final List<VDomNode> children;
@@ -20,15 +21,18 @@ class VDomElement extends VDomNode {
   // Add getter for events
   Map<String, dynamic>? get events => _events;
 
+  // Add setter for events
+  set events(Map<String, dynamic>? value) {
+    _events = value;
+  }
+
   VDomElement({
     required this.type,
     super.key,
-    Map<String, dynamic>? props,
-    List<VDomNode>? children,
+    required this.props,
+    this.children = const [],
     Map<String, dynamic>? events,
-  })  : props = props ?? {},
-        children = children ?? [],
-        _events = events {
+  }) : _events = events {
     // Set parent reference for children
     for (var child in this.children) {
       child.parent = this;

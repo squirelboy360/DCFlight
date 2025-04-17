@@ -37,32 +37,57 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
+        print("📝 Text updateView called with props: \(props)")
+        
         // First find the label inside the container
         guard let label = view.viewWithTag(1001) as? UILabel else {
             // Direct label case (legacy)
             if let directLabel = view as? UILabel {
                 return updateLabelDirectly(directLabel, withProps: props)
             }
+            print("❌ ERROR: Could not find label inside container")
             return false
         }
         
-        // FIXED: Apply all styling props to container view first
+        // CRITICAL FIX: Apply all styling props to container view first
         // Extract style properties and apply directly to the view
         view.applyStyles(props: props)
         
+        // CRITICAL DEBUGGING: Print content before update
+        print("📄 Label text BEFORE update: \(label.text ?? "nil")")
+        
         // Apply text-specific props to label
-        return updateLabelDirectly(label, withProps: props)
+        let success = updateLabelDirectly(label, withProps: props)
+        
+        // CRITICAL DEBUGGING: Print content after update
+        print("📄 Label text AFTER update: \(label.text ?? "nil")")
+        
+        // FORCE LAYOUT UPDATE after text content changes
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
+        
+        return success
     }
     
     private func updateLabelDirectly(_ label: UILabel, withProps props: [String: Any]) -> Bool {
-        // Apply text properties
+        // CRITICAL DEBUGGING: Log initial props
+        print("🔍 Updating label with props: \(props)")
+        
+        // Apply text properties - CRITICAL FIX: More explicit content handling
         if let text = props["content"] as? String {
-            print("📝 Setting text content: \(text)")
+            print("📝 Setting text content directly: '\(text)'")
             label.text = text
         } else if let text = props["text"] as? String {
-            print("📝 Setting text content: \(text)")
+            print("📝 Setting text content via 'text' prop: '\(text)'")
             label.text = text
+        } else if let numContent = props["content"] as? Int {
+            // Handle integer content (common for counters)
+            print("📝 Setting numeric content: \(numContent)")
+            label.text = String(numContent)
         }
+        
+        // ADDED CRITICAL DEBUGGING: Check text was set
+        print("📄 Text label now contains: '\(label.text ?? "nil")'")
         
         // Apply text-specific styles
         if let color = props["color"] as? String {
@@ -152,6 +177,9 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
         )
         
         print("📐 Final text size after update: \(label.frame.size)")
+        
+        // CRITICAL FIX: Force layout update
+        label.setNeedsDisplay()
         
         return true
     }
