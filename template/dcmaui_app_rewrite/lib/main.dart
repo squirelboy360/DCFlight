@@ -14,12 +14,10 @@ import 'framework/constants/style_properties.dart';
 import 'framework/constants/yoga_enums.dart';
 
 void main() {
-  startApp(DCMauiDemoApp());
-
+  initializeApplication(DCMauiDemoApp());
 }
 
 class DCMauiDemoApp extends StatefulComponent {
-  DCMauiDemoApp() : super(key: 'demoApp');
 
   @override
   UIComponent build() {

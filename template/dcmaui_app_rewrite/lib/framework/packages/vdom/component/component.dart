@@ -33,9 +33,6 @@ abstract class StatefulComponent extends Component {
   /// Hook for scheduling updates - can be set by parent
   void Function()? scheduleUpdate;
 
-  /// Whether component is undergoing state updates
-  bool _isUpdating = false;
-
   /// Whether effect cleanup has been called
   bool _effectCleanupCalled = false;
 
@@ -79,7 +76,7 @@ abstract class StatefulComponent extends Component {
   UIComponent render() {
     return build();
   }
-
+@override
   /// Build method to be implemented by subclasses
   UIComponent build();
 }
@@ -96,7 +93,6 @@ abstract class StatelessComponent extends Component {
     return result;
   }
 
-  @override
   UIComponent build() {
     prepareForRender();
     final result = render();
