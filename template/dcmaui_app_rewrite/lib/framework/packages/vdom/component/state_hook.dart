@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import '../vdom_node.dart';
 import 'component.dart';
 
 // Required globals for hook system
@@ -35,7 +34,7 @@ class StateHook<T> {
     _value = newValue;
 
     if (_component is StatefulComponent) {
-      (_component as StatefulComponent).scheduleUpdate?.call();
+      (_component).scheduleUpdate?.call();
     }
   }
 }
