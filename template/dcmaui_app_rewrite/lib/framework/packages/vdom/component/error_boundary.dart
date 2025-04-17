@@ -1,5 +1,7 @@
 import 'dart:developer' as developer;
 
+import 'package:dc_test/framework/packages/vdom/component/state_hook.dart';
+
 import '../vdom_node.dart';
 import 'component.dart';
 

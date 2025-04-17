@@ -1,226 +1,191 @@
-import 'dart:developer' as developer;
+import 'package:flutter/foundation.dart';
+import '../vdom_node.dart';
+import 'component.dart';
 
-/// Base hook class
-abstract class Hook {
-  /// Whether the hook is initialized
-  bool _isInitialized = false;
+// Required globals for hook system
+Component? _currentComponent;
+int _currentHookIndex = 0;
+final Map<String, _HookStore> _hookStores = {};
 
-  /// Whether the hook is dirty and needs to trigger an update
-  bool _isDirty = false;
-
-  /// Get whether the hook is dirty and should trigger an update
-  bool get isDirty => _isDirty;
-
-  /// Mark the hook as clean after processing
-  void markClean() {
-    _isDirty = false;
-  }
-
-  /// Initialize the hook if needed
-  void initIfNeeded() {
-    if (!_isInitialized) {
-      _isInitialized = true;
-      _init();
-    }
-  }
-
-  /// Internal initialization
-  void _init();
-
-  /// Clean up the hook
-  void dispose() {}
+class _HookStore {
+  final List<StateHook> stateHooks = [];
+  final List<EffectHook> effectHooks = [];
 }
 
-/// State hook for managing component state
-class StateHook<T> extends Hook {
-  /// Current value of the state
+// Get hook store for component
+_HookStore getHookStore(String componentId) {
+  return _hookStores[componentId] ??= _HookStore();
+}
+
+class StateHook<T> {
+  final String _name;
+  final Component _component;
   T _value;
 
-  /// Name for debugging
-  final String? _name;
+  StateHook(this._value, this._name, this._component);
 
-  /// Last render value - used to detect meaningless updates
-  T? _lastRenderValue;
-
-  /// The component that owns this state
-  late final Function() _scheduleUpdate;
-
-  /// Create a state hook
-  StateHook(this._value, this._name, this._scheduleUpdate);
-
-  /// Get the current value
   T get value => _value;
 
-  /// Set the value and mark as dirty
   void setValue(T newValue) {
-    // Skip update if value is identical (for references) or equal (for values)
-    if (identical(_value, newValue) || _value == newValue) {
+    if (_value == newValue) {
       return;
     }
 
-    if (_name != null) {
-      developer.log('State updated: $_name from $_value to $newValue',
-          name: 'StateHook');
-    }
-
+    debugPrint("[StateHook] State updated: $_name from $_value to $newValue");
     _value = newValue;
-    _isDirty = true;
 
-    // Schedule update immediately for smooth animations
-    _scheduleUpdate();
+    if (_component is StatefulComponent) {
+      (_component as StatefulComponent).scheduleUpdate?.call();
+    }
+  }
+}
+
+// Register component as current for hooks
+void prepareComponentForHooks(Component component) {
+  _currentComponent = component;
+  _currentHookIndex = 0;
+}
+
+// Clean up after rendering
+void cleanupAfterRender() {
+  _currentComponent = null;
+  _currentHookIndex = 0;
+}
+
+// FIXED: Use proper generic type handling for useState
+StateHook<T> useState<T>(T initialValue, [String name = '']) {
+  if (_currentComponent == null) {
+    throw Exception(
+        'useState can only be called within a component render function');
   }
 
-  @override
-  void _init() {
-    // State hooks are already initialized with their initial value
+  final component = _currentComponent!;
+  final hookIndex = _currentHookIndex++;
+
+  // Get the hook store for this component
+  final hookStore = getHookStore(component.instanceId);
+
+  // If hook doesn't exist yet, create it
+  if (hookIndex >= hookStore.stateHooks.length) {
+    final hookName = name.isNotEmpty ? name : 'state_$hookIndex';
+    hookStore.stateHooks.add(StateHook<T>(initialValue, hookName, component));
+    return hookStore.stateHooks.last as StateHook<T>;
   }
 
-  /// Check if value changed since last render
-  bool hasChanged() {
-    if (_lastRenderValue != _value) {
-      _lastRenderValue = _value;
+  // CRITICAL FIX: Handle type compatibility properly
+  final existingHook = hookStore.stateHooks[hookIndex];
+
+  // If the types don't match, we need to create a new hook with the correct type
+  if (existingHook._value != null &&
+      existingHook._value.runtimeType != initialValue.runtimeType) {
+    debugPrint(
+        "⚠️ Hook type mismatch: ${existingHook._value.runtimeType} vs ${initialValue.runtimeType}");
+    // Replace the hook with a new one of correct type
+    hookStore.stateHooks[hookIndex] =
+        StateHook<T>(initialValue, existingHook._name, component);
+  } else if (existingHook._value == null) {
+    // Update null value with initialValue
+    existingHook._value = initialValue;
+  }
+
+  return hookStore.stateHooks[hookIndex] as StateHook<T>;
+}
+
+// Effect hook implementation
+class EffectHook {
+  Function() effect;
+  List<dynamic>? dependencies;
+  Function? cleanup;
+  List<dynamic>? lastDependencies;
+
+  EffectHook(this.effect, this.dependencies);
+
+  bool shouldRun() {
+    if (lastDependencies == null || dependencies == null) {
       return true;
     }
+
+    if (lastDependencies!.length != dependencies!.length) {
+      return true;
+    }
+
+    for (var i = 0; i < dependencies!.length; i++) {
+      if (dependencies![i] != lastDependencies![i]) {
+        return true;
+      }
+    }
+
     return false;
   }
-}
 
-/// Effect hook for side effects in components
-class EffectHook extends Hook {
-  /// The effect function
-  final Function()? Function() _effect;
+  void run() {
+    // Call cleanup if it exists
+    if (cleanup != null) {
+      cleanup!();
+      cleanup = null;
+    }
 
-  /// Dependencies array
-  final List<dynamic> _dependencies;
+    // Run effect and store cleanup if returned
+    final result = effect();
+    if (result is Function) {
+      cleanup = result;
+    }
 
-  /// Cleanup function returned by the effect
-  Function()? _cleanup;
-
-  /// Previous dependencies
-  List<dynamic>? _prevDeps;
-
-  /// Create an effect hook
-  EffectHook(this._effect, this._dependencies);
-
-  /// Run the effect if needed
-  void runEffect() {
-    // Only run if:
-    // 1. No previous dependencies (first run)
-    // 2. Dependencies array is empty (run on every render)
-    // 3. Dependencies changed since last run
-    if (_prevDeps == null ||
-        _dependencies.isEmpty ||
-        !_areEqualDeps(_dependencies, _prevDeps!)) {
-      // Run cleanup if exists
-      if (_cleanup != null) {
-        _cleanup!();
-        _cleanup = null;
-      }
-
-      // Run effect and store cleanup
-      _cleanup = _effect();
-
-      // Store current dependencies for comparison
-      _prevDeps = List.from(_dependencies);
+    // Update dependencies
+    if (dependencies != null) {
+      lastDependencies = List.from(dependencies!);
     }
   }
 
-  @override
-  void _init() {
-    // Effects are run after rendering
-  }
-
-  @override
   void dispose() {
-    // Run cleanup if exists
-    if (_cleanup != null) {
-      _cleanup!();
-      _cleanup = null;
+    if (cleanup != null) {
+      cleanup!();
+      cleanup = null;
     }
-  }
-
-  // Compare two dependency arrays
-  bool _areEqualDeps(List<dynamic> a, List<dynamic> b) {
-    if (a.length != b.length) return false;
-    for (int i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
   }
 }
 
-/// Memo hook for memoized values
-class MemoHook<T> extends Hook {
-  /// The memo function that computes the value
-  final T Function() _compute;
-
-  /// Dependencies array
-  final List<dynamic> _dependencies;
-
-  /// Memoized value
-  T? _value;
-
-  /// Previous dependencies
-  List<dynamic>? _prevDeps;
-
-  /// Create a memo hook
-  MemoHook(this._compute, this._dependencies);
-
-  /// Get the memoized value, recomputing if needed
-  T get value {
-    // If not initialized or deps changed, recompute
-    if (!_isInitialized ||
-        _dependencies.isEmpty ||
-        _prevDeps == null ||
-        !_areEqualDeps(_dependencies, _prevDeps!)) {
-      _value = _compute();
-      _prevDeps = List.from(_dependencies);
-    }
-    return _value as T;
+// useEffect hook implementation
+void useEffect(Function() effect, {List<dynamic>? dependencies}) {
+  if (_currentComponent == null) {
+    throw Exception(
+        'useEffect can only be called within a component render function');
   }
 
-  @override
-  void _init() {
-    // Compute initial value
-    _value = _compute();
-    _prevDeps = List.from(_dependencies);
-  }
+  final component = _currentComponent!;
+  final hookIndex = _currentHookIndex++;
 
-  // Compare two dependency arrays
-  bool _areEqualDeps(List<dynamic> a, List<dynamic> b) {
-    if (a.length != b.length) return false;
-    for (int i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
+  // Get the hook store for this component
+  final hookStore = getHookStore(component.instanceId);
+
+  // If hook doesn't exist yet, create it
+  if (hookIndex >= hookStore.effectHooks.length) {
+    hookStore.effectHooks.add(EffectHook(effect, dependencies));
+  } else {
+    // Update effect and dependencies
+    hookStore.effectHooks[hookIndex].effect = effect;
+    hookStore.effectHooks[hookIndex].dependencies = dependencies;
   }
 }
 
-/// Ref hook for mutable references
-class RefHook<T> extends Hook {
-  /// The current value of the reference
-  T? _current;
+// Run effects for a component
+void runEffects(String componentId) {
+  final hookStore = _hookStores[componentId];
+  if (hookStore == null) return;
 
-  /// Create a ref hook
-  RefHook(this._current);
-
-  /// Get the current ref object
-  RefObject<T> get current => RefObject<T>(_current);
-
-  @override
-  void _init() {
-    // Nothing to initialize
+  for (final hook in hookStore.effectHooks) {
+    if (hook.shouldRun()) {
+      hook.run();
+    }
   }
 }
 
-/// Reference object wrapper
-class RefObject<T> {
-  /// Current value
-  final T? _value;
+// Run effect cleanups for a component
+void runEffectCleanups(String componentId) {
+  final hookStore = _hookStores[componentId];
+  if (hookStore == null) return;
 
-  /// Create a ref object
-  RefObject(this._value);
-
-  /// Get the current value
-  T? get value => _value;
+  for (final hook in hookStore.effectHooks) {
+    hook.dispose();
+  }
 }

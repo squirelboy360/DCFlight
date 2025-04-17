@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:dc_test/framework/packages/vdom/component/state_hook.dart';
+
 import '../vdom_node.dart';
 import 'component.dart';
 import '../vdom_element.dart';
@@ -89,7 +91,7 @@ class Suspense extends StatefulComponent {
   }
 
   @override
-  VDomNode render() {
+  UIComponent build() {
     return VDomElement(
       type: 'Suspense',
       props: {

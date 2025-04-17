@@ -1,155 +1,96 @@
-import 'dart:math';
-
 import '../vdom_node.dart';
 import 'state_hook.dart';
 
-/// Base component class
+/// Base class for all components
 abstract class Component {
-  /// Unique ID for this component instance
-  final String instanceId;
+  /// Unique instance ID for this component
+  final String instanceId = DateTime.now().millisecondsSinceEpoch.toString() +
+      '_' +
+      (++_lastId).toString();
 
-  /// Key for reconciliation
+  /// Type name for this component
+  String get typeName => runtimeType.toString();
+
+  /// Key for component identification (optional)
   final String? key;
 
-  /// Fully qualified type name for component
-  final String typeName;
+  /// Static counter for generating unique IDs
+  static int _lastId = 0;
 
-  /// Create a component
-  Component({this.key})
-      : instanceId = DateTime.now().millisecondsSinceEpoch.toString() +
-            Random().nextDouble().toString(),
-        typeName = StackTrace.current.toString().split('\n')[1].split(' ')[0];
+  Component({this.key});
 
   /// Render the component
-  VDomNode render();
+  UIComponent render();
 
-  /// Called when the component is mounted
+  /// Called when component is mounted
   void componentDidMount() {}
 
-  /// Called when the component will unmount
-  void componentWillUnmount() {
-    // Base implementation does nothing
-    // Subclasses like StatefulComponent override this with specific cleanup
-  }
+  /// Called when component will be unmounted
+  void componentWillUnmount() {}
 }
 
-/// Stateful component with hooks
+/// Class for components with state
 abstract class StatefulComponent extends Component {
-  /// Whether the component is mounted
-  bool _isMounted = false;
+  /// Hook for scheduling updates - can be set by parent
+  void Function()? scheduleUpdate;
 
-  /// Current hook index during rendering
-  int _hookIndex = 0;
+  /// Whether component is undergoing state updates
+  bool _isUpdating = false;
 
-  /// List of hooks
-  final List<Hook> _hooks = [];
+  /// Whether effect cleanup has been called
+  bool _effectCleanupCalled = false;
 
-  /// Function to schedule updates when state changes
-  Function() scheduleUpdate = () {};
-
-  /// Create a stateful component
   StatefulComponent({super.key});
 
-  /// Get whether the component is mounted
-  bool get isMounted => _isMounted;
-
-  /// Called when the component is mounted
   @override
-  void componentDidMount() {
-    _isMounted = true;
-  }
+  void componentDidMount() {}
 
-  /// Called when the component will unmount
-  @override
-  void componentWillUnmount() {
-    // Clean up hooks
-    for (final hook in _hooks) {
-      hook.dispose();
-    }
-    _hooks.clear();
-    _isMounted = false;
-  }
-
-  /// Called after the component updates
+  /// Called when component props are updated
   void componentDidUpdate(Map<String, dynamic> prevProps) {}
 
-  /// Reset hook state for next render
-  void _resetHookState() {
-    _hookIndex = 0;
-  }
+  @override
+  void componentWillUnmount() {
+    // Only call effect cleanup once
+    if (!_effectCleanupCalled) {
+      _effectCleanupCalled = true;
 
-  /// Create a state hook
-  StateHook<T> useState<T>(T initialValue, [String? name]) {
-    return _createHook(() {
-      return StateHook<T>(initialValue, name, () {
-        // Schedule an update when state changes
-        scheduleUpdate();
-      });
-    }) as StateHook<T>;
-  }
-
-  /// Create an effect hook
-  void useEffect(Function()? Function() effect,
-      {List<dynamic> dependencies = const []}) {
-    final hook = _createHook(() => EffectHook(effect, dependencies));
-
-    // Cast to EffectHook to access its methods
-    (hook as EffectHook).runEffect();
-  }
-
-  /// Create a memo hook
-  T useMemo<T>(T Function() compute, {List<dynamic> dependencies = const []}) {
-    final hook = _createHook(() => MemoHook<T>(compute, dependencies));
-
-    // Cast to MemoHook to access its methods
-    return (hook as MemoHook<T>).value;
-  }
-
-  /// Create a ref hook
-  RefObject<T> useRef<T>([T? initialValue]) {
-    final hook = _createHook(() => RefHook<T>(initialValue));
-
-    // Cast to RefHook to access its methods
-    return (hook as RefHook<T>).current;
-  }
-
-  /// Helper to create/retrieve hooks
-  Hook _createHook(Hook Function() createHook) {
-    // Get or create the hook
-    Hook hook;
-    if (_hookIndex < _hooks.length) {
-      // Reuse existing hook
-      hook = _hooks[_hookIndex];
-    } else {
-      // Create new hook
-      hook = createHook();
-      _hooks.add(hook);
+      // Run effect cleanups for this component
+      runEffectCleanups(instanceId);
     }
-
-    // Initialize the hook if needed
-    hook.initIfNeeded();
-
-    // Move to next hook
-    _hookIndex++;
-
-    return hook;
   }
 
-  /// Get hooks for testing and debugging
-  List<Hook> get hooks => List.unmodifiable(_hooks);
-
-  /// Prepare component for rendering - used by VDOM
+  /// Prepare for rendering - reset hook state
   void prepareForRender() {
-    _resetHookState();
+    prepareComponentForHooks(this);
   }
 
-  /// Run effects after render - called by VDOM
+  /// Run effects after render
   void runEffectsAfterRender() {
-    // This would run any pending effects if needed
+    runEffects(instanceId);
+    cleanupAfterRender();
   }
 
   @override
-  String toString() {
-    return '$typeName($instanceId)';
+  UIComponent render() {
+    return build();
   }
+
+  /// Build method to be implemented by subclasses
+  UIComponent build();
+}
+
+/// Simple stateless component
+abstract class StatelessComponent extends Component {
+  StatelessComponent({super.key});
+
+  @override
+  UIComponent render() {
+    prepareComponentForHooks(this);
+    final result = build();
+    cleanupAfterRender();
+    return result;
+  }
+
+  /// Build method to be implemented by subclasses
+  UIComponent build();
 }
