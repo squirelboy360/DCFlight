@@ -1,76 +1,84 @@
 import UIKit
 import yoga
 
-class DCMauiScrollViewComponent: NSObject, DCMauiComponent, UIScrollViewDelegate {
+class DCMauiScrollViewComponent: NSObject, DCMauiComponent {
     required override init() {
         super.init()
     }
     
     func createView(props: [String: Any]) -> UIView {
-        // Create the main scroll view
-        let scrollView = CustomScrollView()
-        scrollView.delegate = self
-        scrollView.showsVerticalScrollIndicator = true
-        scrollView.showsHorizontalScrollIndicator = true
-        scrollView.bounces = true
+        let scrollView = UIScrollView()
         
-        // Create a content view that will contain child views
+        // Create content view to hold children
         let contentView = UIView()
-        contentView.tag = 1001 // Tag for easy access
+        contentView.tag = 1001 // Tag for identification
         
         // Add content view to scroll view
         scrollView.addSubview(contentView)
         
+        // Set initial constraints for content view
+        contentView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // These constraints will be updated based on content size
+        NSLayoutConstraint.activate([
+            contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
+            contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
+            contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
+            contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor)
+        ])
+        
+        // Add width constraint depending on scroll direction
+        let isHorizontal = props["horizontal"] as? Bool ?? false
+        if isHorizontal {
+            // For horizontal scrolling, content width depends on children
+            contentView.heightAnchor.constraint(equalTo: scrollView.heightAnchor).isActive = true
+        } else {
+            // For vertical scrolling, content width equals scroll view width
+            contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor).isActive = true
+        }
+        
+        // Set scroll view delegate for event handling
+        scrollView.delegate = ScrollViewDelegateHandler.shared
+        
         // Apply properties
         _ = updateView(scrollView, withProps: props)
         
-        print("📜 Created ScrollView with initial props: \(props)")
         return scrollView
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let scrollView = view as? UIScrollView else {
-            print("⚠️ DCMauiScrollViewComponent: Attempted to update non-scrollview")
+            print("❌ ERROR: Not a scroll view")
             return false
         }
         
-        // Get content view reference
-        let contentView = scrollView.viewWithTag(1001) as? UIView
-        
-        // Apply common styles to the scroll view
+        // Apply standard styling to scroll view
         view.applyStyles(props: props)
         
-        // ScrollView-specific properties
+        // Update scroll view configuration
+        updateScrollViewConfiguration(scrollView, props: props)
+        
+        // Update content size if specified
+        updateContentSize(scrollView, props: props)
+        
+        // Update content insets
+        updateContentInsets(scrollView, props: props)
+        
+        // Register scroll events if needed
+        setupScrollEvents(scrollView, props: props)
+        
+        return true
+    }
+    
+    // Update scroll view configuration
+    private func updateScrollViewConfiguration(_ scrollView: UIScrollView, props: [String: Any]) {
+        // Horizontal scrolling
         if let horizontal = props["horizontal"] as? Bool {
-            scrollView.isDirectionalLockEnabled = !horizontal
-            
-            if horizontal {
-                // Configure for horizontal scrolling
-                scrollView.alwaysBounceHorizontal = true
-                scrollView.alwaysBounceVertical = false
-            } else {
-                // Configure for vertical scrolling
-                scrollView.alwaysBounceVertical = true
-                scrollView.alwaysBounceHorizontal = false
-            }
+            scrollView.isDirectionalLockEnabled = true
+            updateScrollDirection(scrollView, isHorizontal: horizontal)
         }
         
-        // Content size - will be updated when children are laid out
-        if let contentWidth = props["contentWidth"] as? CGFloat {
-            if contentView != nil && contentWidth > 0 {
-                contentView?.frame.size.width = contentWidth
-                scrollView.contentSize.width = contentWidth
-            }
-        }
-        
-        if let contentHeight = props["contentHeight"] as? CGFloat {
-            if contentView != nil && contentHeight > 0 {
-                contentView?.frame.size.height = contentHeight
-                scrollView.contentSize.height = contentHeight
-            }
-        }
-        
-        // Scroll indicators
+        // Show/hide scroll indicators
         if let showsHorizontalScrollIndicator = props["showsHorizontalScrollIndicator"] as? Bool {
             scrollView.showsHorizontalScrollIndicator = showsHorizontalScrollIndicator
         }
@@ -79,245 +87,256 @@ class DCMauiScrollViewComponent: NSObject, DCMauiComponent, UIScrollViewDelegate
             scrollView.showsVerticalScrollIndicator = showsVerticalScrollIndicator
         }
         
-        // Bounce behavior
+        // Bouncing behavior
         if let bounces = props["bounces"] as? Bool {
             scrollView.bounces = bounces
         }
         
-        // Paging
+        // Paging behavior
         if let pagingEnabled = props["pagingEnabled"] as? Bool {
             scrollView.isPagingEnabled = pagingEnabled
         }
-        
-        // Scroll event throttle
-        if let scrollEventThrottle = props["scrollEventThrottle"] as? Double {
-            objc_setAssociatedObject(
-                scrollView,
-                UnsafeRawPointer(bitPattern: "scrollEventThrottle".hashValue)!,
-                scrollEventThrottle,
-                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-            )
-        }
-        
-        // Content insets
-        var insets = scrollView.contentInset
-        
-        if let insetTop = props["contentInsetTop"] as? CGFloat {
-            insets.top = insetTop
-        }
-        
-        if let insetBottom = props["contentInsetBottom"] as? CGFloat {
-            insets.bottom = insetBottom
-        }
-        
-        if let insetLeft = props["contentInsetLeft"] as? CGFloat {
-            insets.left = insetLeft
-        }
-        
-        if let insetRight = props["contentInsetRight"] as? CGFloat {
-            insets.right = insetRight
-        }
-        
-        scrollView.contentInset = insets
         
         // Enable/disable scrolling
         if let scrollEnabled = props["scrollEnabled"] as? Bool {
             scrollView.isScrollEnabled = scrollEnabled
         }
+    }
+    
+    // Update scroll direction and constraints
+    private func updateScrollDirection(_ scrollView: UIScrollView, isHorizontal: Bool) {
+        guard let contentView = scrollView.viewWithTag(1001) else { return }
         
-        return true
+        // Remove existing constraints first
+        contentView.constraints.forEach { constraint in
+            if (constraint.firstItem === contentView && constraint.secondItem === scrollView &&
+                (constraint.firstAttribute == .width || constraint.firstAttribute == .height)) {
+                contentView.removeConstraint(constraint)
+            }
+        }
+        
+        // Apply constraints based on direction
+        if isHorizontal {
+            contentView.heightAnchor.constraint(equalTo: scrollView.heightAnchor).isActive = true
+        } else {
+            contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor).isActive = true
+        }
+    }
+    
+    // Update content size
+    private func updateContentSize(_ scrollView: UIScrollView, props: [String: Any]) {
+        let isHorizontal = props["horizontal"] as? Bool ?? false
+        
+        // Update content size if specified
+        if let contentWidth = props["contentWidth"] as? CGFloat,
+           let contentHeight = props["contentHeight"] as? CGFloat {
+            scrollView.contentSize = CGSize(width: contentWidth, height: contentHeight)
+        } else if isHorizontal {
+            // For horizontal scrolling, set reasonable content width if not specified
+            if let contentWidth = props["contentWidth"] as? CGFloat {
+                scrollView.contentSize = CGSize(width: contentWidth, height: scrollView.frame.height)
+            }
+        } else {
+            // For vertical scrolling, set reasonable content height if not specified
+            if let contentHeight = props["contentHeight"] as? CGFloat {
+                scrollView.contentSize = CGSize(width: scrollView.frame.width, height: contentHeight)
+            }
+        }
+    }
+    
+    // Update content insets
+    private func updateContentInsets(_ scrollView: UIScrollView, props: [String: Any]) {
+        var insets = UIEdgeInsets.zero
+        
+        if let top = props["contentInsetTop"] as? CGFloat {
+            insets.top = top
+        }
+        
+        if let bottom = props["contentInsetBottom"] as? CGFloat {
+            insets.bottom = bottom
+        }
+        
+        if let left = props["contentInsetLeft"] as? CGFloat {
+            insets.left = left
+        }
+        
+        if let right = props["contentInsetRight"] as? CGFloat {
+            insets.right = right
+        }
+        
+        if insets != .zero {
+            scrollView.contentInset = insets
+        }
+    }
+    
+    // Setup scroll events
+    private func setupScrollEvents(_ scrollView: UIScrollView, props: [String: Any]) {
+        // Use proper type casting with 'is Any' instead of 'is Function'
+        if let onScroll = props["onScroll"], onScroll is Any {
+            // Store scroll event throttle
+            let throttle = props["scrollEventThrottle"] as? CGFloat ?? 16 // Default to 60fps
+            objc_setAssociatedObject(
+                scrollView,
+                UnsafeRawPointer(bitPattern: "scrollEventThrottle".hashValue)!,
+                throttle,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+            
+            // Register scroll view with delegate handler
+            ScrollViewDelegateHandler.shared.registerScrollView(scrollView)
+        } else {
+            // Unregister if no onScroll provided
+            ScrollViewDelegateHandler.shared.unregisterScrollView(scrollView)
+        }
     }
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        // Apply layout to the scroll view itself
+        // Apply layout to scroll view
         view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
         
-        // Ensure content view matches scroll view width/height based on scrolling direction
+        // Get content view
         guard let scrollView = view as? UIScrollView,
-              let contentView = scrollView.viewWithTag(1001) else {
-            return
-        }
+              let contentView = scrollView.viewWithTag(1001) else { return }
         
-        // Set the content view frame - default to scroll view bounds
-        contentView.frame.origin = .zero
+        // Update content view size based on children
+        let isHorizontal = (objc_getAssociatedObject(scrollView, 
+                                                     UnsafeRawPointer(bitPattern: "horizontal".hashValue)!) as? Bool) ?? false
         
-        // Horizontal scrolling - height matches scroll view, width can be larger
-        if scrollView.alwaysBounceHorizontal && !scrollView.alwaysBounceVertical {
-            contentView.frame.size.height = scrollView.bounds.height
+        // Set content view frame
+        if isHorizontal {
+            // For horizontal scrolling
+            var contentWidth: CGFloat = 0
             
-            // Use either explicit content width or match to scroll view width (minimum)
-            if contentView.frame.width < scrollView.bounds.width {
-                contentView.frame.size.width = scrollView.bounds.width
+            // Calculate total width of all children
+            for subview in contentView.subviews {
+                contentWidth = max(contentWidth, subview.frame.maxX)
             }
-        } 
-        // Vertical scrolling - width matches scroll view, height can be larger
-        else {
-            contentView.frame.size.width = scrollView.bounds.width
             
-            // Use either explicit content height or match to scroll view height (minimum)
-            if contentView.frame.height < scrollView.bounds.height {
-                contentView.frame.size.height = scrollView.bounds.height
+            // Ensure minimum content width
+            contentWidth = max(contentWidth, scrollView.frame.width)
+            
+            // Set content size
+            scrollView.contentSize = CGSize(width: contentWidth, height: scrollView.frame.height)
+        } else {
+            // For vertical scrolling
+            var contentHeight: CGFloat = 0
+            
+            // Calculate total height of all children
+            for subview in contentView.subviews {
+                contentHeight = max(contentHeight, subview.frame.maxY)
             }
+            
+            // Ensure minimum content height
+            contentHeight = max(contentHeight, scrollView.frame.height)
+            
+            // Set content size
+            scrollView.contentSize = CGSize(width: scrollView.frame.width, height: contentHeight)
         }
-        
-        // Update the content size of the scroll view to match its content view
-        scrollView.contentSize = contentView.frame.size
-        
-        print("📜 ScrollView layout applied: frame=\(view.frame), contentSize=\(scrollView.contentSize)")
     }
     
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        // ScrollView typically takes the size given to it
-        return .zero
+        // For scroll views, use the frame size or defined dimensions
+        if let width = props["width"] as? CGFloat, let height = props["height"] as? CGFloat {
+            return CGSize(width: width, height: height)
+        }
+        
+        // Fallback to default size
+        return CGSize(width: 300, height: 200)
     }
     
     func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
-        // Set accessibility identifier for easier debugging
         view.accessibilityIdentifier = nodeId
         
-        // Register as a scroll view specifically
-        objc_setAssociatedObject(
-            view,
-            UnsafeRawPointer(bitPattern: "scrollViewNodeId".hashValue)!,
-            nodeId,
-            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-        )
+        // Store node ID
+        view.setNodeId(nodeId)
         
-        print("📜 ScrollView registered with node ID: \(nodeId)")
+        // Also set on content view
+        if let contentView = view.viewWithTag(1001) {
+            contentView.accessibilityIdentifier = "\(nodeId)_content"
+        }
     }
-    
-    // MARK: - Event Handling
     
     func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], 
                           eventCallback: @escaping (String, String, [String: Any]) -> Void) {
         guard let scrollView = view as? UIScrollView else { return }
         
-        // Store event information with the scroll view
-        objc_setAssociatedObject(
-            scrollView,
-            UnsafeRawPointer(bitPattern: "scrollViewId".hashValue)!,
-            viewId,
-            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        // Store view ID and callback for scroll events
+        ScrollViewDelegateHandler.shared.registerEventCallback(
+            for: scrollView,
+            viewId: viewId,
+            callback: eventCallback
         )
         
-        objc_setAssociatedObject(
-            scrollView,
-            UnsafeRawPointer(bitPattern: "scrollEventTypes".hashValue)!,
-            eventTypes,
-            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-        )
-        
-        objc_setAssociatedObject(
-            scrollView,
-            UnsafeRawPointer(bitPattern: "scrollEventCallback".hashValue)!,
-            eventCallback,
-            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-        )
-        
-        // Ensure scroll view's delegate is set to self
-        if scrollView.delegate == nil {
-            scrollView.delegate = self
-        }
-        
-        print("📜 Added event listeners to ScrollView \(viewId): \(eventTypes)")
+        print("📜 Registered scroll view events for \(viewId): \(eventTypes)")
     }
     
     func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String]) {
         guard let scrollView = view as? UIScrollView else { return }
         
-        // Get currently stored event types
-        if let existingTypes = objc_getAssociatedObject(
-            scrollView,
-            UnsafeRawPointer(bitPattern: "scrollEventTypes".hashValue)!
-        ) as? [String] {
-            // Filter out the removed event types
-            let remainingTypes = existingTypes.filter { !eventTypes.contains($0) }
-            
-            if remainingTypes.isEmpty {
-                // If no events remain, clean up completely
-                objc_setAssociatedObject(
-                    scrollView,
-                    UnsafeRawPointer(bitPattern: "scrollViewId".hashValue)!,
-                    nil,
-                    .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-                )
-                
-                objc_setAssociatedObject(
-                    scrollView,
-                    UnsafeRawPointer(bitPattern: "scrollEventTypes".hashValue)!,
-                    nil,
-                    .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-                )
-                
-                objc_setAssociatedObject(
-                    scrollView,
-                    UnsafeRawPointer(bitPattern: "scrollEventCallback".hashValue)!,
-                    nil,
-                    .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-                )
-                
-                // Remove delegate reference
-                if scrollView.delegate === self {
-                    scrollView.delegate = nil
-                }
-            } else {
-                // Update remaining event types
-                objc_setAssociatedObject(
-                    scrollView,
-                    UnsafeRawPointer(bitPattern: "scrollEventTypes".hashValue)!,
-                    remainingTypes,
-                    .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-                )
-            }
-        }
+        // Unregister from delegate handler
+        ScrollViewDelegateHandler.shared.unregisterScrollView(scrollView)
         
-        print("📜 Removed event listeners from ScrollView \(viewId): \(eventTypes)")
+        print("📜 Unregistered scroll view events for \(viewId)")
+    }
+}
+
+// Singleton delegate handler for scroll views
+class ScrollViewDelegateHandler: NSObject, UIScrollViewDelegate {
+    // Singleton instance
+    static let shared = ScrollViewDelegateHandler()
+    
+    // Event callback type
+    typealias ScrollEventCallback = (String, String, [String: Any]) -> Void
+    
+    // Track scroll views and their callbacks
+    private var scrollViewCallbacks = [UIScrollView: (viewId: String, callback: ScrollEventCallback)]()
+    
+    // Track last event time for throttling
+    private var lastEventTimes = [UIScrollView: TimeInterval]()
+    
+    private override init() {
+        super.init()
     }
     
-    // MARK: - UIScrollViewDelegate
+    // Register a scroll view for event handling
+    func registerScrollView(_ scrollView: UIScrollView) {
+        scrollView.delegate = self
+    }
     
-    // Store the last time a scroll event was sent to implement throttling
-    private var lastScrollEventTime: [UIScrollView: TimeInterval] = [:]
-    
-    func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        // Get stored data for this scroll view
-        guard let viewId = objc_getAssociatedObject(
-            scrollView,
-            UnsafeRawPointer(bitPattern: "scrollViewId".hashValue)!
-        ) as? String,
-        
-        let eventTypes = objc_getAssociatedObject(
-            scrollView,
-            UnsafeRawPointer(bitPattern: "scrollEventTypes".hashValue)!
-        ) as? [String],
-        
-        let callback = objc_getAssociatedObject(
-            scrollView,
-            UnsafeRawPointer(bitPattern: "scrollEventCallback".hashValue)!
-        ) as? (String, String, [String: Any]) -> Void,
-        
-        eventTypes.contains("onScroll") else {
-            return
+    // Unregister a scroll view
+    func unregisterScrollView(_ scrollView: UIScrollView) {
+        if scrollView.delegate === self {
+            scrollView.delegate = nil
         }
+        scrollViewCallbacks.removeValue(forKey: scrollView)
+        lastEventTimes.removeValue(forKey: scrollView)
+    }
+    
+    // Register event callback for a scroll view
+    func registerEventCallback(for scrollView: UIScrollView, viewId: String, 
+                              callback: @escaping ScrollEventCallback) {
+        scrollViewCallbacks[scrollView] = (viewId, callback)
+    }
+    
+    // UIScrollViewDelegate methods
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        guard let (viewId, callback) = scrollViewCallbacks[scrollView] else { return }
         
-        // Implement scroll event throttling
-        let now = Date().timeIntervalSince1970
-        let throttleTime = objc_getAssociatedObject(
+        // Get throttle value
+        let throttle = objc_getAssociatedObject(
             scrollView,
             UnsafeRawPointer(bitPattern: "scrollEventThrottle".hashValue)!
-        ) as? Double ?? 16.0 // Default to 16ms throttle (roughly 60fps)
+        ) as? CGFloat ?? 16
         
-        // Convert throttle from milliseconds to seconds
-        let throttleSeconds = throttleTime / 1000.0
+        let currentTime = Date().timeIntervalSince1970 * 1000
         
-        if let lastTime = lastScrollEventTime[scrollView],
-           now - lastTime < throttleSeconds {
-            // Skip this event due to throttling
+        // Check if we should send an event based on throttle
+        if let lastTime = lastEventTimes[scrollView], currentTime - lastTime < Double(throttle) {
             return
         }
         
         // Update last event time
-        lastScrollEventTime[scrollView] = now
+        lastEventTimes[scrollView] = currentTime
         
         // Create event data
         let eventData: [String: Any] = [
@@ -330,123 +349,48 @@ class DCMauiScrollViewComponent: NSObject, DCMauiComponent, UIScrollViewDelegate
                 "height": scrollView.contentSize.height
             ],
             "layoutMeasurement": [
-                "width": scrollView.bounds.width,
-                "height": scrollView.bounds.height
+                "width": scrollView.frame.width,
+                "height": scrollView.frame.height
             ],
-            "timestamp": now
+            "timestamp": currentTime
         ]
         
-        // Trigger event
+        // Send event
         callback(viewId, "onScroll", eventData)
     }
     
+    // Add other scroll view delegate methods as needed
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
-        triggerScrollEvent(scrollView, eventType: "onScrollBeginDrag")
+        sendScrollEvent(scrollView, eventName: "onScrollBeginDrag")
     }
     
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
-        triggerScrollEvent(scrollView, eventType: "onScrollEndDrag", extraData: ["decelerate": decelerate])
+        sendScrollEvent(scrollView, eventName: "onScrollEndDrag", additionalData: ["decelerate": decelerate])
     }
     
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
-        triggerScrollEvent(scrollView, eventType: "onScrollEndDecelerating")
-        
-        // Also trigger onMomentumEnd when scrolling stops completely
-        if !scrollView.isTracking && !scrollView.isDragging && !scrollView.isDecelerating {
-            triggerScrollEvent(scrollView, eventType: "onMomentumEnd")
-        }
+        sendScrollEvent(scrollView, eventName: "onScrollEndDecelerating")
     }
     
-    func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
-        triggerScrollEvent(scrollView, eventType: "onScrollAnimationEnd")
-    }
-    
-    private func triggerScrollEvent(_ scrollView: UIScrollView, eventType: String, extraData: [String: Any] = [:]) {
-        // Get stored data for this scroll view
-        guard let viewId = objc_getAssociatedObject(
-            scrollView,
-            UnsafeRawPointer(bitPattern: "scrollViewId".hashValue)!
-        ) as? String,
+    // Helper to send scroll events
+    private func sendScrollEvent(_ scrollView: UIScrollView, eventName: String, additionalData: [String: Any] = [:]) {
+        guard let (viewId, callback) = scrollViewCallbacks[scrollView] else { return }
         
-        let eventTypes = objc_getAssociatedObject(
-            scrollView,
-            UnsafeRawPointer(bitPattern: "scrollEventTypes".hashValue)!
-        ) as? [String],
-        
-        let callback = objc_getAssociatedObject(
-            scrollView,
-            UnsafeRawPointer(bitPattern: "scrollEventCallback".hashValue)!
-        ) as? (String, String, [String: Any]) -> Void,
-        
-        eventTypes.contains(eventType) else {
-            return
-        }
-        
-        // Create event data
+        // Create base event data
         var eventData: [String: Any] = [
             "contentOffset": [
                 "x": scrollView.contentOffset.x,
                 "y": scrollView.contentOffset.y
             ],
-            "contentSize": [
-                "width": scrollView.contentSize.width,
-                "height": scrollView.contentSize.height
-            ],
-            "layoutMeasurement": [
-                "width": scrollView.bounds.width,
-                "height": scrollView.bounds.height
-            ],
-            "timestamp": Date().timeIntervalSince1970
+            "timestamp": Date().timeIntervalSince1970 * 1000
         ]
         
-        // Add any extra data
-        for (key, value) in extraData {
+        // Add additional data
+        for (key, value) in additionalData {
             eventData[key] = value
         }
         
-        // Trigger event
-        callback(viewId, eventType, eventData)
-    }
-}
-
-// MARK: - Custom ScrollView Class with improved debugging
-
-class CustomScrollView: UIScrollView {
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        setupScrollView()
-    }
-    
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        setupScrollView()
-    }
-    
-    private func setupScrollView() {
-        // Set default properties
-        self.backgroundColor = .clear
-        
-        // Improve scroll detection
-        self.delaysContentTouches = false
-        self.canCancelContentTouches = true
-    }
-    
-    // For debugging, print touch/scroll events in verbose mode
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        // Uncomment for debugging:
-        // print("📜 CustomScrollView touchesBegan")
-        super.touchesBegan(touches, with: event)
-    }
-    
-    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        // Uncomment for debugging:
-        // print("📜 CustomScrollView touchesMoved")
-        super.touchesMoved(touches, with: event)
-    }
-    
-    // Override to improve scroll handling
-    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        let result = super.hitTest(point, with: event)
-        return result
+        // Send event
+        callback(viewId, eventName, eventData)
     }
 }
