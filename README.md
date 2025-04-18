@@ -1,4 +1,4 @@
-# Phase: Validation phase (everything is in the template until fully validated then modularised)
+
 # DCFlight
 # 🚧 This CLI is Under Development
 
