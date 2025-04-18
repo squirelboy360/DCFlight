@@ -31,7 +31,7 @@ class DCMauiDemoApp extends StatefulComponent {
       final rnd = math.Random();
       Color color() => Color(rnd.nextInt(0xffffffff));
       // Set up a timer to update the color every second
-      final timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         // Update the background color
         bg.setValue(color());
         counter.setValue(counter.value + 1);
