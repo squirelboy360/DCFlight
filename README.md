@@ -1,7 +1,9 @@
-# Phase: Validation phase (everything is in the template until fully validated then modularised)
-# DCNative (MAUI/Multi-platform App UI)
+
+# FLMAUI/DCMAUI (MAUI/Multi-platform App UI)
 
 ## Flutter Native Sucks but Native UI (in pure dart) + Flutter(Skia/impeller) = 🔥
+Note that THIS FRAMEWORK DOES NOT ABSTRACT OVER THE FLUTTER FRAMEWORK, WE USE FLUTTER ENGINE AS LIKE HOW REACT NATIVE USES HERMES. THE FRAMEWORK IS MEANT TO BE USED ALONGSIDE THE FLUTTER FRAMEWORK FOR HYDBRID APPS OR AS AN ENTIRE REPLACEMENT TO THE FLUTTER FRAMEWORK FOR FULL NATIVE UI ALTHOUGH IT DOES IMPLEMENT SOME UTILITIES FROM THE FLUTTER FRAMEWORK IN ITSELF TO ENSURE THE FARMILIARITY OF THE FRAMEWORK TO FLUTTER DEVELOPERS WHILE ENSURING WE AVOID BOILERPLATE CODE OR REENGINEERING THE WHEEL FOR STUFFS THAT ARE IN ITSELF NOT BAD BUT IN FACT GREAT. STUFFS LIKE METHOD CHANNELS FOR EVENT HANDELING INSTEAD OF FFI TO TAKE ADVANTAGE OF THE THREAD HOPPING CHARACTERISTIC TO AVOID THREAD BLOCKING. IMAGINE TYPING REALLY FAST AND MAKING STATE CHANGES WHILE A BACKGROUND ACTIVITY IS TAKING PLACE, YOU DONT EXPECT COMMUNICATION SLOW DOWN BETWEEN UI AND DART SIDE THREAD HENCE TAKING ADVANTAGE OF METHOD CHANNELS FROM FLUTTER ENGINE IS GREAT HERE. APART FROM THIS EVERY OTHER OPERATION IS HANDLED BY FFI FOR PERFORMANCE REASONS AND TO MAINTAIN THAT SYNCHRONOUS BEHAVIOUR WE ALL EXPECT FOR OUR UIS.
+
 ## 🚧 This CLI is Under Development
 
 Its aim is to simplify cross-platform app development for personal future projects.
@@ -12,7 +14,7 @@ If you want to test it, do not use the CLI as it currently does nothing. However
 
 ## 📌 Key Points
 
-### 1️⃣ Flutter Engine Usage (Current branch uses C header file to communicates between native and dart, no more abstaction for UI rendering, the Vdom uses direct native communication for UI CRUD i short)
+### 1️⃣ Flutter Engine Usage (Current branch uses C header file to communicates between native and dart, no more abstaction for UI rendering, the Vdom uses direct native communication for UI CRUD in short)
 
 Developers might notice that the framework is built on Flutter—but in actuality, it is not.  
 It is almost impossible to decouple the Dart VM from Flutter. To work around this:
