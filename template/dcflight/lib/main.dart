@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:dcflight/framework/utilities/entry.dart';
@@ -15,38 +16,38 @@ import 'framework/constants/style_properties.dart';
 import 'framework/constants/yoga_enums.dart';
 
 void main() {
-  initializeApplication(DCMauiDemoApp());
+  initializeApplication(MyApp());
 }
 
-class DCMauiDemoApp extends StatefulComponent {
+class MyApp extends StatelessComponent {
   @override
   UIComponent build() {
     // State hooks
-    final counter = useState(0, 'counter');
+    final counter = useState(0);
 
-    final bg = useState(Color(Colors.indigoAccent.toARGB32()), 'bg');
+    final bg = useState(Color(Colors.indigoAccent.toARGB32()));
 
     // Use an effect to update the ScrollView background color every second
-    useEffect(() {
-      final rnd = math.Random();
-      Color color() => Color(rnd.nextInt(0xffffffff));
-      // Set up a timer to update the color every second
-      final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        // Update the background color
-        bg.setValue(color());
-        counter.setValue(counter.value + 1);
-        print("use effect per 5 second ${timer.tick}");
+    // useEffect(() {
+    //   final rnd = math.Random();
+    //   Color color() => Color(rnd.nextInt(0xffffffff));
+    //   // Set up a timer to update the color every second
+    //   final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    //     // Update the background color
+    //     bg.setValue(color());
+    //     counter.setValue(counter.value + 1);
+    //     print("use effect per 5 second ${timer.tick}");
         
         
-      });
+    //   });
 
-      // Clean up the timer when the component is unmounted
-      return () {
-        timer.cancel();
-        developer.log('Canceled background color animation timer',
-            name: 'ColorAnimation');
-      };
-    }, dependencies: []);
+    //   // Clean up the timer when the component is unmounted
+    //   return () {
+    //     timer.cancel();
+    //     developer.log('Canceled background color animation timer',
+    //         name: 'ColorAnimation');
+    //   };
+    // }, dependencies: []);
 
     return DC.View(
         layout: LayoutProps(
@@ -57,7 +58,10 @@ class DCMauiDemoApp extends StatefulComponent {
         children: [
           DC.Button(
               onPress: () {
+                    final rnd = math.Random();
+      Color color() => Color(rnd.nextInt(0xffffffff));
                 print(counter.value);
+                    bg.setValue(color());
                 // counter.setValue(counter.value + 1);
               },
               layout: LayoutProps(padding: 10),
@@ -72,7 +76,15 @@ class DCMauiDemoApp extends StatefulComponent {
               ),
               content: counter.value.toString(),
               layout: LayoutProps(paddingHorizontal: 50, width: '100%'),
-              style: StyleSheet(backgroundColor: Colors.teal)),
+              style: StyleSheet(backgroundColor: Colors.teal)),DC.Text(
+              textProps: TextProps(
+                  fontSize: 24,
+                  color: Colors.white,
+                  textAlign: 'center',
+              ),
+              content: "This is your platform: ${Platform.operatingSystem}", 
+              layout: LayoutProps(paddingHorizontal: 50, width: '100%'),
+              style: StyleSheet(backgroundColor: Colors.red))
         ]);
   }
 }

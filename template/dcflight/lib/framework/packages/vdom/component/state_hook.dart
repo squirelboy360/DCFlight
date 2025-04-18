@@ -35,7 +35,7 @@ class StateHook<T> {
     debugPrint("[StateHook] State updated: $_name from $_value to $newValue");
     _value = newValue;
 
-    if (_component is StatefulComponent) {
+    if (_component is StatelessComponent) {
       (_component).scheduleUpdate?.call();
     }
   }

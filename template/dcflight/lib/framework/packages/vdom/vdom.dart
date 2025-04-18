@@ -242,7 +242,7 @@ class VDom {
     );
 
     // Set up update scheduling for stateful components
-    if (component is StatefulComponent) {
+    if (component is StatelessComponent) {
       component.scheduleUpdate = () => _scheduleComponentUpdate(component);
     }
 
@@ -376,12 +376,12 @@ class VDom {
     final componentInstance = _componentInstances[component.instanceId];
 
     // Set the update function
-    if (component is StatefulComponent) {
+    if (component is StatelessComponent) {
       component.scheduleUpdate = () => _scheduleComponentUpdate(component);
     }
 
     // Reset hook state before render for stateful components
-    if (component is StatefulComponent) {
+    if (component is StatelessComponent) {
       component.prepareForRender();
     }
 
@@ -418,7 +418,7 @@ class VDom {
     }
 
     // Run effects after render for stateful components
-    if (component is StatefulComponent &&
+    if (component is StatelessComponent &&
         componentInstance?.isMounted == true) {
       component.runEffectsAfterRender();
     }
@@ -557,7 +557,7 @@ class VDom {
   }
 
   /// Schedule a component update for batching
-  void _scheduleComponentUpdate(StatefulComponent component) {
+  void _scheduleComponentUpdate(StatelessComponent component) {
     _pendingUpdates.add(component.instanceId);
 
     if (_isUpdateScheduled) return;
@@ -604,10 +604,10 @@ class VDom {
   }
 
   /// Find a component by its ID
-  StatefulComponent? _findComponentById(String instanceId) {
+  StatelessComponent? _findComponentById(String instanceId) {
     for (final entry in _components.entries) {
-      if (entry.key == instanceId && entry.value is StatefulComponent) {
-        return entry.value as StatefulComponent;
+      if (entry.key == instanceId && entry.value is StatelessComponent) {
+        return entry.value as StatelessComponent;
       }
     }
     return null;
@@ -627,7 +627,7 @@ class VDom {
     final componentNode = _componentNodes[componentId]!;
 
     // Handle stateful components
-    if (component is StatefulComponent) {
+    if (component is StatelessComponent) {
       // Clean up old effects
       component.componentWillUnmount();
 
@@ -667,7 +667,7 @@ class VDom {
     }
 
     // Update component lifecycle
-    if (component is StatefulComponent) {
+    if (component is StatelessComponent) {
       component.componentDidUpdate({});
     }
   }
@@ -909,7 +909,7 @@ class VDom {
       final instance = _componentInstances[component.instanceId];
 
       if (instance != null && !instance.isMounted) {
-        if (component is StatefulComponent) {
+        if (component is StatelessComponent) {
           // Call componentDidMount
           component.componentDidMount();
         } else {

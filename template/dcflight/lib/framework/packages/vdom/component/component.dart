@@ -31,14 +31,14 @@ abstract class Component {
 }
 
 /// Class for components with state
-abstract class StatefulComponent extends Component {
+abstract class StatelessComponent extends Component {
   /// Hook for scheduling updates - can be set by parent
   void Function()? scheduleUpdate;
 
   /// Whether effect cleanup has been called
   bool _effectCleanupCalled = false;
 
-  StatefulComponent({super.key});
+  StatelessComponent({super.key});
 
   @override
   void componentDidMount() {}
@@ -84,42 +84,3 @@ abstract class StatefulComponent extends Component {
   UIComponent build();
 }
 
-/// Simple stateless component
-abstract class StatelessComponent extends Component {
-  StatelessComponent({super.key});
-
-  @override
-  UIComponent render() {
-    prepareComponentForHooks(this);
-    final result = build();
-    cleanupAfterRender();
-    return result;
-  }
-
-  UIComponent build() {
-    prepareForRender();
-    final result = render();
-
-    // CRITICAL FIX: Make sure effects run after build
-    runEffectsAfterRender();
-
-    return result;
-  }
-
-  /// Prepare for rendering - reset hook state
-  void prepareForRender() {
-    print("🏁 Preparing component for render: $instanceId");
-    prepareComponentForHooks(this);
-  }
-
-  /// Run effects after render
-  void runEffectsAfterRender() {
-    print("🏁 Running effects after render for component: $instanceId");
-
-    // CRITICAL FIX: Use Future.microtask to ensure effects run after render is complete
-    Future.microtask(() {
-      runEffects(instanceId);
-      cleanupAfterRender();
-    });
-  }
-}

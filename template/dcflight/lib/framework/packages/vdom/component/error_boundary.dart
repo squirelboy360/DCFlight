@@ -6,7 +6,7 @@ import '../vdom_node.dart';
 import 'component.dart';
 
 /// Component that catches errors in its subtree
-abstract class ErrorBoundary extends StatefulComponent {
+abstract class ErrorBoundary extends StatelessComponent {
   ErrorBoundary({super.key});
 
   /// Current error state

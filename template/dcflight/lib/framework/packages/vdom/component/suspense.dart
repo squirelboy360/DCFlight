@@ -67,7 +67,7 @@ class Resource<T> {
 }
 
 /// Suspense component that shows fallback while children are loading
-class Suspense extends StatefulComponent {
+class Suspense extends StatelessComponent {
   /// Fallback UI to show while loading
   final VDomNode fallback;
 
