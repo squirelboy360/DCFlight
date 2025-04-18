@@ -28,26 +28,26 @@ class MyApp extends StatelessComponent {
     final bg = useState(Color(Colors.indigoAccent.toARGB32()));
 
     // Use an effect to update the ScrollView background color every second
-    // useEffect(() {
-    //   final rnd = math.Random();
-    //   Color color() => Color(rnd.nextInt(0xffffffff));
-    //   // Set up a timer to update the color every second
-    //   final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-    //     // Update the background color
-    //     bg.setValue(color());
-    //     counter.setValue(counter.value + 1);
-    //     print("use effect per 5 second ${timer.tick}");
+    useEffect(() {
+      final rnd = math.Random();
+      Color color() => Color(rnd.nextInt(0xffffffff));
+      // Set up a timer to update the color every second
+      final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        // Update the background color
+        bg.setValue(color());
+        counter.setValue(counter.value + 1);
+        print("use effect per 5 second ${timer.tick}");
         
         
-    //   });
+      });
 
-    //   // Clean up the timer when the component is unmounted
-    //   return () {
-    //     timer.cancel();
-    //     developer.log('Canceled background color animation timer',
-    //         name: 'ColorAnimation');
-    //   };
-    // }, dependencies: []);
+      // Clean up the timer when the component is unmounted
+      return () {
+        timer.cancel();
+        developer.log('Canceled background color animation timer',
+            name: 'ColorAnimation');
+      };
+    }, dependencies: []);
 
     return DC.View(
         layout: LayoutProps(

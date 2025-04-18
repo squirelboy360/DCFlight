@@ -39,12 +39,15 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         // First find the label inside the container
         guard let label = view.viewWithTag(1001) as? UILabel else {
-            // Direct label case (legacy)
-            if let directLabel = view as? UILabel {
-                return updateLabelDirectly(directLabel, withProps: props)
-            }
-            print("❌ ERROR: Could not find label inside container")
+            print("❌ ERROR: Could not find label with tag 1001 in container view")
             return false
+        }
+        
+        // CRITICAL FIX: Check explicitly for content update and always apply
+        if let content = props["content"] {
+            // Always update content regardless of whether it's changed
+            label.text = String(describing: content)
+            print("📝 Text content explicitly updated to: \(content)")
         }
         
         // Determine if this is a content-only update
@@ -66,7 +69,7 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
             restoreLabelState(label, state: state)
         }
         
-        // Force layout update after text content changes
+        // CRITICAL FIX: Force layout update after text content changes
         view.setNeedsLayout()
         view.layoutIfNeeded()
         

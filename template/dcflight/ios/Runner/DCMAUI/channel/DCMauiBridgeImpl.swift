@@ -203,9 +203,38 @@ import Foundation
             return false
         }
         
-        // Get the view
-        guard let view = self.views[viewId] else {
-            NSLog("View not found with ID: \(viewId)")
+        // CRITICAL FIX: Check multiple sources for the view
+        var view = self.views[viewId]
+        
+        // If view not found in main registry, try ViewRegistry as backup
+        if view == nil {
+            view = ViewRegistry.shared.getView(id: viewId)
+            
+            // If found in ViewRegistry but not in our registry, update our registry
+            if view != nil {
+                self.views[viewId] = view
+                NSLog("🔄 View \(viewId) found in ViewRegistry but not in bridge registry - synced")
+            }
+        }
+        
+        // If still not found, check LayoutManager
+        if view == nil {
+            view = DCMauiLayoutManager.shared.getView(withId: viewId)
+            
+            // If found in LayoutManager but not in our registry, update our registry
+            if view != nil {
+                self.views[viewId] = view
+                NSLog("🔄 View \(viewId) found in LayoutManager but not in bridge registry - synced")
+            }
+        }
+        
+        // Final check - view must exist by now
+        guard let finalView = view else {
+            NSLog("⚠️ View not found with ID: \(viewId) in any registry")
+            
+            // Track view reference failure for debugging
+            trackSyncStatus(nodeId: viewId, operation: "update_view", success: false, 
+                          errorMessage: "View not found in any registry")
             return false
         }
         
@@ -218,7 +247,7 @@ import Foundation
             // Apply to shadow tree which will trigger layout calculation
             DCMauiLayoutManager.shared.updateNodeWithLayoutProps(
                 nodeId: viewId,
-                componentType: String(describing: type(of: view)),
+                componentType: String(describing: type(of: finalView)),
                 props: layoutProps
             )
         }
@@ -227,18 +256,19 @@ import Foundation
         var success = true
         if !nonLayoutProps.isEmpty {
             // Find component type for this view class
-            let viewClassName = String(describing: type(of: view))
+            let viewClassName = String(describing: type(of: finalView))
             
             // Try to find component based on view class name
             var componentFound = false
-            for (_, componentType) in DCMauiComponentRegistry.shared.componentTypes {
+            for (componentName, componentType) in DCMauiComponentRegistry.shared.componentTypes {
                 let tempInstance = componentType.init()
                 let tempView = tempInstance.createView(props: [:])
                 
                 if String(describing: type(of: tempView)) == viewClassName {
                     // Found matching component, update view
-                    success = tempInstance.updateView(view, withProps: nonLayoutProps)
+                    success = tempInstance.updateView(finalView, withProps: nonLayoutProps)
                     componentFound = true
+                    NSLog("✅ Found component \(componentName) for view class: \(viewClassName)")
                     break
                 }
             }
@@ -248,6 +278,9 @@ import Foundation
                 success = false
             }
         }
+        
+        // Track update operation result
+        trackSyncStatus(nodeId: viewId, operation: "update_view", success: success)
         
         return success
     }

@@ -136,10 +136,43 @@ class DCMauiBridgeMethodChannel: NSObject {
             return
         }
         
-        // Execute on main thread
-        DispatchQueue.main.async {
+        // CRITICAL FIX: Execute on main thread with retry mechanism
+        let updateOperation = {
+            // First try to update
             let success = DCMauiBridgeImpl.shared.updateView(viewId: viewId, propsJson: propsJson)
+            
+            // If failed, try to ensure view exists and retry once
+            if !success {
+                print("⚠️ Update failed for view \(viewId), checking if view exists in any registry")
+                
+                // Try to find view in any registry
+                let view = DCMauiBridgeImpl.shared.views[viewId] ?? 
+                          ViewRegistry.shared.getView(id: viewId) ?? 
+                          DCMauiLayoutManager.shared.getView(withId: viewId)
+                
+                if view != nil {
+                    // View exists but update failed - synchronize registries
+                    print("🔄 View exists but update failed, synchronizing registries")
+                    DCMauiBridgeImpl.shared.views[viewId] = view
+                    ViewRegistry.shared.registerView(view!, id: viewId, type: "Unknown")
+                    DCMauiLayoutManager.shared.registerView(view!, withId: viewId)
+                    
+                    // Retry update
+                    let retrySuccess = DCMauiBridgeImpl.shared.updateView(viewId: viewId, propsJson: propsJson)
+                    result(retrySuccess)
+                    return
+                }
+            }
+            
             result(success)
+        }
+        
+        if Thread.isMainThread {
+            updateOperation()
+        } else {
+            DispatchQueue.main.sync {
+                updateOperation()
+            }
         }
     }
     
