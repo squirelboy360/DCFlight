@@ -18,11 +18,12 @@ class Reconciler {
 
   /// Constructor
   Reconciler(this.vdom);
-
+  /// Check if a property is a layout-related property
+  bool _isLayoutProp(String propName) {
+    return LayoutProps.isLayoutProperty(propName);
+  }
   /// Reconcile two nodes and apply minimal changes
   Future<void> reconcile(VDomNode oldNode, VDomNode newNode) async {
-    // developer.log('Reconciling: $oldNode -> $newNode', name: 'Reconciler');
-
     // Handle different types of nodes
     if (oldNode.runtimeType != newNode.runtimeType) {
       // Complete replacement needed
@@ -47,7 +48,7 @@ class Reconciler {
     } else if (oldNode is ComponentNode && newNode is ComponentNode) {
       // Component comparison - check type
       if (oldNode.component.runtimeType == newNode.component.runtimeType) {
-        // Copy over native view IDs and rendered nodes for proper tracking
+        // Copy over native view IDs for proper tracking
         newNode.nativeViewId = oldNode.nativeViewId;
         newNode.contentViewId = oldNode.contentViewId;
 
@@ -78,82 +79,96 @@ class Reconciler {
   }
 
   /// Update an element with new props and children
-  Future<void> _updateElement(
-      {required VDomElement oldElement,
-      required VDomElement newElement}) async {
+  Future<void> _updateElement({
+    required VDomElement oldElement,
+    required VDomElement newElement
+  }) async {
     // Update props if node already has a native view
     if (oldElement.nativeViewId != null) {
+      // Transfer ID from old to new element
       newElement.nativeViewId = oldElement.nativeViewId;
-
-      // Find changed props with generic diffing
-      final changedProps = <String, dynamic>{};
       
-      // Step 1: First copy all existing props from the old element
+      // Step 1: Prepare the prop changes
+      final Map<String, dynamic> changedProps = {};
+      
+      // Step 2: Check for special props like content and text that need special handling
+      bool hasContentProps = false;
+      bool hasStyleProps = false;
+      
+      // Step 3: Find actually changed props
+      for (final key in newElement.props.keys) {
+        final newValue = newElement.props[key];
+        
+        // Check if this is a content prop
+        if (key == 'content' || key == 'text') {
+          hasContentProps = true;
+          // Always include content props regardless if changed
+          changedProps[key] = newValue;
+          debugPrint("📄 Content prop $key: $newValue");
+        } 
+        // Check if this is a style prop
+        else if (!_isLayoutProp(key)) {
+          hasStyleProps = true;
+          // Check if the value changed
+          if (!oldElement.props.containsKey(key) || oldElement.props[key] != newValue) {
+            changedProps[key] = newValue;
+            debugPrint("🎨 Style prop $key changed: $newValue");
+          }
+        }
+        // Check layout props
+        else if (_isLayoutProp(key)) {
+          // Only include if value changed
+          if (!oldElement.props.containsKey(key) || oldElement.props[key] != newValue) {
+            changedProps[key] = newValue;
+            debugPrint("📏 Layout prop $key changed: $newValue");
+          }
+        }
+      }
+      
+      // Step 4: When updating content, ensure all style props are sent too
+      if (hasContentProps && hasStyleProps) {
+        for (final key in oldElement.props.keys) {
+          // If it's a style prop and not already added to changes
+          if (!_isLayoutProp(key) && 
+              key != 'content' && 
+              key != 'text' &&
+              !changedProps.containsKey(key)) {
+            // Include this style prop to ensure it's preserved
+            changedProps[key] = oldElement.props[key];
+            debugPrint("🔒 Preserving style prop $key: ${oldElement.props[key]}");
+          }
+        }
+      }
+      
+      // Step 5: Preserve event handlers
+      oldElement.events?.forEach((key, value) {
+        if (value is Function) {
+          newElement.events ??= {};
+          newElement.events![key] = value;
+        }
+      });
+
+      // Step 6: Update merged props for future reconciliations
       final mergedProps = Map<String, dynamic>.from(oldElement.props);
-      
-      // Step 2: Update or add new props from the new element
       for (final entry in newElement.props.entries) {
-        final key = entry.key;
-        final value = entry.value;
-        
-        // ENHANCED: Create categories of props to handle differently
-        bool isContentProp = key == 'content' || key == 'text';
-      
-        // If value has changed or is new
-        if (!oldElement.props.containsKey(key) || oldElement.props[key] != value) {
-          changedProps[key] = value;
-          mergedProps[key] = value;
-          
-          // Debug logging for state transitions
-          if (isContentProp) {
-            print("📝 Content changing from: ${oldElement.props[key]} to: $value");
-          }
-        } else if (isContentProp) {
-          // CRITICAL FIX: Always include content props in changes to ensure update
-          // This addresses the case where content prop is incorrectly considered unchanged
-          changedProps[key] = value;
-          debugPrint("🔄 Forcing content update even though same value: $value");
-        }
+        mergedProps[entry.key] = entry.value;
       }
-      
-      // Step 3: Check for props that have been removed in the new element
-      for (final key in oldElement.props.keys) {
-        if (!newElement.props.containsKey(key)) {
-          // Mark for removal in native bridge
-          changedProps[key] = null;
-          mergedProps.remove(key);
-        }
-      }
-      
-      // CRITICAL ENHANCEMENT: Always preserve style props when updating content
-      if (changedProps.containsKey('content') || changedProps.containsKey('text')) {
-        // Ensure style props are preserved by including them in the update even if unchanged
-        _preserveStyleProps(oldElement.props, changedProps);
-      }
-      
-      // Step 4: Update newElement.props with merged props for future reconciliations
       newElement.props = mergedProps;
-
-      // Update props directly if there are changes
+      
+      // Step 7: Only update if there are changes to apply
       if (changedProps.isNotEmpty) {
-        // Debug logging for prop changes
-        debugPrint("🚀 Updating view ${oldElement.nativeViewId} with changes: ${changedProps.keys.join(", ")}");
+        debugPrint("🔄 Updating view ${oldElement.nativeViewId} with ${changedProps.keys.length} props: ${changedProps.keys.join(', ')}");
         
-        // Preserve event handlers
-        oldElement.events?.forEach((key, value) {
-          if (value is Function) {
-            newElement.events ??= {};
-            newElement.events![key] = value;
-          }
-        });
-
-        // CRITICAL FIX: Wait for update to complete to ensure native side has processed
         bool updateSuccess = await vdom.updateView(oldElement.nativeViewId!, changedProps);
+        
         if (!updateSuccess) {
           debugPrint("❌ Failed to update view ${oldElement.nativeViewId}");
+        } else {
+          debugPrint("✅ Successfully updated view ${oldElement.nativeViewId}");
         }
-
-        if (changedProps.keys.any((key) => _isLayoutProp(key))) {
+        
+        // Calculate layout if any layout props changed
+        if (changedProps.keys.any(_isLayoutProp)) {
           await vdom.calculateAndApplyLayout();
         }
       }
@@ -161,38 +176,6 @@ class Reconciler {
 
     // Now reconcile children
     await _reconcileChildren(oldElement, newElement);
-  }
-
-  // IMPROVED: Helper to preserve style props when updating content
-  // Dynamically preserves all non-layout, non-content props to avoid hardcoding
-  void _preserveStyleProps(Map<String, dynamic> oldProps, Map<String, dynamic> changedProps) {
-    // Iterate through all old props
-    for (final propKey in oldProps.keys) {
-      // Skip if this prop is already in changed props (was explicitly updated)
-      if (changedProps.containsKey(propKey)) {
-        continue;
-      }
-      
-      // Skip content props
-      if (propKey == 'content' || propKey == 'text') {
-        continue;
-      }
-      
-      // Skip layout props
-      if (_isLayoutProp(propKey)) {
-        continue;
-      }
-      
-      // This must be a non-layout, non-content prop that wasn't explicitly changed
-      // Added it to changed props to ensure it's preserved
-      changedProps[propKey] = oldProps[propKey];
-      print("🎨 Preserving prop $propKey: ${oldProps[propKey]}");
-    }
-  }
-
-  /// Check if a property is a layout-related property
-  bool _isLayoutProp(String propName) {
-    return LayoutProps.isLayoutProperty(propName);
   }
 
   /// Reconcile children between old and new elements
