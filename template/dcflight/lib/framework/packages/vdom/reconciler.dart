@@ -85,90 +85,86 @@ class Reconciler {
   }) async {
     // Update props if node already has a native view
     if (oldElement.nativeViewId != null) {
-      // Transfer ID from old to new element
+      // Transfer native view ID to new element
       newElement.nativeViewId = oldElement.nativeViewId;
       
-      // Step 1: Prepare the prop changes
-      final Map<String, dynamic> changedProps = {};
+      // CRITICAL FIX: Preserve prop values from old element that aren't in new element
+      // to prevent them from being removed during updates
+      final mergedProps = Map<String, dynamic>.from(oldElement.props);
       
-      // Step 2: Check for special props like content and text that need special handling
-      bool hasContentProps = false;
-      bool hasStyleProps = false;
-      
-      // Step 3: Find actually changed props
+      // Apply new props on top of existing props
       for (final key in newElement.props.keys) {
         final newValue = newElement.props[key];
-        
-        // Check if this is a content prop
-        if (key == 'content' || key == 'text') {
-          hasContentProps = true;
-          // Always include content props regardless if changed
-          changedProps[key] = newValue;
-          debugPrint("📄 Content prop $key: $newValue");
-        } 
-        // Check if this is a style prop
-        else if (!_isLayoutProp(key)) {
-          hasStyleProps = true;
-          // Check if the value changed
-          if (!oldElement.props.containsKey(key) || oldElement.props[key] != newValue) {
-            changedProps[key] = newValue;
-            debugPrint("🎨 Style prop $key changed: $newValue");
-          }
-        }
-        // Check layout props
-        else if (_isLayoutProp(key)) {
-          // Only include if value changed
-          if (!oldElement.props.containsKey(key) || oldElement.props[key] != newValue) {
-            changedProps[key] = newValue;
-            debugPrint("📏 Layout prop $key changed: $newValue");
-          }
-        }
+        mergedProps[key] = newValue;
       }
       
-      // Step 4: When updating content, ensure all style props are sent too
-      if (hasContentProps && hasStyleProps) {
-        for (final key in oldElement.props.keys) {
-          // If it's a style prop and not already added to changes
-          if (!_isLayoutProp(key) && 
-              key != 'content' && 
-              key != 'text' &&
-              !changedProps.containsKey(key)) {
-            // Include this style prop to ensure it's preserved
-            changedProps[key] = oldElement.props[key];
-            debugPrint("🔒 Preserving style prop $key: ${oldElement.props[key]}");
-          }
-        }
+      // Handle content and text props specially - always include them
+      // even if they haven't changed to ensure proper rendering
+      if (oldElement.props.containsKey('content') && !newElement.props.containsKey('content')) {
+        mergedProps['content'] = oldElement.props['content'];
       }
       
-      // Step 5: Preserve event handlers
-      oldElement.events?.forEach((key, value) {
-        if (value is Function) {
-          newElement.events ??= {};
-          newElement.events![key] = value;
-        }
-      });
-
-      // Step 6: Update merged props for future reconciliations
-      final mergedProps = Map<String, dynamic>.from(oldElement.props);
-      for (final entry in newElement.props.entries) {
-        mergedProps[entry.key] = entry.value;
+      if (oldElement.props.containsKey('text') && !newElement.props.containsKey('text')) {
+        mergedProps['text'] = oldElement.props['text'];
       }
+      
+      // CRITICAL FIX: Ensure event handlers are preserved
+      if (oldElement.events != null) {
+        newElement.events = newElement.events ?? {};
+        oldElement.events!.forEach((key, value) {
+          if (value is Function && !newElement.events!.containsKey(key)) {
+            newElement.events![key] = value;
+          }
+        });
+      }
+      
+      // Store props on the new element to ensure subsequent reconciliations work properly
       newElement.props = mergedProps;
       
-      // Step 7: Only update if there are changes to apply
+      // Only find changed props for optimized updates to native side
+      final changedProps = <String, dynamic>{};
+      for (final key in newElement.props.keys) {
+        if (!oldElement.props.containsKey(key) || oldElement.props[key] != newElement.props[key]) {
+          changedProps[key] = newElement.props[key];
+          // Log changes if in debug mode
+          debugPrint("🔄 Changing prop $key: ${newElement.props[key]}");
+        }
+      }
+      
+      // CRITICAL FIX: Always include content/text props if present 
+      // This ensures content updates always propagate
+      if (newElement.props.containsKey('content')) {
+        changedProps['content'] = newElement.props['content'];
+        debugPrint("📝 Ensuring content is sent: ${newElement.props['content']}");
+      } else if (newElement.props.containsKey('text')) {
+        changedProps['text'] = newElement.props['text'];
+        debugPrint("📝 Ensuring text is sent: ${newElement.props['text']}");
+      }
+      
+      // Only update if there are changes
       if (changedProps.isNotEmpty) {
-        debugPrint("🔄 Updating view ${oldElement.nativeViewId} with ${changedProps.keys.length} props: ${changedProps.keys.join(', ')}");
-        
-        bool updateSuccess = await vdom.updateView(oldElement.nativeViewId!, changedProps);
+        final updateSuccess = await vdom.updateView(oldElement.nativeViewId!, changedProps);
         
         if (!updateSuccess) {
           debugPrint("❌ Failed to update view ${oldElement.nativeViewId}");
-        } else {
-          debugPrint("✅ Successfully updated view ${oldElement.nativeViewId}");
+          
+          // CRITICAL FIX: If update failed and involves text/content, try again with all props
+          if (changedProps.containsKey('content') || changedProps.containsKey('text')) {
+            debugPrint("🔄 Retrying update with all props for ${oldElement.nativeViewId}");
+            final retrySuccess = await vdom.updateView(oldElement.nativeViewId!, newElement.props);
+            
+            if (!retrySuccess) {
+              debugPrint("❌❌ Retry also failed for ${oldElement.nativeViewId}");
+              // At this point, the view may need to be recreated if the app was reinstalled
+              // But recreation is handled at a higher level
+            } else {
+              debugPrint("✅ Retry update succeeded for ${oldElement.nativeViewId}");
+            }
+          }
         }
         
-        // Calculate layout if any layout props changed
-        if (changedProps.keys.any(_isLayoutProp)) {
+        // If layout properties were changed, recalculate layout
+        if (changedProps.keys.any((key) => _isLayoutProp(key))) {
           await vdom.calculateAndApplyLayout();
         }
       }

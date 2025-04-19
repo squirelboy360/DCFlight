@@ -167,18 +167,78 @@ class PlatformDispatcherIml implements PlatformDispatcher {
           'PROCESSED UPDATE PROPS BEING SENT: ${jsonEncode(processedProps)}',
           name: 'BRIDGE_PROPS');
 
-      final result = await bridgeChannel.invokeMethod<bool>('updateView', {
-        'viewId': viewId,
-        'props': processedProps,
-      });
+      // CRITICAL FIX: Add retry mechanism for view updates
+      bool result = await _attemptViewUpdate(viewId, processedProps);
+      
+      // If update failed and contains text/content props, try again with complete props
+      if (!result && (propPatches.containsKey('content') || propPatches.containsKey('text'))) {
+        developer.log('⚠️ First update attempt failed for view $viewId - trying with complete props refresh',
+            name: 'BRIDGE');
+            
+        // Try recreating the view as a last resort
+        result = await _attemptViewRecreation(viewId, processedProps);
+      }
 
       developer.log('Method channel updateView result: $result',
           name: 'BRIDGE');
-      return result ?? false;
+      return result;
     } catch (e) {
       developer.log('Method channel updateView error: $e', name: 'BRIDGE');
       return false;
     }
+  }
+  
+  // Helper method to attempt a view update with retries
+  Future<bool> _attemptViewUpdate(String viewId, Map<String, dynamic> props) async {
+    // First regular attempt
+    final firstAttempt = await bridgeChannel.invokeMethod<bool>('updateView', {
+      'viewId': viewId,
+      'props': props,
+    });
+    
+    if (firstAttempt == true) {
+      return true;
+    }
+    
+    // If first attempt failed, wait briefly then retry once
+    await Future.delayed(const Duration(milliseconds: 50));
+    
+    // Second attempt - send exactly the same data
+    final secondAttempt = await bridgeChannel.invokeMethod<bool>('updateView', {
+      'viewId': viewId,
+      'props': props,
+    });
+    
+    return secondAttempt ?? false;
+  }
+  
+  // Helper method to attempt view recreation as a last resort recovery
+  Future<bool> _attemptViewRecreation(String viewId, Map<String, dynamic> props) async {
+    // Only try this for content/text views since those are most problematic
+    if (props.containsKey('content') || props.containsKey('text')) {
+      // This is a hack to force the native side to ensure the view exists
+      // We first check if the view exists by doing a minimal update
+      final checkResult = await bridgeChannel.invokeMethod<bool>('viewExists', {
+        'viewId': viewId,
+      });
+      
+      if (checkResult == false) {
+        developer.log('🔄 View $viewId does not exist - cannot update',
+            name: 'BRIDGE');
+        return false;
+      }
+      
+      // Try one final update with all props
+      final finalAttempt = await bridgeChannel.invokeMethod<bool>('updateView', {
+        'viewId': viewId,
+        'props': props,
+        'forceRefresh': true,  // Signal native side this is a recovery attempt
+      });
+      
+      return finalAttempt ?? false;
+    }
+    
+    return false;
   }
 
   @override
