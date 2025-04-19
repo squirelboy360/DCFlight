@@ -2,21 +2,26 @@
 
 import 'dart:async';
 import 'dart:developer' as developer;
-import 'package:dcflight/framework/utilities/debug_tools.dart';
 
-import '../native_bridge/dispatcher.dart';
+
+import 'package:dcflight/framework/packages/native_bridge/dispatcher.dart' show NativeBridgeFactory, PlatformDispatcher;
+import 'package:dcflight/framework/packages/vdom/component/component.dart';
+import 'package:dcflight/framework/packages/vdom/component/component_node.dart';
+import 'package:dcflight/framework/packages/vdom/component/context.dart';
+import 'package:dcflight/framework/packages/vdom/component/error_boundary.dart';
+import 'package:dcflight/framework/packages/vdom/vdom_element.dart';
+import 'package:dcflight/framework/utilities/debug_tools.dart';
+import 'package:dcflight/framework/utilities/screen_utilities.dart';
+
 import '../../constants/yoga_enums.dart';
 import '../../constants/layout_properties.dart';
 import 'vdom_node.dart';
-import 'vdom_element.dart';
-import 'component/component.dart';
-import 'component/component_node.dart';
-import 'reconciler.dart';
-import 'component/context.dart';
-import 'fragment.dart';
-import 'component/error_boundary.dart';
-import 'vdom_node_sync.dart';
 
+import 'reconciler.dart';
+
+import 'fragment.dart';
+
+import 'vdom_node_sync.dart';
 
 /// Performance monitoring for VDOM operations
 class PerformanceMonitor {
@@ -242,7 +247,7 @@ class VDom {
     );
 
     // Set up update scheduling for stateful components
-    if (component is StatelessComponent) {
+    if (component is StatefulComponent) {
       component.scheduleUpdate = () => _scheduleComponentUpdate(component);
     }
 
@@ -256,6 +261,7 @@ class VDom {
 
     final node = _nodesByViewId[viewId];
     if (node == null) {
+      developer.log('⚠️ No node found for viewId: $viewId', name: 'VDom');
       _performanceMonitor.endTimer('handle_native_event');
       return;
     }
@@ -267,7 +273,27 @@ class VDom {
           node.events![eventType] is Function) {
         _performanceMonitor.startTimer('event_handler');
         final handler = node.events![eventType] as Function;
-        handler(eventData);
+        
+        // FIXED: Handle different function signatures
+        try {
+          if (handler is Function(Map<String, dynamic>)) {
+            // Function expects event data
+            handler(eventData);
+            developer.log('✅ Executed handler with event data for $eventType on $viewId', name: 'VDom');
+          } else if (handler is Function()) {
+            // Function takes no parameters
+            handler();
+            developer.log('✅ Executed handler with no parameters for $eventType on $viewId', name: 'VDom');
+          } else {
+            // Try a more general approach
+            Function.apply(handler, [], {});
+            developer.log('✅ Executed handler using Function.apply for $eventType on $viewId', name: 'VDom');
+          }
+        } catch (e, stack) {
+          developer.log('❌ Error executing event handler: $e', 
+              name: 'VDom', error: e, stackTrace: stack);
+        }
+        
         _performanceMonitor.endTimer('event_handler');
         _performanceMonitor.endTimer('handle_native_event');
         return;
@@ -283,8 +309,33 @@ class VDom {
           node.props[propName] is Function) {
         _performanceMonitor.startTimer('event_handler');
         final handler = node.props[propName] as Function;
-        handler(eventData);
+        
+        // FIXED: Handle different function signatures
+        try {
+          developer.log('🔔 Executing handler for $propName on $viewId with data: $eventData', name: 'VDom');
+          
+          if (handler is Function(Map<String, dynamic>)) {
+            // Function expects event data
+            handler(eventData);
+            developer.log('✅ Executed handler with event data', name: 'VDom');
+          } else if (handler is Function()) {
+            // Function takes no parameters
+            handler();
+            developer.log('✅ Executed handler with no parameters', name: 'VDom');
+          } else {
+            // Try a more general approach
+            Function.apply(handler, [], {});
+            developer.log('✅ Executed handler using Function.apply', name: 'VDom');
+          }
+        } catch (e, stack) {
+          developer.log('❌ Error executing event handler: $e', 
+              name: 'VDom', error: e, stackTrace: stack);
+        }
+        
         _performanceMonitor.endTimer('event_handler');
+      } else {
+        developer.log('⚠️ No handler found for event $eventType or $propName on $viewId',
+            name: 'VDom');
       }
     }
 
@@ -376,12 +427,12 @@ class VDom {
     final componentInstance = _componentInstances[component.instanceId];
 
     // Set the update function
-    if (component is StatelessComponent) {
+    if (component is StatefulComponent) {
       component.scheduleUpdate = () => _scheduleComponentUpdate(component);
     }
 
     // Reset hook state before render for stateful components
-    if (component is StatelessComponent) {
+    if (component is StatefulComponent) {
       component.prepareForRender();
     }
 
@@ -418,7 +469,7 @@ class VDom {
     }
 
     // Run effects after render for stateful components
-    if (component is StatelessComponent &&
+    if (component is StatefulComponent &&
         componentInstance?.isMounted == true) {
       component.runEffectsAfterRender();
     }
@@ -496,16 +547,6 @@ class VDom {
     if (eventTypes.isNotEmpty) {
       _performanceMonitor.startTimer('add_event_listeners');
       await _nativeBridge.addEventListeners(viewId, eventTypes);
-
-      // Also register callbacks with dispatcher
-      if (element.events != null) {
-        element.events!.forEach((eventName, callback) {
-          if (callback is Function) {
-            _nativeBridge.registerEventCallback(viewId, eventName, callback);
-          }
-        });
-      }
-
       _performanceMonitor.endTimer('add_event_listeners');
     }
 
@@ -537,9 +578,14 @@ class VDom {
   }
 
   /// Calculate and apply layout
-  Future<void> calculateAndApplyLayout() async {
-    developer.log('🔥 Starting layout calculation with dimensions',
+  Future<void> calculateAndApplyLayout({double? width, double? height}) async {
+    developer.log(
+        '🔥 Starting layout calculation with dimensions: ${width ?? '100%'} x ${height ?? '100%'}',
         name: 'VDom');
+
+    // Get screen dimensions if not provided
+    final screenWidth = width ?? ScreenUtilities.instance.screenWidth;
+    final screenHeight = height ?? ScreenUtilities.instance.screenHeight;
 
     _performanceMonitor.startTimer('native_layout_calculation');
 
@@ -557,7 +603,7 @@ class VDom {
   }
 
   /// Schedule a component update for batching
-  void _scheduleComponentUpdate(StatelessComponent component) {
+  void _scheduleComponentUpdate(StatefulComponent component) {
     _pendingUpdates.add(component.instanceId);
 
     if (_isUpdateScheduled) return;
@@ -604,10 +650,10 @@ class VDom {
   }
 
   /// Find a component by its ID
-  StatelessComponent? _findComponentById(String instanceId) {
+  StatefulComponent? _findComponentById(String instanceId) {
     for (final entry in _components.entries) {
-      if (entry.key == instanceId && entry.value is StatelessComponent) {
-        return entry.value as StatelessComponent;
+      if (entry.key == instanceId && entry.value is StatefulComponent) {
+        return entry.value as StatefulComponent;
       }
     }
     return null;
@@ -627,7 +673,7 @@ class VDom {
     final componentNode = _componentNodes[componentId]!;
 
     // Handle stateful components
-    if (component is StatelessComponent) {
+    if (component is StatefulComponent) {
       // Clean up old effects
       component.componentWillUnmount();
 
@@ -667,7 +713,7 @@ class VDom {
     }
 
     // Update component lifecycle
-    if (component is StatelessComponent) {
+    if (component is StatefulComponent) {
       component.componentDidUpdate({});
     }
   }
@@ -909,7 +955,7 @@ class VDom {
       final instance = _componentInstances[component.instanceId];
 
       if (instance != null && !instance.isMounted) {
-        if (component is StatelessComponent) {
+        if (component is StatefulComponent) {
           // Call componentDidMount
           component.componentDidMount();
         } else {
@@ -955,7 +1001,6 @@ class VDom {
 
   /// Update a view's properties
   Future<bool> updateView(String viewId, Map<String, dynamic> props) async {
-   
     return await _nativeBridge.updateView(viewId, props);
   }
 

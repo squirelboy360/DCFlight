@@ -19,9 +19,9 @@ void main() {
   initializeApplication(MyApp());
 }
 
-class MyApp extends StatelessComponent {
+class MyApp extends StatefulComponent {
   @override
-  UIComponent build() {
+  UIComponent render() {
     // State hooks
     final counter = useState(0);
 
@@ -63,6 +63,7 @@ class MyApp extends StatelessComponent {
                 print(counter.value);
                     bg.setValue(color());
                 // counter.setValue(counter.value + 1);
+                print("payload executed");
               },
               layout: LayoutProps(padding: 10),
               buttonProps: ButtonProps(

@@ -1,12 +1,12 @@
 import 'dart:developer' as developer;
 
-import 'package:dcflight/framework/packages/vdom/component/state_hook.dart';
+import 'package:dcflight/framework/packages/vdom/vdom_node.dart';
 
-import '../vdom_node.dart';
+
 import 'component.dart';
 
 /// Component that catches errors in its subtree
-abstract class ErrorBoundary extends StatelessComponent {
+abstract class ErrorBoundary extends StatefulComponent {
   ErrorBoundary({super.key});
 
   /// Current error state
