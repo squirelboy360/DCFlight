@@ -1,8 +1,6 @@
+import 'dart:developer' as developer;
 import 'dart:math';
-
-
 import 'package:dcflight/framework/packages/vdom/vdom_node.dart';
-
 import 'state_hook.dart';
 
 /// Base component class
@@ -96,7 +94,8 @@ abstract class StatefulComponent extends Component {
     final hook = _createHook(() => EffectHook(effect, dependencies));
 
     // Cast to EffectHook to access its methods
-    (hook as EffectHook).runEffect();
+    // Don't run effects here - they will be run after render
+    // via runEffectsAfterRender()
   }
 
   /// Create a memo hook
@@ -147,7 +146,16 @@ abstract class StatefulComponent extends Component {
 
   /// Run effects after render - called by VDOM
   void runEffectsAfterRender() {
-    // This would run any pending effects if needed
+    // FIXED: Properly run effect hooks after render/updates
+    for (var i = 0; i < _hooks.length; i++) {
+      final hook = _hooks[i];
+      if (hook is EffectHook) {
+        // Run each effect hook
+        developer.log('Running effect hook #$i in component $typeName',
+            name: 'Component');
+        hook.runEffect();
+      }
+    }
   }
 
   @override

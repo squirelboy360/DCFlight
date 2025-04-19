@@ -674,10 +674,10 @@ class VDom {
 
     // Handle stateful components
     if (component is StatefulComponent) {
-      // Clean up old effects
-      component.componentWillUnmount();
-
-      // Reset hook state before render
+      // FIXED: Don't call componentWillUnmount during state updates
+      // This was previously causing all effects to be cleaned up prematurely
+      
+      // Reset hook state before render but preserve values
       component.prepareForRender();
     }
 
@@ -715,6 +715,9 @@ class VDom {
     // Update component lifecycle
     if (component is StatefulComponent) {
       component.componentDidUpdate({});
+      
+      // FIXED: Run effects after update to ensure state changes take effect
+      component.runEffectsAfterRender();
     }
   }
 
