@@ -429,6 +429,23 @@ class PlatformDispatcherIml implements PlatformDispatcher {
     }
   }
 
+  @override
+  Future<bool> viewExists(String viewId) async {
+    try {
+      developer.log('Checking if view exists: $viewId', name: 'BRIDGE');
+      
+      final result = await bridgeChannel.invokeMethod<bool>('viewExists', {
+        'viewId': viewId,
+      });
+      
+      developer.log('View existence check result for $viewId: ${result ?? false}', name: 'BRIDGE');
+      return result ?? false;
+    } catch (e) {
+      developer.log('Error checking view existence: $e', name: 'BRIDGE');
+      return false;
+    }
+  }
+
   // Helper method to preprocess props for JSON serialization
   Map<String, dynamic> _preprocessProps(Map<String, dynamic> props) {
     final processedProps = <String, dynamic>{};

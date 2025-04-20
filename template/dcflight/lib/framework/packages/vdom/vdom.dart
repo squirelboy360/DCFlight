@@ -1002,9 +1002,100 @@ class VDom {
     return result;
   }
 
-  /// Update a view's properties
+  /// Update a view's properties with resilience to app restarts
   Future<bool> updateView(String viewId, Map<String, dynamic> props) async {
-    return await _nativeBridge.updateView(viewId, props);
+    try {
+      // First check if this view actually exists - critical for app restarts
+      final exists = await _nativeBridge.viewExists(viewId);
+      
+      if (!exists) {
+        developer.log("⚠️ View $viewId doesn't exist anymore - likely due to app restart", name: 'VDom');
+        
+        // Find the node associated with this viewId
+        final node = _nodesByViewId[viewId];
+        if (node == null) {
+          developer.log("❌ No VDOM node found for viewId: $viewId", name: 'VDom');
+          return false;
+        }
+        
+        // Get the parent info for recreation
+        VDomNode? parentNode = node.parent;
+        String? parentId;
+        int index = 0;
+        
+        // Find first parent with a native view ID
+        while (parentNode != null) {
+          if (parentNode.nativeViewId != null) {
+            parentId = parentNode.nativeViewId;
+            
+            // Find index of node in parent's children
+            if (parentNode is VDomElement) {
+              index = parentNode.children.indexOf(node);
+              if (index < 0) index = 0;
+            }
+            break;
+          }
+          parentNode = parentNode.parent;
+        }
+        
+        // If we have parent info, try to recreate the view
+        if (parentId != null && node is VDomElement) {
+          developer.log("🔄 Recreating view $viewId of type ${node.type}", name: 'VDom');
+          
+          // Create the view with complete props
+          bool success = await _nativeBridge.createView(viewId, node.type, node.props);
+          
+          if (success) {
+            // Attach to parent
+            success = await _nativeBridge.attachView(viewId, parentId, index);
+            
+            if (success) {
+              // If the node has children, we need to recreate them too
+              if (node is VDomElement && node.children.isNotEmpty) {
+                developer.log("🔄 Recreating children for view $viewId", name: 'VDom');
+                
+                // Schedule a full subtree recreation by clearing native view IDs
+                for (final child in node.getDescendants()) {
+                  child.nativeViewId = null;
+                }
+                
+                // Render all children
+                final childIds = <String>[];
+                int childIndex = 0;
+                
+                for (final child in node.children) {
+                  final childId = await renderToNative(child, parentId: viewId, index: childIndex++);
+                  if (childId != null && childId.isNotEmpty) {
+                    childIds.add(childId);
+                  }
+                }
+                
+                // Update children order
+                if (childIds.isNotEmpty) {
+                  await _nativeBridge.setChildren(viewId, childIds);
+                }
+              }
+              
+              // Now apply the props update
+              success = await _nativeBridge.updateView(viewId, props);
+              return success;
+            }
+          }
+          
+          return false;
+        } else {
+          developer.log("❌ Cannot recreate view $viewId: No parent found", name: 'VDom');
+          return false;
+        }
+      }
+      
+      // Normal flow - view exists, just update it
+      return await _nativeBridge.updateView(viewId, props);
+    } catch (e, stack) {
+      developer.log("❌ Error updating view: $e", 
+                  name: 'VDom', error: e, stackTrace: stack);
+      return false;
+    }
   }
 
   /// Delete a view

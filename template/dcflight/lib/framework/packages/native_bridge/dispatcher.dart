@@ -76,6 +76,9 @@ abstract class PlatformDispatcher {
     _eventCallbacks[viewId] ??= {};
     _eventCallbacks[viewId]![eventType] = callback;
   }
+
+  // Check if a view exists on the native side
+  Future<bool> viewExists(String viewId);
 }
 
 /// Factory for creating platform-specific native bridges
