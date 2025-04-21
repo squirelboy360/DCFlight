@@ -1,15 +1,15 @@
 import 'dart:developer' as developer;
 import 'dart:math' as math;
-
-import 'package:dcflight/framework/utilities/flutter.dart';
+import 'package:dcflight/framework/packages/native_bridge/dispatcher.dart';
+import 'package:dcflight/framework/packages/vdom/component/component_node.dart';
 
 import '../../constants/layout_properties.dart';
 
 import 'vdom_node.dart';
 import 'vdom_element.dart';
-import 'component/component_node.dart';
+
 import 'vdom.dart';
-import '../native_bridge/dispatcher.dart';
+
 
 /// Class responsible for reconciling differences between VDOM trees
 class Reconciler {
@@ -18,12 +18,11 @@ class Reconciler {
 
   /// Constructor
   Reconciler(this.vdom);
-  /// Check if a property is a layout-related property
-  bool _isLayoutProp(String propName) {
-    return LayoutProps.isLayoutProperty(propName);
-  }
+
   /// Reconcile two nodes and apply minimal changes
   Future<void> reconcile(VDomNode oldNode, VDomNode newNode) async {
+    // developer.log('Reconciling: $oldNode -> $newNode', name: 'Reconciler');
+
     // Handle different types of nodes
     if (oldNode.runtimeType != newNode.runtimeType) {
       // Complete replacement needed
@@ -48,7 +47,7 @@ class Reconciler {
     } else if (oldNode is ComponentNode && newNode is ComponentNode) {
       // Component comparison - check type
       if (oldNode.component.runtimeType == newNode.component.runtimeType) {
-        // Copy over native view IDs for proper tracking
+        // Copy over native view IDs and rendered nodes for proper tracking
         newNode.nativeViewId = oldNode.nativeViewId;
         newNode.contentViewId = oldNode.contentViewId;
 
@@ -79,99 +78,62 @@ class Reconciler {
   }
 
   /// Update an element with new props and children
-  Future<void> _updateElement({
-    required VDomElement oldElement,
-    required VDomElement newElement
-  }) async {
+  Future<void> _updateElement(
+      {required VDomElement oldElement,
+      required VDomElement newElement}) async {
     // Update props if node already has a native view
     if (oldElement.nativeViewId != null) {
-      // Transfer native view ID to new element
       newElement.nativeViewId = oldElement.nativeViewId;
-      
-      // CRITICAL FIX: Preserve prop values from old element that aren't in new element
-      // to prevent them from being removed during updates
-      final mergedProps = Map<String, dynamic>.from(oldElement.props);
-      
-      // Apply new props on top of existing props
-      for (final key in newElement.props.keys) {
-        final newValue = newElement.props[key];
-        mergedProps[key] = newValue;
+
+      // Find changed props with generic diffing - excluding layout props
+      final changedProps = <String, dynamic>{};
+
+      // Check for props that have changed or been added
+      for (final entry in newElement.props.entries) {
+        final key = entry.key;
+        final value = entry.value;
+
+        // If prop has changed or is new
+        if (!oldElement.props.containsKey(key) ||
+            oldElement.props[key] != value) {
+          changedProps[key] = value;
+        }
       }
-      
-      // Handle content and text props specially - always include them
-      // even if they haven't changed to ensure proper rendering
-      if (oldElement.props.containsKey('content') && !newElement.props.containsKey('content')) {
-        mergedProps['content'] = oldElement.props['content'];
+
+      // Check for removed props
+      for (final key in oldElement.props.keys) {
+        if (!newElement.props.containsKey(key)) {
+          // Set to null to indicate removal (handled by native bridge)
+          changedProps[key] = null;
+        }
       }
-      
-      if (oldElement.props.containsKey('text') && !newElement.props.containsKey('text')) {
-        mergedProps['text'] = oldElement.props['text'];
-      }
-      
-      // CRITICAL FIX: Ensure event handlers are preserved
-      if (oldElement.events != null) {
-        newElement.events = newElement.events ?? {};
-        oldElement.events!.forEach((key, value) {
-          if (value is Function && !newElement.events!.containsKey(key)) {
-            newElement.events![key] = value;
+
+      // Update props directly if there are changes
+      if (changedProps.isNotEmpty) {
+        // Preserve event handlers
+        oldElement.props.forEach((key, value) {
+          if (key.startsWith('on') &&
+              value is Function &&
+              !changedProps.containsKey(key)) {
+            changedProps[key] = value;
           }
         });
-      }
-      
-      // Store props on the new element to ensure subsequent reconciliations work properly
-      newElement.props = mergedProps;
-      
-      // Only find changed props for optimized updates to native side
-      final changedProps = <String, dynamic>{};
-      for (final key in newElement.props.keys) {
-        if (!oldElement.props.containsKey(key) || oldElement.props[key] != newElement.props[key]) {
-          changedProps[key] = newElement.props[key];
-          // Log changes if in debug mode
-          debugPrint("🔄 Changing prop $key: ${newElement.props[key]}");
-        }
-      }
-      
-      // CRITICAL FIX: Always include content/text props if present 
-      // This ensures content updates always propagate
-      if (newElement.props.containsKey('content')) {
-        changedProps['content'] = newElement.props['content'];
-        debugPrint("📝 Ensuring content is sent: ${newElement.props['content']}");
-      } else if (newElement.props.containsKey('text')) {
-        changedProps['text'] = newElement.props['text'];
-        debugPrint("📝 Ensuring text is sent: ${newElement.props['text']}");
-      }
-      
-      // Only update if there are changes
-      if (changedProps.isNotEmpty) {
-        final updateSuccess = await vdom.updateView(oldElement.nativeViewId!, changedProps);
-        
-        if (!updateSuccess) {
-          debugPrint("❌ Failed to update view ${oldElement.nativeViewId}");
-          
-          // CRITICAL FIX: If update failed and involves text/content, try again with all props
-          if (changedProps.containsKey('content') || changedProps.containsKey('text')) {
-            debugPrint("🔄 Retrying update with all props for ${oldElement.nativeViewId}");
-            final retrySuccess = await vdom.updateView(oldElement.nativeViewId!, newElement.props);
-            
-            if (!retrySuccess) {
-              debugPrint("❌❌ Retry also failed for ${oldElement.nativeViewId}");
-              // At this point, the view may need to be recreated if the app was reinstalled
-              // But recreation is handled at a higher level
-            } else {
-              debugPrint("✅ Retry update succeeded for ${oldElement.nativeViewId}");
-            }
-          }
-        }
-        
-        // If layout properties were changed, recalculate layout
-        if (changedProps.keys.any((key) => _isLayoutProp(key))) {
-          await vdom.calculateAndApplyLayout();
-        }
-      }
-    }
 
-    // Now reconcile children
-    await _reconcileChildren(oldElement, newElement);
+        await vdom.updateView(oldElement.nativeViewId!, changedProps);
+
+        if (changedProps.keys.any((key) => _isLayoutProp(key))) {
+          vdom.calculateAndApplyLayout();
+        }
+      }
+
+      // Now reconcile children
+      await _reconcileChildren(oldElement, newElement);
+    }
+  }
+
+  /// Check if a property is a layout-related property
+  bool _isLayoutProp(String propName) {
+    return LayoutProps.isLayoutProperty(propName);
   }
 
   /// Reconcile children between old and new elements
@@ -434,8 +396,7 @@ class Reconciler {
       if (element.events != null && element.events!.isNotEmpty) {
         // Register event listeners with native side
         List<String> eventTypes = element.events!.keys.toList();
-        await PlatformDispatcher.instance
-            .addEventListeners(elementId, eventTypes);
+        await PlatformDispatcher.instance.addEventListeners(elementId, eventTypes);
 
         // Register callbacks for each event type
         element.events!.forEach((eventType, callback) {

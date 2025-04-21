@@ -39,15 +39,50 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         // First find the label inside the container
         guard let label = view.viewWithTag(1001) as? UILabel else {
-            print("❌ ERROR: Could not find label with tag 1001 in container view")
-            return false
+            // Direct label case (legacy) or label not found
+            if let directLabel = view as? UILabel {
+                return updateLabelDirectly(directLabel, withProps: props)
+            }
+            
+            // CRITICAL FIX: Label not found - container might need recreation
+            print("⚠️ Could not find label inside container - attempting label re-creation")
+            
+            // Create a new label and add it to the container
+            let newLabel = UILabel()
+            newLabel.numberOfLines = 0
+            newLabel.tag = 1001
+            
+            // Add label to container
+            view.addSubview(newLabel)
+            
+            // Setup constraints to make label fill the container
+            newLabel.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                newLabel.topAnchor.constraint(equalTo: view.topAnchor),
+                newLabel.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+                newLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                newLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+            ])
+            
+            // Now update the recreated label
+            print("✅ Successfully recreated label inside container")
+            return updateLabelDirectly(newLabel, withProps: props)
         }
         
         // CRITICAL FIX: Check explicitly for content update and always apply
         if let content = props["content"] {
-            // Always update content regardless of whether it's changed
-            label.text = String(describing: content)
-            print("📝 Text content explicitly updated to: \(content)")
+            // For content updates, keep it simple
+            var contentStr = ""
+            if let contentAsString = content as? String {
+                contentStr = contentAsString
+            } else {
+                contentStr = "\(content)" // Convert any type to string
+            }
+            label.text = contentStr
+            print("📝 Updated text content to: \(contentStr)")
+        } else if let text = props["text"] as? String {
+            label.text = text
+            print("📝 Updated text to: \(text)")
         }
         
         // Determine if this is a content-only update
@@ -58,6 +93,7 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
         
         // Apply container styling if needed (skip for content-only updates)
         if !isContentOnlyUpdate {
+            // Apply standard styling to the container view
             view.applyStyles(props: props)
         }
         
@@ -151,14 +187,60 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
         return true
     }
     
-    // Update just the content of the label
+    // Special handling for text content update
+    private func updateTextContent(_ label: UILabel, text: String) {
+        // Store the original text for diff checking
+        let oldText = objc_getAssociatedObject(
+            label,
+            UnsafeRawPointer(bitPattern: "previousText".hashValue)!
+        ) as? String
+        
+        // Only log if text actually changed
+        if oldText != text {
+            print("📝 Text updated: '\(oldText ?? "nil")' -> '\(text)'")
+            
+            // Store the new text for future comparison
+            objc_setAssociatedObject(
+                label,
+                UnsafeRawPointer(bitPattern: "previousText".hashValue)!,
+                text,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+        }
+        
+        // Set text with animation to ensure UI updates
+        UIView.transition(with: label, duration: 0.1, options: .transitionCrossDissolve, animations: {
+            label.text = text
+        }, completion: nil)
+        
+        // Force layout immediately rather than waiting for next render cycle
+        label.setNeedsDisplay()
+        label.superview?.setNeedsLayout()
+        label.superview?.layoutIfNeeded()
+    }
+    
+    // Update label content
     private func updateLabelContent(_ label: UILabel, props: [String: Any]) {
-        if let text = props["content"] as? String {
-            label.text = text
+        // Check for content prop first (preferred)
+        if let content = props["content"] {
+            var contentStr = ""
+            if let contentAsString = content as? String {
+                contentStr = contentAsString
+            } else {
+                // Convert any type to string for display
+                contentStr = "\(content)"
+            }
+            
+            // Use special update method
+            updateTextContent(label, text: contentStr)
+            
         } else if let text = props["text"] as? String {
-            label.text = text
+            // Use special update method
+            updateTextContent(label, text: text)
+            
         } else if let numContent = props["content"] as? Int {
-            label.text = String(numContent)
+            // Handle numeric content specifically
+            updateTextContent(label, text: String(numContent))
         }
     }
     

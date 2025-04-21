@@ -26,6 +26,10 @@ import Foundation
     // Timestamp for last sync operation
     private var lastSyncTimestamp: TimeInterval = 0
     
+    // App restart detection
+    private var appBootId = UUID().uuidString
+    private var lastBootTimestamp = Date().timeIntervalSince1970
+    
     // Private initializer for singleton
     private override init() {
         super.init()
@@ -46,6 +50,12 @@ import Foundation
     @objc func initialize() -> Bool {
         NSLog("DCMauiFFIBridge: initialize called")
         
+        // Generate new boot ID for restart detection
+        appBootId = UUID().uuidString
+        lastBootTimestamp = Date().timeIntervalSince1970
+        
+        NSLog("🚀 App initialized with new boot ID: \(appBootId) at \(lastBootTimestamp)")
+        
         // Check if root view exists already
         if let rootView = views["root"] {
             NSLog("DCMauiFFIBridge: Found pre-registered root view: \(rootView)")
@@ -59,7 +69,37 @@ import Foundation
             NSLog("DCMauiFFIBridge: Warning - No root view registered yet")
         }
         
+        // Clear all previous view registrations since this is a fresh start
+        if !views.isEmpty {
+            let oldViewCount = views.count
+            
+            // Only keep the root view if it exists
+            let rootView = views["root"]
+            views.removeAll()
+            if let rootView = rootView {
+                views["root"] = rootView
+            }
+            
+            NSLog("♻️ Cleared \(oldViewCount) stale view references on app restart")
+        }
+        
         return true
+    }
+    
+    /// Get app boot information - used by Dart side to detect restarts
+    @objc func getAppBootInfo() -> String {
+        let bootInfo: [String: Any] = [
+            "bootId": appBootId,
+            "timestamp": lastBootTimestamp,
+            "viewCount": views.count
+        ]
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: bootInfo, options: []),
+              let jsonString = String(data: jsonData, encoding: .utf8) else {
+            return "{\"bootId\":\"\(appBootId)\",\"timestamp\":\(lastBootTimestamp),\"error\":\"JSON conversion failed\"}"
+        }
+        
+        return jsonString
     }
     
     /// Create a view with properties
@@ -526,6 +566,31 @@ import Foundation
         let layoutPropKeys = SupportedLayoutsProps.supportedLayoutProps
         
         return props.filter { layoutPropKeys.contains($0.key) }
+    }
+    
+    // Implement viewExists method - enhance to check across all registries
+    @objc func viewExists(viewId: String) -> Bool {
+        // Check all possible registries for this view
+        let inMainRegistry = views[viewId] != nil
+        let inViewRegistry = ViewRegistry.shared.getView(id: viewId) != nil
+        let inLayoutManager = DCMauiLayoutManager.shared.getView(withId: viewId) != nil
+        
+        let exists = inMainRegistry || inViewRegistry || inLayoutManager
+        
+        // Log detailed information about where the view was found
+        NSLog("🔍 View existence check for \(viewId): main=\(inMainRegistry), viewRegistry=\(inViewRegistry), layoutManager=\(inLayoutManager)")
+        
+        // If view was found in secondary registry but not main registry, sync it to main registry
+        if !inMainRegistry && (inViewRegistry || inLayoutManager) {
+            // Fixed: Use nil coalescing to ensure we're handling the optionals correctly
+            if let view = ViewRegistry.shared.getView(id: viewId) ?? DCMauiLayoutManager.shared.getView(withId: viewId) {
+                // Sync to main registry
+                views[viewId] = view
+                NSLog("🔄 View \(viewId) found in secondary registry - synchronized to main registry")
+            }
+        }
+        
+        return exists
     }
 }
 

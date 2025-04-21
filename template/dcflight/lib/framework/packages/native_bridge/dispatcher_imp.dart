@@ -23,6 +23,14 @@ class PlatformDispatcherIml implements PlatformDispatcher {
   // Map to store callbacks for each view and event type
   final Map<String, Map<String, Function>> _eventCallbacks = {};
 
+  // App restart tracking
+  String? _currentAppBootId;
+  double? _lastBootTimestamp;
+  bool _isAppRestarted = false;
+
+  // Track whether the app has recently restarted
+  bool get isAppRestarted => _isAppRestarted;
+
   // Sets up communication with native code
   PlatformDispatcherIml() {
     // Set up method channels for events and layout
@@ -94,12 +102,49 @@ class PlatformDispatcherIml implements PlatformDispatcher {
     try {
       developer.log('Initializing method channel bridge', name: 'BRIDGE');
       final result = await bridgeChannel.invokeMethod<bool>('initialize');
+      
+      // Get app boot info to detect restarts
+      await _checkAppRestart();
+      
       developer.log('Bridge initialization result: $result', name: 'BRIDGE');
       return result ?? false;
     } catch (e) {
       developer.log('Failed to initialize bridge: $e', name: 'BRIDGE');
       return false;
     }
+  }
+
+  // Check if the app has been restarted
+  Future<bool> _checkAppRestart() async {
+    try {
+      final bootInfoJson = await bridgeChannel.invokeMethod<String>('getAppBootInfo');
+      if (bootInfoJson != null) {
+        final bootInfo = json.decode(bootInfoJson);
+        final newBootId = bootInfo['bootId'] as String?;
+        final newBootTimestamp = bootInfo['timestamp'] as double?;
+        
+        if (_currentAppBootId != null && _currentAppBootId != newBootId) {
+          developer.log('🔄 App restart detected! Previous boot ID: $_currentAppBootId, New boot ID: $newBootId',
+                      name: 'BRIDGE');
+          _isAppRestarted = true;
+        } else if (_lastBootTimestamp != null && 
+                 newBootTimestamp != null && 
+                 newBootTimestamp - _lastBootTimestamp! > 1.0) {
+          developer.log('🔄 App restart detected based on timestamp! Gap: ${newBootTimestamp - _lastBootTimestamp!}s',
+                      name: 'BRIDGE');
+          _isAppRestarted = true;
+        }
+        
+        // Store current boot info
+        _currentAppBootId = newBootId;
+        _lastBootTimestamp = newBootTimestamp;
+        
+        return _isAppRestarted;
+      }
+    } catch (e) {
+      developer.log('Error checking app restart: $e', name: 'BRIDGE');
+    }
+    return false;
   }
 
   @override
@@ -591,6 +636,24 @@ class PlatformDispatcherIml implements PlatformDispatcher {
       _eventHandler!(viewId, eventType, eventData);
     } else {
       print('Warning: No event handler registered to process event');
+    }
+  }
+
+  // Completely recreate a view with its full properties
+  Future<bool> recreateView(String viewId, String type, Map<String, dynamic> props) async {
+    try {
+      // First try to delete the view if it exists
+      try {
+        await deleteView(viewId);
+      } catch (e) {
+        // Ignore errors during deletion - view might not exist
+      }
+      
+      // Now create a new view
+      return await createView(viewId, type, props);
+    } catch (e) {
+      developer.log('Failed to recreate view: $e', name: 'BRIDGE');
+      return false;
     }
   }
 }
