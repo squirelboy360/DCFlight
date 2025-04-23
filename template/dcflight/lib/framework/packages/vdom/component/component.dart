@@ -91,7 +91,7 @@ abstract class StatefulComponent extends Component {
   /// Create an effect hook
   void useEffect(Function()? Function() effect,
       {List<dynamic> dependencies = const []}) {
-    final hook = _createHook(() => EffectHook(effect, dependencies));
+   _createHook(() => EffectHook(effect, dependencies));
 
     // Cast to EffectHook to access its methods
     // Don't run effects here - they will be run after render

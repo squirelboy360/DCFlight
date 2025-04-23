@@ -1051,7 +1051,7 @@ class VDom {
             
             if (success) {
               // If the node has children, we need to recreate them too
-              if (node is VDomElement && node.children.isNotEmpty) {
+              if (node.children.isNotEmpty) {
                 developer.log("🔄 Recreating children for view $viewId", name: 'VDom');
                 
                 // Schedule a full subtree recreation by clearing native view IDs
