@@ -63,19 +63,45 @@ class DCMauiEventMethodHandler: NSObject {
     func sendEvent(viewId: String, eventName: String, eventData: [String: Any]) {
         print("📣 Sending event to Dart - viewId: \(viewId), eventName: \(eventName)")
         
+        // Ensure event name follows "on" convention
+        let normalizedEventName = normalizeEventName(eventName)
+        
         if let callback = self.eventCallback {
             // Use the stored callback if available
-            callback(viewId, eventName, eventData)
+            callback(viewId, normalizedEventName, eventData)
         } else if let channel = methodChannel {
             // Fall back to method channel
             channel.invokeMethod("onEvent", arguments: [
                 "viewId": viewId,
-                "eventType": eventName,
+                "eventType": normalizedEventName,
                 "eventData": eventData
             ])
         } else {
             print("❌ No method to send events available")
         }
+    }
+    
+    // Normalize event name to follow React-style convention
+    private func normalizeEventName(_ name: String) -> String {
+        // If already has "on" prefix and it's followed by uppercase letter, return as is
+        if name.hasPrefix("on") && name.count > 2 {
+            let thirdCharIndex = name.index(name.startIndex, offsetBy: 2)
+            if name[thirdCharIndex].isUppercase {
+                return name
+            }
+        }
+        
+        // Otherwise normalize: remove "on" if it exists, capitalize first letter, and add "on" prefix
+        var processedName = name
+        if processedName.hasPrefix("on") {
+            processedName = String(processedName.dropFirst(2))
+        }
+        
+        if processedName.isEmpty {
+            return "onEvent"
+        }
+        
+        return "on\(processedName.prefix(1).uppercased())\(processedName.dropFirst())"
     }
     
     // MARK: - Method handlers
@@ -158,25 +184,32 @@ class DCMauiEventMethodHandler: NSObject {
     private func registerEventListeners(view: UIView, viewId: String, eventTypes: [String]) -> Bool {
         let viewType = String(describing: type(of: view))
         
+        // Normalize event types for consistency
+        let normalizedEventTypes = eventTypes.map { normalizeEventName($0) }
+        
+        print("🔄 Normalizing event types: \(eventTypes) -> \(normalizedEventTypes)")
+        
         // First try to find the component by looking at UI class type
         for (componentType, componentClass) in DCMauiComponentRegistry.shared.componentTypes {
             let tempInstance = componentClass.init()
             let tempView = tempInstance.createView(props: [:])
             
             if String(describing: type(of: tempView)) == viewType {
-                tempInstance.addEventListeners(to: view, viewId: viewId, eventTypes: eventTypes) { [weak self] (viewId, eventType, eventData) in
+                // Use the component's event system - it knows how to handle its own events
+                tempInstance.addEventListeners(to: view, viewId: viewId, eventTypes: normalizedEventTypes) { [weak self] (viewId, eventType, eventData) in
                     print("🔔 Event triggered: \(eventType) for view \(viewId)")
                     self?.sendEvent(viewId: viewId, eventName: eventType, eventData: eventData)
                 }
-                print("✅ Successfully registered events for view \(viewId): \(eventTypes)")
+                print("✅ Successfully registered events for view \(viewId): \(normalizedEventTypes)")
                 return true
             }
         }
         
-        // Fallback to generic event listener for any view type
-        print("⚠️ Using generic event handler for view type \(viewType)")
+        // If no specific component found, store the event registration info on the view
+        // but delegate the actual event handling to components
+        print("⚠️ No specific component found for view type \(viewType) - storing event registration info only")
         
-        // Store event data directly on the view
+        // Store event data directly on the view for lookup
         objc_setAssociatedObject(
             view,
             UnsafeRawPointer(bitPattern: "viewId".hashValue)!,
@@ -187,21 +220,11 @@ class DCMauiEventMethodHandler: NSObject {
         objc_setAssociatedObject(
             view,
             UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!,
-            eventTypes,
+            normalizedEventTypes,
             .OBJC_ASSOCIATION_RETAIN_NONATOMIC
         )
         
-        // For buttons, add a generic handler
-        if let button = view as? UIButton {
-            // Remove any existing targets first to avoid duplicates
-            button.removeTarget(nil, action: nil, for: .touchUpInside)
-            
-            // Add a target for button presses
-            button.addTarget(self, action: #selector(handleButtonPress(_:)), for: .touchUpInside)
-            print("🔘 Added generic button handler for \(viewId)")
-        }
-        
-        print("✅ Successfully registered generic events for view \(viewId): \(eventTypes)")
+        print("✅ Successfully stored event registration for view \(viewId): \(normalizedEventTypes)")
         return true
     }
     
@@ -212,7 +235,8 @@ class DCMauiEventMethodHandler: NSObject {
             var remainingTypes = storedEventTypes
             
             for eventType in eventTypes {
-                if let index = remainingTypes.firstIndex(of: eventType) {
+                let normalizedType = normalizeEventName(eventType)
+                if let index = remainingTypes.firstIndex(of: normalizedType) {
                     remainingTypes.remove(at: index)
                 }
             }
@@ -232,11 +256,6 @@ class DCMauiEventMethodHandler: NSObject {
                     nil,
                     .OBJC_ASSOCIATION_RETAIN_NONATOMIC
                 )
-                
-                // For buttons, remove targets
-                if let button = view as? UIButton {
-                    button.removeTarget(nil, action: nil, for: .touchUpInside)
-                }
             } else {
                 // Update remaining event types
                 objc_setAssociatedObject(
@@ -250,26 +269,5 @@ class DCMauiEventMethodHandler: NSObject {
         
         print("✅ Successfully unregistered events for view \(viewId): \(eventTypes)")
         return true
-    }
-    
-    // MARK: - Button Event Handler
-    
-    @objc private func handleButtonPress(_ sender: UIButton) {
-        guard let viewId = objc_getAssociatedObject(sender, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String,
-              let eventTypes = objc_getAssociatedObject(sender, UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!) as? [String] else {
-            print("⚠️ Button pressed but no viewId or eventTypes found")
-            return
-        }
-        
-        // Check if this button should handle press events
-        if eventTypes.contains("press") {
-            print("👆 Button \(viewId) pressed - sending press event")
-            
-            // Send event
-            sendEvent(viewId: viewId, eventName: "press", eventData: [
-                "pressed": true,
-                "timestamp": Date().timeIntervalSince1970
-            ])
-        }
     }
 }
