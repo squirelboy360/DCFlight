@@ -98,6 +98,8 @@ abstract class StatefulComponent extends Component {
     // via runEffectsAfterRender()
   }
 
+  
+
   /// Create a memo hook
   T useMemo<T>(T Function() compute, {List<dynamic> dependencies = const []}) {
     final hook = _createHook(() => MemoHook<T>(compute, dependencies));
@@ -156,6 +158,28 @@ abstract class StatefulComponent extends Component {
         hook.runEffect();
       }
     }
+  }
+
+  @override
+  String toString() {
+    return '$typeName($instanceId)';
+  }
+}
+
+
+
+/// Stateful component with hooks
+abstract class Stateless extends Component {
+  /// Whether the component is mounted
+  bool _isMounted = false;
+
+  /// Get whether the component is mounted
+  bool get isMounted => _isMounted;
+
+  /// Called when the component is mounted
+  @override
+  void componentDidMount() {
+    _isMounted = true;
   }
 
   @override
