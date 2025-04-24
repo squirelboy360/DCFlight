@@ -23,14 +23,6 @@ class PlatformDispatcherIml implements PlatformDispatcher {
   // Map to store callbacks for each view and event type
   final Map<String, Map<String, Function>> _eventCallbacks = {};
 
-  // App restart tracking
-  String? _currentAppBootId;
-  double? _lastBootTimestamp;
-  bool _isAppRestarted = false;
-
-  // Track whether the app has recently restarted
-  bool get isAppRestarted => _isAppRestarted;
-
   // Sets up communication with native code
   PlatformDispatcherIml() {
     // Set up method channels for events and layout
@@ -55,12 +47,11 @@ class PlatformDispatcherIml implements PlatformDispatcher {
         debugPrint(
             'EVENT RECEIVED FROM NATIVE: $eventType for $viewId with data: $typedEventData');
 
-        // CRITICAL FIX: First try to find the callback in _eventCallbacks
+        // First try to find the callback in _eventCallbacks
         final callback = _eventCallbacks[viewId]?[eventType];
         if (callback != null) {
           try {
-            // CRITICAL FIX: Handle parameter count mismatch by checking function parameters
-            // Get the function's parameter count using reflection
+            // Handle parameter count mismatch by checking function parameters
             final Function func = callback;
             if (func is Function()) {
               // No parameters - just call it directly
@@ -102,49 +93,12 @@ class PlatformDispatcherIml implements PlatformDispatcher {
     try {
       developer.log('Initializing method channel bridge', name: 'BRIDGE');
       final result = await bridgeChannel.invokeMethod<bool>('initialize');
-      
-      // Get app boot info to detect restarts
-      await _checkAppRestart();
-      
       developer.log('Bridge initialization result: $result', name: 'BRIDGE');
       return result ?? false;
     } catch (e) {
       developer.log('Failed to initialize bridge: $e', name: 'BRIDGE');
       return false;
     }
-  }
-
-  // Check if the app has been restarted
-  Future<bool> _checkAppRestart() async {
-    try {
-      final bootInfoJson = await bridgeChannel.invokeMethod<String>('getAppBootInfo');
-      if (bootInfoJson != null) {
-        final bootInfo = json.decode(bootInfoJson);
-        final newBootId = bootInfo['bootId'] as String?;
-        final newBootTimestamp = bootInfo['timestamp'] as double?;
-        
-        if (_currentAppBootId != null && _currentAppBootId != newBootId) {
-          developer.log('🔄 App restart detected! Previous boot ID: $_currentAppBootId, New boot ID: $newBootId',
-                      name: 'BRIDGE');
-          _isAppRestarted = true;
-        } else if (_lastBootTimestamp != null && 
-                 newBootTimestamp != null && 
-                 newBootTimestamp - _lastBootTimestamp! > 1.0) {
-          developer.log('🔄 App restart detected based on timestamp! Gap: ${newBootTimestamp - _lastBootTimestamp!}s',
-                      name: 'BRIDGE');
-          _isAppRestarted = true;
-        }
-        
-        // Store current boot info
-        _currentAppBootId = newBootId;
-        _lastBootTimestamp = newBootTimestamp;
-        
-        return _isAppRestarted;
-      }
-    } catch (e) {
-      developer.log('Error checking app restart: $e', name: 'BRIDGE');
-    }
-    return false;
   }
 
   @override
@@ -168,17 +122,12 @@ class PlatformDispatcherIml implements PlatformDispatcher {
       // Preprocess props to handle special types before encoding to JSON
       final processedProps = _preprocessProps(props);
 
-      developer.log('PROCESSED PROPS BEING SENT: ${jsonEncode(processedProps)}',
-          name: 'BRIDGE_PROPS');
-
       final result = await bridgeChannel.invokeMethod<bool>('createView', {
         'viewId': viewId,
         'viewType': type,
         'props': processedProps,
       });
 
-      developer.log('Method channel createView result: $result',
-          name: 'BRIDGE');
       return result ?? false;
     } catch (e) {
       developer.log('Method channel createView error: $e', name: 'BRIDGE');
@@ -200,90 +149,20 @@ class PlatformDispatcherIml implements PlatformDispatcher {
       return true;
     }
 
-    developer.log(
-        'Method channel updateView: viewId=$viewId, props=$propPatches',
-        name: 'BRIDGE');
-
     try {
       // Process props for updates
       final processedProps = _preprocessProps(propPatches);
 
-      developer.log(
-          'PROCESSED UPDATE PROPS BEING SENT: ${jsonEncode(processedProps)}',
-          name: 'BRIDGE_PROPS');
+      final result = await bridgeChannel.invokeMethod<bool>('updateView', {
+        'viewId': viewId,
+        'props': processedProps,
+      });
 
-      // CRITICAL FIX: Add retry mechanism for view updates
-      bool result = await _attemptViewUpdate(viewId, processedProps);
-      
-      // If update failed and contains text/content props, try again with complete props
-      if (!result && (propPatches.containsKey('content') || propPatches.containsKey('text'))) {
-        developer.log('⚠️ First update attempt failed for view $viewId - trying with complete props refresh',
-            name: 'BRIDGE');
-            
-        // Try recreating the view as a last resort
-        result = await _attemptViewRecreation(viewId, processedProps);
-      }
-
-      developer.log('Method channel updateView result: $result',
-          name: 'BRIDGE');
-      return result;
+      return result ?? false;
     } catch (e) {
       developer.log('Method channel updateView error: $e', name: 'BRIDGE');
       return false;
     }
-  }
-  
-  // Helper method to attempt a view update with retries
-  Future<bool> _attemptViewUpdate(String viewId, Map<String, dynamic> props) async {
-    // First regular attempt
-    final firstAttempt = await bridgeChannel.invokeMethod<bool>('updateView', {
-      'viewId': viewId,
-      'props': props,
-    });
-    
-    if (firstAttempt == true) {
-      return true;
-    }
-    
-    // If first attempt failed, wait briefly then retry once
-    await Future.delayed(const Duration(milliseconds: 50));
-    
-    // Second attempt - send exactly the same data
-    final secondAttempt = await bridgeChannel.invokeMethod<bool>('updateView', {
-      'viewId': viewId,
-      'props': props,
-    });
-    
-    return secondAttempt ?? false;
-  }
-  
-  // Helper method to attempt view recreation as a last resort recovery
-  Future<bool> _attemptViewRecreation(String viewId, Map<String, dynamic> props) async {
-    // Only try this for content/text views since those are most problematic
-    if (props.containsKey('content') || props.containsKey('text')) {
-      // This is a hack to force the native side to ensure the view exists
-      // We first check if the view exists by doing a minimal update
-      final checkResult = await bridgeChannel.invokeMethod<bool>('viewExists', {
-        'viewId': viewId,
-      });
-      
-      if (checkResult == false) {
-        developer.log('🔄 View $viewId does not exist - cannot update',
-            name: 'BRIDGE');
-        return false;
-      }
-      
-      // Try one final update with all props
-      final finalAttempt = await bridgeChannel.invokeMethod<bool>('updateView', {
-        'viewId': viewId,
-        'props': props,
-        'forceRefresh': true,  // Signal native side this is a recovery attempt
-      });
-      
-      return finalAttempt ?? false;
-    }
-    
-    return false;
   }
 
   @override
@@ -375,10 +254,6 @@ class PlatformDispatcherIml implements PlatformDispatcher {
   Future<bool> updateViewLayout(String viewId, double left, double top,
       double width, double height) async {
     try {
-      developer.log(
-          '🔄 LAYOUT UPDATE VIA METHOD CHANNEL: $viewId - left=$left, top=$top, width=$width, height=$height',
-          name: 'LAYOUT');
-
       final result =
           await layoutChannel.invokeMethod<bool>('updateViewLayout', {
         'viewId': viewId,
@@ -389,9 +264,8 @@ class PlatformDispatcherIml implements PlatformDispatcher {
       });
 
       return result ?? false;
-    } catch (e, stack) {
-      developer.log('❌ Error updating view layout: $e',
-          name: 'MethodChannelBridge', error: e, stackTrace: stack);
+    } catch (e) {
+      developer.log('Error updating view layout: $e', name: 'BRIDGE');
       return false;
     }
   }
@@ -399,14 +273,11 @@ class PlatformDispatcherIml implements PlatformDispatcher {
   @override
   Future<bool> calculateLayout() async {
     try {
-      developer.log('🔄 Calculating layout via METHOD CHANNEL', name: 'LAYOUT');
-
       final result =
           await layoutChannel.invokeMethod<bool>('calculateLayout', {});
       return result ?? false;
-    } catch (e, stack) {
-      developer.log('❌ Error calculating layout: $e',
-          name: 'MethodChannelBridge', error: e, stackTrace: stack);
+    } catch (e) {
+      developer.log('Error calculating layout: $e', name: 'BRIDGE');
       return false;
     }
   }
@@ -425,7 +296,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
 
       return result ?? {'success': false, 'error': 'Invalid response'};
     } catch (e) {
-      print("[METHOD_CHANNEL] Error during node hierarchy sync: $e");
+      print("Error during node hierarchy sync: $e");
       return {'success': false, 'error': e.toString()};
     }
   }
@@ -441,7 +312,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
 
       return result ?? {'error': 'Invalid response'};
     } catch (e) {
-      print("[METHOD_CHANNEL] Error getting node hierarchy: $e");
+      print("Error getting node hierarchy: $e");
       return {'error': e.toString()};
     }
   }
@@ -450,9 +321,6 @@ class PlatformDispatcherIml implements PlatformDispatcher {
   Future<Map<String, double>> measureText(
       String viewId, String text, Map<String, dynamic> textAttributes) async {
     try {
-      developer.log('Method channel measureText: viewId=$viewId, text=$text',
-          name: 'BRIDGE');
-
       final result =
           await layoutChannel.invokeMapMethod<String, dynamic>('measureText', {
         'viewId': viewId,
@@ -477,13 +345,10 @@ class PlatformDispatcherIml implements PlatformDispatcher {
   @override
   Future<bool> viewExists(String viewId) async {
     try {
-      developer.log('Checking if view exists: $viewId', name: 'BRIDGE');
-      
       final result = await bridgeChannel.invokeMethod<bool>('viewExists', {
         'viewId': viewId,
       });
       
-      developer.log('View existence check result for $viewId: ${result ?? false}', name: 'BRIDGE');
       return result ?? false;
     } catch (e) {
       developer.log('Error checking view existence: $e', name: 'BRIDGE');
@@ -495,37 +360,24 @@ class PlatformDispatcherIml implements PlatformDispatcher {
   Map<String, dynamic> _preprocessProps(Map<String, dynamic> props) {
     final processedProps = <String, dynamic>{};
 
-    // ADD THIS DETAILED LOGGING:
-    developer.log('PREPROCESSING PROPS: ${props.keys.join(", ")}',
-        name: 'BRIDGE_PROPS');
-
     props.forEach((key, value) {
       if (value is Function) {
         // Handle event handlers
         if (key.startsWith('on')) {
           final eventType = key.substring(2).toLowerCase();
           processedProps['_has${key.substring(2)}Handler'] = true;
-          developer.log('Found function handler for event: $eventType',
-              name: 'BRIDGE');
         }
       } else if (value is Color) {
         // Convert Color objects to hex strings with alpha
         processedProps[key] =
             '#${value.value.toRadixString(16).padLeft(8, '0')}';
-        developer.log('Converting color prop $key to: ${processedProps[key]}',
-            name: 'BRIDGE_PROPS');
       } else if (value == double.infinity) {
         // Convert infinity to 100% string for percentage sizing
         processedProps[key] = '100%';
-        developer.log(
-            'Converting infinity prop $key to: ${processedProps[key]}',
-            name: 'BRIDGE_PROPS');
       } else if (value is String &&
           (value.endsWith('%') || value.startsWith('#'))) {
         // Pass percentage strings and color strings through directly
         processedProps[key] = value;
-        developer.log('Passing through special value: $key=$value',
-            name: 'BRIDGE');
       } else if (key == 'width' ||
           key == 'height' ||
           key.startsWith('margin') ||
@@ -533,14 +385,8 @@ class PlatformDispatcherIml implements PlatformDispatcher {
         // Make sure numeric values go through as doubles for consistent handling
         if (value is num) {
           processedProps[key] = value.toDouble();
-          developer.log(
-              'Converting numeric layout prop $key to double: ${processedProps[key]}',
-              name: 'BRIDGE_PROPS');
         } else {
           processedProps[key] = value;
-          developer.log(
-              'Layout prop $key kept as is: $value (${value.runtimeType})',
-              name: 'BRIDGE_PROPS');
         }
       } else if (value != null) {
         processedProps[key] = value;
@@ -605,16 +451,14 @@ class PlatformDispatcherIml implements PlatformDispatcher {
     return true;
   }
 
-  // Implement the new methods for debug features
   @override
   Future<bool> setVisualDebugEnabled(bool enabled) async {
     try {
-      // Use layoutChannel for debug features
       await layoutChannel
           .invokeMethod('setVisualDebugEnabled', {'enabled': enabled});
       return true;
     } catch (e) {
-      print("[METHOD_CHANNEL] Error enabling visual debugging: $e");
+      print("Error enabling visual debugging: $e");
       return false;
     }
   }
@@ -629,31 +473,11 @@ class PlatformDispatcherIml implements PlatformDispatcher {
   @override
   void handleNativeEvent(
       String viewId, String eventType, Map<String, dynamic> eventData) {
-    print(
-        'Native event received: $eventType for $viewId with data: $eventData');
     // Find registered callback for this view and event
     if (_eventHandler != null) {
       _eventHandler!(viewId, eventType, eventData);
     } else {
       print('Warning: No event handler registered to process event');
-    }
-  }
-
-  // Completely recreate a view with its full properties
-  Future<bool> recreateView(String viewId, String type, Map<String, dynamic> props) async {
-    try {
-      // First try to delete the view if it exists
-      try {
-        await deleteView(viewId);
-      } catch (e) {
-        // Ignore errors during deletion - view might not exist
-      }
-      
-      // Now create a new view
-      return await createView(viewId, type, props);
-    } catch (e) {
-      developer.log('Failed to recreate view: $e', name: 'BRIDGE');
-      return false;
     }
   }
 }

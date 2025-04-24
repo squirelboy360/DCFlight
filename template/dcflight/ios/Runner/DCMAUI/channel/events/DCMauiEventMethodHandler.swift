@@ -262,11 +262,11 @@ class DCMauiEventMethodHandler: NSObject {
         }
         
         // Check if this button should handle press events
-        if eventTypes.contains("onPress") {
-            print("👆 Button \(viewId) pressed - sending onPress event")
+        if eventTypes.contains("press") {
+            print("👆 Button \(viewId) pressed - sending press event")
             
             // Send event
-            sendEvent(viewId: viewId, eventName: "onPress", eventData: [
+            sendEvent(viewId: viewId, eventName: "press", eventData: [
                 "pressed": true,
                 "timestamp": Date().timeIntervalSince1970
             ])

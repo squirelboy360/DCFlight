@@ -53,7 +53,6 @@ class DCMauiLayoutMethodHandler: NSObject {
     
     // Calculate layout for the entire view hierarchy
     private func handleCalculateLayout(_ args: [String: Any], result: @escaping FlutterResult) {
-        
         // Use dedicated layout background queue - never on UI thread
         DispatchQueue(label: "com.dcmaui.layoutCalculation", qos: .userInitiated).async {
             // Calculate layout
@@ -71,8 +70,8 @@ class DCMauiLayoutMethodHandler: NSObject {
         guard let viewId = args["viewId"] as? String,
               let left = args["left"] as? CGFloat,
               let top = args["top"] as? CGFloat,
-              let width = frame.width  as? CGFloat,
-              let height = frame.height as? CGFloat else {
+              let width = args["width"] as? CGFloat,
+              let height = args["height"] as? CGFloat else {
             result(FlutterError(code: "LAYOUT_ERROR", message: "Invalid layout parameters", details: nil))
             return
         }
