@@ -486,42 +486,7 @@ import Foundation
         return success
     }
     
-    /// Measure text
-    @objc func measureText(viewId: String, text: String, attributesJson: String) -> String {
-        NSLog("DCMauiFFIBridge: measureText called for \(viewId)")
-        
-        // Parse attributes JSON
-        guard let attributesData = attributesJson.data(using: .utf8),
-              let attributes = try? JSONSerialization.jsonObject(with: attributesData, options: []) as? [String: Any] else {
-            return "{\"width\":0.0,\"height\":0.0}"
-        }
-        
-        // Get the view
-        guard let view = self.views[viewId] else {
-            NSLog("View not found with ID: \(viewId)")
-            return "{\"width\":0.0,\"height\":0.0}"
-        }
-        
-        // Find component type for this view class
-        let viewClassName = String(describing: type(of: view))
-        var size = CGSize.zero
-        
-        // Try to find component based on view class
-        for (_, componentType) in DCMauiComponentRegistry.shared.componentTypes {
-            let tempInstance = componentType.init()
-            let tempView = tempInstance.createView(props: [:])
-            
-            if String(describing: type(of: tempView)) == viewClassName {
-                // Found matching component, use it to measure text
-                let props = attributes.merging(["text": text]) { (_, new) in new }
-                size = tempInstance.getIntrinsicSize(view, forProps: props)
-                break
-            }
-        }
-        
-        // Convert result to JSON
-        return "{\"width\":\(size.width),\"height\":\(size.height)}"
-    }
+ 
     
     // Sync method exposed to Dart to verify node hierarchy consistency
     @objc func syncNodeHierarchy(rootId: String, nodeTreeJson: String) -> String {

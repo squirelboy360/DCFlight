@@ -10,7 +10,6 @@ import 'package:dcflight/framework/packages/vdom/component/component_node.dart';
 import 'package:dcflight/framework/packages/vdom/component/context.dart';
 import 'package:dcflight/framework/packages/vdom/component/error_boundary.dart';
 import 'package:dcflight/framework/packages/vdom/vdom_element.dart';
-import 'package:dcflight/framework/utilities/debug_tools.dart';
 import 'package:dcflight/framework/utilities/screen_utilities.dart';
 
 import '../../constants/yoga_enums.dart';
@@ -178,8 +177,6 @@ class VDom {
   /// Node synchronization manager
   late final VDomNodeSync _nodeSync;
 
-  /// Debug tools for VDOM
-  late final VDomDebugTools debugTools;
 
   /// Create a new VDom instance
   VDom() {
@@ -210,8 +207,7 @@ class VDom {
       // Initialize node sync
       _nodeSync = VDomNodeSync(this, _nativeBridge);
 
-      // Initialize debug tools
-      debugTools = VDomDebugTools(this, _nativeBridge);
+  
 
       // Mark as ready
       _readyCompleter.complete();

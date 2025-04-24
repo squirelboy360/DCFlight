@@ -39,7 +39,7 @@ class VDomNodeSync {
       // Get the native-side hierarchy and compare
       final result = await _nativeBridge.syncNodeHierarchy(
           rootId: rootId,
-          nodeTree: jsonEncode(hierarchy)); // Fixed parameter name
+          nodeTree: jsonEncode(hierarchy)); 
 
       // Store last results
       _lastSyncResults = result;

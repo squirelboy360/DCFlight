@@ -40,8 +40,6 @@ class DCMauiLayoutMethodHandler: NSObject {
         case "updateViewLayout":
             handleUpdateViewLayout(args, result: result)
             
-        case "measureText":
-            handleMeasureText(args, result: result)
             
         case "getScreenDimensions":
             handleGetScreenDimensions(result: result)
@@ -87,36 +85,7 @@ class DCMauiLayoutMethodHandler: NSObject {
         
         result(success)
     }
-    
-    // Measure text dimensions
-    private func handleMeasureText(_ args: [String: Any], result: @escaping FlutterResult) {
-        guard let viewId = args["viewId"] as? String,
-              let text = args["text"] as? String else {
-            result(FlutterError(code: "MEASURE_ERROR", message: "Invalid measurement parameters", details: nil))
-            return
-        }
-        
-        // Extract attributes
-        let attributes = args["attributes"] as? [String: Any] ?? [:]
-        
-        // JSON encode the attributes
-        guard let attributesData = try? JSONSerialization.data(withJSONObject: attributes),
-              let attributesJson = String(data: attributesData, encoding: .utf8) else {
-            result(FlutterError(code: "MEASURE_ERROR", message: "Invalid attributes", details: nil))
-            return
-        }
-        
-        // Measure text - this is UI operation so do on main thread
-        DispatchQueue.main.async {
-            let measurement = DCMauiNativeBridgeCoordinator.shared.measureText(
-                viewId: viewId,
-                text: text,
-                attributesJson: attributesJson
-            )
-            
-            result(measurement)
-        }
-    }
+
     
     // Get screen dimensions
     private func handleGetScreenDimensions(result: @escaping FlutterResult) {

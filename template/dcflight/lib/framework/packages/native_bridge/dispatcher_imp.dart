@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'dispatcher.dart';
@@ -27,7 +26,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
   PlatformDispatcherIml() {
     // Set up method channels for events and layout
     _setupMethodChannelEventHandling();
-    print('Method channel bridge initialized');
+    debugPrint('Method channel bridge initialized');
   }
 
   // Set up method channel for event handling
@@ -145,7 +144,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
         'viewId': viewId,
         'props': propPatches,
       });
-      print("executing diffed props to native side $propPatches for view id: $viewId");
+      debugPrint("executing diffed props to native side $propPatches for view id: $viewId");
       return true;
     }
 
@@ -209,7 +208,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
 
   @override
   Future<bool> addEventListeners(String viewId, List<String> eventTypes) async {
-    print('Registering for events: $viewId, $eventTypes');
+    debugPrint('Registering for events: $viewId, $eventTypes');
 
     // Using method channel for events
     try {
@@ -217,10 +216,10 @@ class PlatformDispatcherIml implements PlatformDispatcher {
         'viewId': viewId,
         'eventTypes': eventTypes,
       });
-      print('Successfully registered events for view $viewId: $eventTypes');
+      debugPrint('Successfully registered events for view $viewId: $eventTypes');
       return true;
     } catch (e) {
-      print('Error registering events: $e');
+      debugPrint('Error registering events: $e');
       return false;
     }
   }
@@ -296,7 +295,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
 
       return result ?? {'success': false, 'error': 'Invalid response'};
     } catch (e) {
-      print("Error during node hierarchy sync: $e");
+      debugPrint("Error during node hierarchy sync: $e");
       return {'success': false, 'error': e.toString()};
     }
   }
@@ -312,36 +311,12 @@ class PlatformDispatcherIml implements PlatformDispatcher {
 
       return result ?? {'error': 'Invalid response'};
     } catch (e) {
-      print("Error getting node hierarchy: $e");
+      debugPrint("Error getting node hierarchy: $e");
       return {'error': e.toString()};
     }
   }
 
-  @override
-  Future<Map<String, double>> measureText(
-      String viewId, String text, Map<String, dynamic> textAttributes) async {
-    try {
-      final result =
-          await layoutChannel.invokeMapMethod<String, dynamic>('measureText', {
-        'viewId': viewId,
-        'text': text,
-        'attributes': textAttributes,
-      });
-
-      if (result == null) {
-        return {'width': 0.0, 'height': 0.0};
-      }
-
-      return {
-        'width': (result['width'] as num).toDouble(),
-        'height': (result['height'] as num).toDouble(),
-      };
-    } catch (e) {
-      developer.log('Method channel measureText error: $e', name: 'BRIDGE');
-      return {'width': 0.0, 'height': 0.0};
-    }
-  }
-
+  
   @override
   Future<bool> viewExists(String viewId) async {
     try {
@@ -364,7 +339,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
       if (value is Function) {
         // Handle event handlers
         if (key.startsWith('on')) {
-          final eventType = key.substring(2).toLowerCase();
+          key.substring(2).toLowerCase();
           processedProps['_has${key.substring(2)}Handler'] = true;
         }
       } else if (value is Color) {
@@ -402,7 +377,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
     try {
       return await bridgeChannel.invokeMethod(method, arguments);
     } catch (e) {
-      print('Error invoking method $method: $e');
+      debugPrint('Error invoking method $method: $e');
       return null;
     }
   }
@@ -458,7 +433,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
           .invokeMethod('setVisualDebugEnabled', {'enabled': enabled});
       return true;
     } catch (e) {
-      print("Error enabling visual debugging: $e");
+      debugPrint("Error enabling visual debugging: $e");
       return false;
     }
   }
@@ -477,7 +452,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
     if (_eventHandler != null) {
       _eventHandler!(viewId, eventType, eventData);
     } else {
-      print('Warning: No event handler registered to process event');
+      debugPrint('Warning: No event handler registered to process event');
     }
   }
 }

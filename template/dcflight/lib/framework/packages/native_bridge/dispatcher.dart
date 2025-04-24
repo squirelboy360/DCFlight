@@ -51,10 +51,6 @@ abstract class PlatformDispatcher {
       {required String rootId, required String nodeTree});
   Future<Map<String, dynamic>> getNodeHierarchy({required String nodeId});
 
-  // Text measurement
-  Future<Map<String, double>> measureText(
-      String viewId, String text, Map<String, dynamic> textAttributes);
-
   // Method invocation
   Future<dynamic> invokeMethod(String method,
       [Map<String, dynamic>? arguments]);
