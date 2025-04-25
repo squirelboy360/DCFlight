@@ -169,7 +169,7 @@ abstract class StatefulComponent extends Component {
 
 
 /// Stateful component with hooks
-abstract class Stateless extends Component {
+abstract class StatelessComponent extends Component {
   /// Whether the component is mounted
   bool _isMounted = false;
 
