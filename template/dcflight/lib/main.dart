@@ -7,6 +7,7 @@ import 'framework/components/comp_props/text_props.dart';
 import 'framework/components/comp_props/button_props.dart';
 import 'framework/components/comp_props/image_props.dart'; // Added ImageProps
 import 'framework/components/comp_props/scroll_view_props.dart'; // Added ScrollViewProps
+import 'framework/components/refs/scrollview_ref.dart'; // Import ScrollViewRef
 import 'framework/components/dc_ui.dart';
 import 'framework/constants/layout_properties.dart';
 import 'framework/constants/style_properties.dart';
@@ -21,6 +22,8 @@ class GalleryApp extends StatefulComponent {
   UIComponent render() {
     // State hook for selected tab index
     final selectedTab = useState(0);
+    // Ref hook for the ScrollView
+    final scrollRef = useRef<ScrollViewRef?>(null); 
 
     // Define tab content builders
     UIComponent buildTabContent(int index) {
@@ -57,8 +60,9 @@ class GalleryApp extends StatefulComponent {
       });
 
       return DC.ScrollView(
+        // Pass the ref's current value to the ScrollView
+        scrollViewProps: ScrollViewProps(scrollEnabled: true, ref: scrollRef.value),
         layout: LayoutProps(flex: 1),
-        scrollViewProps: ScrollViewProps(scrollEnabled: true),
         children: [
           DC.View(
             layout: LayoutProps(
@@ -80,6 +84,8 @@ class GalleryApp extends StatefulComponent {
       return DC.Button(
         onPress: () {
           selectedTab.setValue(index);
+          // Scroll to top when tab changes
+          scrollRef.value?.scrollToTop(animated: false);
           print("Selected tab: $index");
         },
         layout: LayoutProps(
@@ -105,51 +111,112 @@ class GalleryApp extends StatefulComponent {
       ),
       style: StyleSheet(backgroundColor: Colors.black), // Overall background
       children: [
-        // App Bar
+        // Wrap existing content to allow absolute positioning of FAB
         DC.View(
-          layout: LayoutProps(
-            height: 60, // Fixed height for app bar
-            paddingHorizontal: 15,
-            paddingTop: ScreenUtilities.instance.statusBarHeight,
-            flexDirection: YogaFlexDirection.row,
-
-            alignItems: YogaAlign.center,
-            justifyContent: YogaJustifyContent
-                .spaceBetween, // Title left, actions right (if any)
-          ),
-          style: StyleSheet(backgroundColor: Colors.deepPurpleAccent),
+          layout: LayoutProps(flex: 1), // Takes up all space except FAB
           children: [
-            DC.Text(
-              content: "My Gallery",
-              textProps: TextProps(
-                  fontSize: 20, color: Colors.white, fontWeight: 'bold'),
+            // App Bar
+            DC.View(
+              layout: LayoutProps(
+                height: 60, // Fixed height for app bar
+                paddingHorizontal: 15,
+                paddingTop: ScreenUtilities.instance.statusBarHeight,
+                flexDirection: YogaFlexDirection.row,
+                alignItems: YogaAlign.center,
+                justifyContent: YogaJustifyContent
+                    .spaceBetween, // Title left, actions right (if any)
+              ),
+              style: StyleSheet(backgroundColor: Colors.deepPurpleAccent),
+              children: [
+                DC.Text(
+                  content: "My Gallery",
+                  textProps: TextProps(
+                      fontSize: 20, color: Colors.white, fontWeight: 'bold'),
+                ),
+              ],
+            ),
+
+            // Content Area
+            DC.View(
+              layout: LayoutProps(
+                flex: 1, // Takes remaining vertical space
+              ),
+              children: [
+                buildTabContent(selectedTab.value), // Dynamically show content
+              ],
+            ),
+
+            // Tab Bar
+            DC.View(
+              layout: LayoutProps(
+                height: 50,
+                flexDirection: YogaFlexDirection.row, // Arrange tabs horizontally
+                justifyContent: YogaJustifyContent.spaceAround, // Distribute tabs
+                alignItems: YogaAlign.stretch, // Stretch buttons vertically
+              ),
+              style: StyleSheet(backgroundColor: Colors.deepPurpleAccent[900]),
+              children: [
+                buildTabButton("Nature", 0), // Updated title
+                buildTabButton("Cities", 1), // Updated title
+                buildTabButton("Animals", 2), // Updated title
+              ],
             ),
           ],
         ),
 
-        // Content Area
+        // Floating Action Button Container
         DC.View(
           layout: LayoutProps(
-            flex: 1, // Takes remaining vertical space
+            marginBottom: '20%',
+            position: YogaPositionType.absolute, // Absolute positioning
+            bottom: 70, // Position from bottom (above tab bar)
+            right: 20, // Position from right
+            flexDirection: YogaFlexDirection.column, // Stack buttons vertically
+            alignItems: YogaAlign.flexEnd, // Align buttons to the right
           ),
           children: [
-            buildTabContent(selectedTab.value), // Dynamically show content
-          ],
-        ),
-
-        // Tab Bar
-        DC.View(
-          layout: LayoutProps(
-            height: 50,
-            flexDirection: YogaFlexDirection.row, // Arrange tabs horizontally
-            justifyContent: YogaJustifyContent.spaceAround, // Distribute tabs
-            alignItems: YogaAlign.stretch, // Stretch buttons vertically
-          ),
-          style: StyleSheet(backgroundColor: Colors.deepPurpleAccent[900]),
-          children: [
-            buildTabButton("Nature", 0), // Updated title
-            buildTabButton("Cities", 1), // Updated title
-            buildTabButton("Animals", 2), // Updated title
+            // Scroll to Top Button
+            DC.Button(
+              onPress: () {
+                print("Scrolling to top...");
+                scrollRef.value?.scrollToBottom(); // Use the ref
+              },
+              layout: LayoutProps(
+                width: 56,
+                height: 56,
+                marginBottom: 10, // Space between buttons
+                justifyContent: YogaJustifyContent.center,
+                alignItems: YogaAlign.center,
+              ),
+              style: StyleSheet(
+                backgroundColor: Colors.pinkAccent,
+                borderRadius: 28, // Make it circular
+              ),
+              buttonProps: ButtonProps(
+                title: "Top", // Simple text for now
+                // You might need specific TextProps for color/size if ButtonProps supports it
+              ),
+            ),
+            // Scroll to Bottom Button
+            DC.Button(
+              onPress: () {
+                print("Scrolling to bottom...");
+                scrollRef.value?.scrollToBottom(); // Use the ref
+              },
+              layout: LayoutProps(
+                width: 56,
+                height: 56,
+                justifyContent: YogaJustifyContent.center,
+                alignItems: YogaAlign.center,
+              ),
+              style: StyleSheet(
+                backgroundColor: Colors.pinkAccent,
+                borderRadius: 28, // Make it circular
+              ),
+              buttonProps: ButtonProps(
+                title: "End", // Simple text for now
+              ),
+            ),
           ],
         ),
       ],
