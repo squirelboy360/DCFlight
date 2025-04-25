@@ -8,12 +8,6 @@ class ScrollViewProps {
   /// Whether the scroll view scrolls horizontally
   final bool? horizontal;
 
-  /// Content width for the scroll view
-  final double? contentWidth;
-
-  /// Content height for the scroll view
-  final double? contentHeight;
-
   /// Whether to show horizontal scroll indicator
   final bool? showsHorizontalScrollIndicator;
 
@@ -62,8 +56,6 @@ class ScrollViewProps {
   ScrollViewProps({
     this.ref,
     this.horizontal,
-    this.contentWidth,
-    this.contentHeight,
     this.showsHorizontalScrollIndicator,
     this.showsVerticalScrollIndicator,
     this.bounces,
@@ -87,8 +79,6 @@ class ScrollViewProps {
 
     // ref is not sent to native, it's used on the Dart side
     if (horizontal != null) map['horizontal'] = horizontal;
-    if (contentWidth != null) map['contentWidth'] = contentWidth;
-    if (contentHeight != null) map['contentHeight'] = contentHeight;
     if (showsHorizontalScrollIndicator != null) {
       map['showsHorizontalScrollIndicator'] = showsHorizontalScrollIndicator;
     }
@@ -123,8 +113,6 @@ class ScrollViewProps {
     return ScrollViewProps(
       ref: other.ref ?? ref,
       horizontal: other.horizontal ?? horizontal,
-      contentWidth: other.contentWidth ?? contentWidth,
-      contentHeight: other.contentHeight ?? contentHeight,
       showsHorizontalScrollIndicator: other.showsHorizontalScrollIndicator ??
           showsHorizontalScrollIndicator,
       showsVerticalScrollIndicator:
@@ -149,8 +137,6 @@ class ScrollViewProps {
   ScrollViewProps copyWith({
     ScrollViewRef? ref,
     bool? horizontal,
-    double? contentWidth,
-    double? contentHeight,
     bool? showsHorizontalScrollIndicator,
     bool? showsVerticalScrollIndicator,
     bool? bounces,
@@ -170,8 +156,6 @@ class ScrollViewProps {
     return ScrollViewProps(
       ref: ref ?? this.ref,
       horizontal: horizontal ?? this.horizontal,
-      contentWidth: contentWidth ?? this.contentWidth,
-      contentHeight: contentHeight ?? this.contentHeight,
       showsHorizontalScrollIndicator:
           showsHorizontalScrollIndicator ?? this.showsHorizontalScrollIndicator,
       showsVerticalScrollIndicator:

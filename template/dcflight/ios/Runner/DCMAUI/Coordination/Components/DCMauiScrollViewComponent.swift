@@ -46,6 +46,8 @@ class DCMauiScrollViewComponent: NSObject, DCMauiComponent {
         if let pagingEnabled = props["pagingEnabled"] as? Bool {
             scrollView.isPagingEnabled = pagingEnabled
         }
+
+        // REMOVED contentWidth and contentHeight handling
         
         // Handle contentInset if specified
         if let topInset = props["contentInsetTop"] as? CGFloat,
@@ -55,11 +57,70 @@ class DCMauiScrollViewComponent: NSObject, DCMauiComponent {
             scrollView.contentInset = UIEdgeInsets(top: topInset, left: leftInset, bottom: bottomInset, right: rightInset)
         }
         
+        // Handle scrollEnabled
+        if let scrollEnabled = props["scrollEnabled"] as? Bool {
+            scrollView.isScrollEnabled = scrollEnabled
+        }
+
+        // Handle scroll event throttle
+        if let throttle = props["scrollEventThrottle"] as? Double {
+            // Store throttle value on the view using associated object
+            objc_setAssociatedObject(
+                scrollView,
+                UnsafeRawPointer(bitPattern: "scrollEventThrottle".hashValue)!,
+                throttle,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+        }
+
+        // Register/Unregister delegate based on event listeners
+        let eventProps = props.filter { $0.key.starts(with: "onScroll") || $0.key.starts(with: "onMomentum") }
+        if !eventProps.isEmpty {
+            ScrollViewDelegateHandler.shared.registerScrollView(scrollView)
+        } else {
+            // Consider if unregistering is needed if props are removed later
+            // ScrollViewDelegateHandler.shared.unregisterScrollView(scrollView)
+        }
+        
         return true
     }
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
+        guard let scrollView = view as? UIScrollView else { return }
+
+        // Apply frame layout to the scroll view itself
+        scrollView.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
+
+        // Calculate content size based on the layout of children
+        // This assumes the direct child of the ScrollView in Yoga represents the content
+        var contentWidth: CGFloat = 0
+        var contentHeight: CGFloat = 0
+
+        // Find the immediate child view (assuming one content container view)
+        if let contentView = scrollView.subviews.first {
+            // Use the frame calculated by Yoga for the content view
+            // The frame's origin might not be (0,0) relative to the scrollview,
+            // so contentSize needs bottom-right corner.
+            contentWidth = contentView.frame.origin.x + contentView.frame.width
+            contentHeight = contentView.frame.origin.y + contentView.frame.height
+        } else {
+            // Fallback if no child view, use scrollview's bounds (no scrolling)
+            contentWidth = layout.width
+            contentHeight = layout.height
+        }
+        
+        // Ensure contentSize is at least the size of the scroll view's bounds
+        contentWidth = max(contentWidth, layout.width)
+        contentHeight = max(contentHeight, layout.height)
+
+        // Update contentSize if it has changed
+        if scrollView.contentSize.width != contentWidth || scrollView.contentSize.height != contentHeight {
+            print("🔄 Updating ScrollView contentSize: w=\(contentWidth), h=\(contentHeight)")
+            // Apply contentSize update on the main thread
+            DispatchQueue.main.async {
+                 scrollView.contentSize = CGSize(width: contentWidth, height: contentHeight)
+            }
+        }
     }
     
     // MARK: - Component Method Handlers
@@ -193,59 +254,5 @@ class ScrollViewDelegateHandler: NSObject, UIScrollViewDelegate {
 
         // Send event using the registered callback with "onScroll"
         callback(viewId, "onScroll", eventData)
-    }
-
-    // --- START EVENT DELEGATE FIXES ---
-    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
-        sendScrollEvent(scrollView, eventName: "onScrollBeginDrag")
-    }
-
-    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
-        sendScrollEvent(scrollView, eventName: "onScrollEndDrag", additionalData: ["decelerate": decelerate])
-    }
-
-    func scrollViewWillBeginDecelerating(_ scrollView: UIScrollView) {
-        // Corresponds to onMomentumScrollBegin
-        sendScrollEvent(scrollView, eventName: "onMomentumScrollBegin")
-    }
-
-    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
-        // Corresponds to onMomentumScrollEnd
-        sendScrollEvent(scrollView, eventName: "onMomentumScrollEnd")
-    }
-    // --- END EVENT DELEGATE FIXES ---
-
-    // Helper to send scroll events
-    private func sendScrollEvent(_ scrollView: UIScrollView, eventName: String, additionalData: [String: Any] = [:]) {
-        guard let (viewId, callback) = scrollViewCallbacks[scrollView] else {
-             print("⚠️ Cannot send scroll event '\(eventName)': Callback not found for ScrollView \(scrollView.getNodeId() ?? "unknown")")
-             return
-        }
-
-        // Create base event data
-        var eventData: [String: Any] = [
-            "contentOffset": [
-                "x": scrollView.contentOffset.x,
-                "y": scrollView.contentOffset.y
-            ],
-             "contentSize": [ // Include contentSize
-                "width": scrollView.contentSize.width,
-                "height": scrollView.contentSize.height
-            ],
-            "layoutMeasurement": [ // Include bounds
-                "width": scrollView.bounds.width,
-                "height": scrollView.bounds.height
-            ],
-            "timestamp": Date().timeIntervalSince1970 * 1000 // ms
-        ]
-
-        // Add additional data
-        for (key, value) in additionalData {
-            eventData[key] = value
-        }
-
-        // Send event using the callback
-        callback(viewId, eventName, eventData)
-        print("🚀 Sent scroll event '\(eventName)' for ScrollView \(viewId)")
     }
 }
