@@ -4,6 +4,8 @@ import 'framework/packages/vdom/vdom_node.dart';
 import 'framework/packages/vdom/component/component.dart';
 import 'framework/components/comp_props/text_props.dart';
 import 'framework/components/comp_props/button_props.dart';
+import 'framework/components/comp_props/image_props.dart'; // Added ImageProps
+import 'framework/components/comp_props/scroll_view_props.dart'; // Added ScrollViewProps
 import 'framework/components/dc_ui.dart';
 import 'framework/constants/layout_properties.dart';
 import 'framework/constants/style_properties.dart';
@@ -21,36 +23,49 @@ class GalleryApp extends StatefulComponent {
 
     // Define tab content builders
     UIComponent buildTabContent(int index) {
-      String contentText;
-      Color bgColor;
+      String category;
       switch (index) {
         case 0:
-          contentText = "Photos Tab Content";
-          bgColor = Colors.blueGrey;
+          category = "nature";
           break;
         case 1:
-          contentText = "Albums Tab Content";
-          bgColor = Colors.teal;
+          category = "city";
           break;
         case 2:
-          contentText = "Search Tab Content";
-          bgColor = Colors.orange;
+          category = "animals";
           break;
         default:
-          contentText = "Unknown Tab";
-          bgColor = Colors.grey;
+          category = "abstract";
       }
-      return DC.View(
-        layout: LayoutProps(
-          flex: 1,
-          justifyContent: YogaJustifyContent.center,
-          alignItems: YogaAlign.center,
-        ),
-        style: StyleSheet(backgroundColor: bgColor),
+
+      // Generate a list of image components
+      final List<UIComponent> images = List.generate(100, (i) {
+        // Use different seeds for variety
+        final seed = "${category}_$i";
+        final imageUrl = "https://picsum.photos/seed/$seed/100/100";
+        return DC.Image(
+          imageProps: ImageProps(source: imageUrl), // Corrected back to 'source'
+          layout: LayoutProps(
+            width: 100,
+            height: 100,
+            margin: 5, // Add some spacing between images
+          ),
+          style: StyleSheet(backgroundColor: Colors.grey[800]), // Placeholder bg
+        );
+      });
+
+      return DC.ScrollView(
+        layout: LayoutProps(flex: 1), // ScrollView should take available space
+        scrollViewProps: ScrollViewProps(), // Basic ScrollView props
         children: [
-          DC.Text(
-            content: contentText,
-            textProps: TextProps(fontSize: 20, color: Colors.white),
+          DC.View(
+            layout: LayoutProps(
+              flexDirection: YogaFlexDirection.row, // Arrange images horizontally
+              flexWrap: YogaWrap.wrap, // Allow images to wrap to the next line
+              justifyContent: YogaJustifyContent.center, // Center images horizontally
+              padding: 10,
+            ),
+            children: images, // Add the list of images
           ),
         ],
       );
@@ -75,8 +90,6 @@ class GalleryApp extends StatefulComponent {
         ),
         buttonProps: ButtonProps(
           title: title,
-          // Assuming ButtonProps can take text color, otherwise wrap DC.Text
-          // For simplicity, using default button text color for now.
         ),
       );
     }
@@ -103,7 +116,6 @@ class GalleryApp extends StatefulComponent {
               content: "My Gallery",
               textProps: TextProps(fontSize: 20, color: Colors.white, fontWeight: 'bold'),
             ),
-            // Add potential action buttons here if needed
           ],
         ),
 
@@ -127,9 +139,9 @@ class GalleryApp extends StatefulComponent {
           ),
           style: StyleSheet(backgroundColor: Colors.blueGrey[900]),
           children: [
-            buildTabButton("Photos", 0),
-            buildTabButton("Albums", 1),
-            buildTabButton("Search", 2),
+            buildTabButton("Nature", 0), // Updated title
+            buildTabButton("Cities", 1), // Updated title
+            buildTabButton("Animals", 2), // Updated title
           ],
         ),
       ],
