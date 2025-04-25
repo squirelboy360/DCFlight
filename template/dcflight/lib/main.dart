@@ -1,5 +1,6 @@
 import 'package:dcflight/framework/utilities/entry.dart';
 import 'package:dcflight/framework/utilities/flutter.dart'; // Assuming Color and Colors are defined here
+import 'package:dcflight/framework/utilities/screen_utilities.dart';
 import 'framework/packages/vdom/vdom_node.dart';
 import 'framework/packages/vdom/component/component.dart';
 import 'framework/components/comp_props/text_props.dart';
@@ -18,133 +19,117 @@ void main() {
 class GalleryApp extends StatefulComponent {
   @override
   UIComponent render() {
-    // State hook for selected tab index
-    final selectedTab = useState(0);
+  
 
-    // Define tab content builders
-    UIComponent buildTabContent(int index) {
-      String category;
-      switch (index) {
-        case 0:
-          category = "nature";
-          break;
-        case 1:
-          category = "city";
-          break;
-        case 2:
-          category = "animals";
-          break;
-        default:
-          category = "abstract";
-      }
 
-      // Generate a list of image components
-      final List<UIComponent> images = List.generate(100, (i) {
-        // Use different seeds for variety
-        final seed = "${category}_$i";
-        final imageUrl = "https://picsum.photos/seed/$seed/100/100";
-        return DC.Image(
-          imageProps: ImageProps(source: imageUrl), 
-          layout: LayoutProps(
-            width: 100,
-            height: 100,
-            margin: 5, 
-          ),
-          style: StyleSheet(backgroundColor: Colors.grey[800]), // Placeholder bg
-        );
-      });
-
-      return DC.ScrollView(
-        layout: LayoutProps(flex: 1), 
-        scrollViewProps: ScrollViewProps(),
-        children: [
-          DC.View(
-            layout: LayoutProps(
-              flexDirection: YogaFlexDirection.row, 
-              flexWrap: YogaWrap.wrap, 
-              justifyContent: YogaJustifyContent.center, // Center images horizontally
-              padding: 10,
-            ),
-            children: images, // Add the list of images
-          ),
-        ],
-      );
-    }
-
-    // Define tab bar button builder
-    UIComponent buildTabButton(String title, int index) {
-      final isSelected = selectedTab.value == index;
-      return DC.Button(
-        onPress: () {
-          selectedTab.setValue(index);
-          print("Selected tab: $index");
-        },
-        layout: LayoutProps(
-          flex: 1, // Distribute space evenly
-          padding: 10,
-          justifyContent: YogaJustifyContent.center,
-          alignItems: YogaAlign.center,
-        ),
-        style: StyleSheet(
-          backgroundColor: isSelected ? Colors.blueAccent : Colors.blueGrey[700],
-        ),
-        buttonProps: ButtonProps(
-          title: title,
-        ),
-      );
-    }
+    // Calculate image dimensions - 2 columns with padding
+    final screenWidth = ScreenUtilities.instance.screenWidth;
+    final imageSize = (screenWidth / 2) - 24; // Account for padding
 
     return DC.View(
       layout: LayoutProps(
-        flex: 1, // Take full screen height
-        flexDirection: YogaFlexDirection.column, 
+        width: imageSize,
+        height: imageSize,
+        margin: 8,
       ),
-      style: StyleSheet(backgroundColor: Colors.black), // Overall background
+      style: StyleSheet(
+        backgroundColor: Colors.white,
+        borderRadius: 8,
+        shadowColor: Colors.black,
+        shadowOffsetX: 0,
+        shadowOffsetY: 2,
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+      ),
       children: [
-        // App Bar
+        DC.Image(
+          layout: LayoutProps(
+            width: '100%',
+            height: '100%',
+          ),
+          style: StyleSheet(
+            borderRadius: 8,
+          ),
+          imageProps: ImageProps(
+            source: url,
+            resizeMode: "cover",
+          ),
+        ),
+      ],
+    );
+  }}
+
+
+  // Gallery tab content
+  UIComponent renderGalleryTab() {
+    final images = [
+      "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?ixlib=rb-4.0.3&w=800&q=80",
+      "https://images.unsplash.com/photo-1568748141681-ccf431079c0c?ixlib=rb-4.0.3&w=800&q=80",
+      "https://images.unsplash.com/photo-1559583985-c80d8ad9b29f?ixlib=rb-4.0.3&w=800&q=80",
+      "https://images.unsplash.com/photo-1565214975484-3cfa9e56f914?ixlib=rb-4.0.3&w=800&q=80",
+      "https://images.unsplash.com/photo-1493612276216-ee3925520721?ixlib=rb-4.0.3&w=800&q=80",
+      "https://images.unsplash.com/photo-1559511260-66a654ae982a?ixlib=rb-4.0.3&w=800&q=80",
+    ];
+
+    return DC.ScrollView(
+      layout: LayoutProps(
+        flex: 1,
+        width: '100%',
+      ),
+      style: StyleSheet(
+        backgroundColor: Colors.grey.shade100,
+      ),
+      scrollViewProps: ScrollViewProps(
+        showsVerticalScrollIndicator: true,
+      ),
+      children: [
+        // Gallery header
         DC.View(
           layout: LayoutProps(
-            height: 60, // Fixed height for app bar
-            paddingHorizontal: 15,
-            flexDirection: YogaFlexDirection.row,
-            alignItems: YogaAlign.center,
-            justifyContent: YogaJustifyContent.spaceBetween, // Title left, actions right (if any)
+            width: '100%',
+            padding: 20,
           ),
-          style: StyleSheet(backgroundColor: Colors.blue[800]),
+          style: StyleSheet(),
           children: [
             DC.Text(
-              content: "My Gallery",
-              textProps: TextProps(fontSize: 20, color: Colors.white, fontWeight: 'bold'),
+              content: "Image Gallery",
+              layout: LayoutProps(
+                width: '100%',
+                marginBottom: 8,
+              ),
+              style: StyleSheet(),
+              textProps: TextProps(
+                color: Colors.black,
+                fontSize: 28,
+                fontWeight: "bold",
+              ),
+            ),
+            DC.Text(
+              content: "Beautiful images from Unsplash",
+              layout: LayoutProps(
+                width: '100%',
+                marginBottom: 16,
+              ),
+              style: StyleSheet(),
+              textProps: TextProps(
+                color: Colors.grey,
+                fontSize: 16,
+              ),
             ),
           ],
         ),
 
-        // Content Area
+        // Image grid
         DC.View(
           layout: LayoutProps(
-            flex: 1, // Takes remaining vertical space
+            width: '100%',
+            flexDirection: YogaFlexDirection.row,
+            flexWrap: YogaWrap.wrap,
+            padding: 8,
           ),
-          children: [
-            buildTabContent(selectedTab.value), // Dynamically show content
-          ],
-        ),
-
-        // Tab Bar
-        DC.View(
-          layout: LayoutProps(
-            height: 50, // Fixed height for tab bar
-            flexDirection: YogaFlexDirection.row, // Arrange tabs horizontally
-            justifyContent: YogaJustifyContent.spaceAround, // Distribute tabs
-            alignItems: YogaAlign.stretch, // Stretch buttons vertically
-          ),
-          style: StyleSheet(backgroundColor: Colors.blueGrey[900]),
-          children: [
-            buildTabButton("Nature", 0), // Updated title
-            buildTabButton("Cities", 1), // Updated title
-            buildTabButton("Animals", 2), // Updated title
-          ],
+          style: StyleSheet(),
+          children: images.map((url) => renderGalleryImage(url)).toList(),
         ),
       ],
     );
   }
-}
