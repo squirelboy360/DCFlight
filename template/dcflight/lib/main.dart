@@ -118,7 +118,7 @@ class GalleryApp extends StatefulComponent {
             // App Bar
             DC.View(
               layout: LayoutProps(
-                height: 60, // Fixed height for app bar
+                height: '10%', 
                 paddingHorizontal: 15,
                 paddingTop: ScreenUtilities.instance.statusBarHeight,
                 flexDirection: YogaFlexDirection.row,
@@ -167,24 +167,27 @@ class GalleryApp extends StatefulComponent {
         // Floating Action Button Container
         DC.View(
           layout: LayoutProps(
-            marginBottom: '20%',
+            height: 200,
+            marginBottom: '5%',
             position: YogaPositionType.absolute, // Absolute positioning
             bottom: 70, // Position from bottom (above tab bar)
             right: 20, // Position from right
             flexDirection: YogaFlexDirection.column, // Stack buttons vertically
             alignItems: YogaAlign.flexEnd, // Align buttons to the right
           ),
+        
           children: [
             // Scroll to Top Button
             DC.Button(
               onPress: () {
                 print("Scrolling to top...");
-                scrollRef.value?.scrollToBottom(); // Use the ref
+                // Corrected: Use scrollToTop for the Top button
+                scrollRef.value?.scrollToTop(); 
               },
               layout: LayoutProps(
                 width: 56,
                 height: 56,
-                marginBottom: 10, // Space between buttons
+                marginBottom: 50, // Space between buttons
                 justifyContent: YogaJustifyContent.center,
                 alignItems: YogaAlign.center,
               ),
@@ -200,6 +203,7 @@ class GalleryApp extends StatefulComponent {
             // Scroll to Bottom Button
             DC.Button(
               onPress: () {
+                print("--- End Button Pressed ---"); 
                 print("Scrolling to bottom...");
                 scrollRef.value?.scrollToBottom(); // Use the ref
               },
