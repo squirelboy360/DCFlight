@@ -208,67 +208,96 @@ class DCMauiImageComponent: NSObject, DCMauiComponent {
     private func processFinishedLoading(_ imageView: UIImageView, success: Bool, props: [String: Any]) {
         // Remove loading indicator if any
         imageView.subviews.forEach { view in
-            if view.tag == 9999 {
+            if view.tag == 9999 { // Tag for activity indicator
                 view.removeFromSuperview()
             }
         }
+
+        // --- START EVENT FIX ---
+        // Trigger event callbacks using the component protocol's helper
+        let eventName = success ? "onLoad" : "onError"
+        let eventData: [String: Any] = [
+            "timestamp": Date().timeIntervalSince1970 * 1000, // Use ms
+            "success": success,
+            "source": props["source"] as? String ?? "unknown",
+            // Add image dimensions if successful
+            "width": success ? imageView.image?.size.width ?? 0 : 0,
+            "height": success ? imageView.image?.size.height ?? 0 : 0
+        ]
         
-        // Trigger event callbacks
-        if success {
-            triggerEvent(for: imageView, eventName: "onLoad", props: props)
-        } else {
-            triggerEvent(for: imageView, eventName: "onError", props: props)
+        // Use the triggerEvent helper from the protocol extension
+        // We need the CONTAINER view to call triggerEvent on, as that's where the callback is stored.
+        guard let containerView = imageView.superview else {
+             print("⚠️ ImageComponent: Cannot trigger event \(eventName) - container view not found.")
+             return
         }
+        
+        // Check if the container view has the necessary event info stored
+        guard let _ = objc_getAssociatedObject(containerView, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!) else {
+             print("⚠️ ImageComponent: Event callback info not found on container view for event \(eventName). View ID: \(containerView.getNodeId() ?? "unknown")")
+             return
+        }
+        
+        // Trigger the event on the container view
+        triggerEvent(on: containerView, eventType: eventName, eventData: eventData)
+        // FIX: Escaped the double quotes within the string literal
+        print("🚀 Sent image event '\(eventName)' for Image \(containerView.getNodeId())")
+        // --- END EVENT FIX ---
     }
-    
-    // Trigger event callback if registered
-    private func triggerEvent(for imageView: UIImageView, eventName: String, props: [String: Any]) {
-        if let viewId = imageView.getNodeId() {
-            let eventData: [String: Any] = [
-                "timestamp": Date().timeIntervalSince1970,
-                "success": eventName == "onLoad"
-            ]
-            
-            // Use proper type casting to Any for callbacks instead of 'Function'
-            if let onLoad = props["onLoad"] as? Any, eventName == "onLoad" {
-                DCMauiEventMethodHandler.shared.sendEvent(viewId: viewId, eventName: "onLoad", eventData: eventData)
-            } else if let onError = props["onError"] as? Any, eventName == "onError" {
-                DCMauiEventMethodHandler.shared.sendEvent(viewId: viewId, eventName: "onError", eventData: eventData)
+
+    // Override addEventListeners to store callback info on the CONTAINER view
+    func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], 
+                          eventCallback: @escaping (String, String, [String: Any]) -> Void) {
+        print("📣 Registering Image events \(eventTypes) for view \(viewId)")
+        
+        // Store the event callback and view ID on the CONTAINER view
+        objc_setAssociatedObject(view, 
+                               UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!,
+                               eventCallback,
+                               .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        
+        objc_setAssociatedObject(view, 
+                               UnsafeRawPointer(bitPattern: "viewId".hashValue)!,
+                               viewId,
+                               .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        
+        // Store the registered event types
+        objc_setAssociatedObject(view, 
+                               UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!,
+                               eventTypes,
+                               .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        
+        print("✅ Image event registration complete for \(viewId)")
+    }
+
+    // Override removeEventListeners to clear callback info from the CONTAINER view
+    func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String]) {
+        print("🔴 Removing Image event listeners \(eventTypes) from view \(viewId)")
+
+        // Update the stored event types on the CONTAINER view
+        if let existingTypes = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!) as? [String] {
+            var remainingTypes = existingTypes
+            for type in eventTypes {
+                if let index = remainingTypes.firstIndex(of: type) {
+                    remainingTypes.remove(at: index)
+                }
+            }
+
+            if remainingTypes.isEmpty {
+                // Clean up all event data if no events remain
+                objc_setAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!, nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                objc_setAssociatedObject(view, UnsafeRawPointer(bitPattern: "viewId".hashValue)!, nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                objc_setAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!, nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                print("🧹 Cleared all Image event data for view \(viewId)")
+            } else {
+                // Store updated event types
+                objc_setAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!, remainingTypes, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                print("🔄 Updated Image event types for view \(viewId): \(remainingTypes)")
             }
         }
     }
-    
-    // Helper to convert string resize mode to UIView.ContentMode
-    private func contentModeFromString(_ resizeMode: String) -> UIView.ContentMode {
-        switch resizeMode {
-        case "cover":
-            return .scaleAspectFill
-        case "contain":
-            return .scaleAspectFit
-        case "stretch":
-            return .scaleToFill
-        case "center":
-            return .center
-        default:
-            return .scaleAspectFit
-        }
-    }
-    
-    func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        // Apply layout to the container
-        view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
-        
-        // If this is a direct image view, also resize it
-        if let imageView = view as? UIImageView {
-            imageView.frame.size = CGSize(width: layout.width, height: layout.height)
-        } else if let imageView = view.viewWithTag(1001) as? UIImageView {
-            // Make sure image view fills container
-            imageView.frame = view.bounds
-        }
-    }
-    
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        // Get the image view
+
+    func getViewSize(_ view: UIView) -> CGSize {
         let imageView: UIImageView?
         if let directImageView = view as? UIImageView {
             imageView = directImageView
@@ -294,6 +323,26 @@ class DCMauiImageComponent: NSObject, DCMauiComponent {
         // If this is a container, also set on the image view
         if let imageView = view.viewWithTag(1001) as? UIImageView {
             imageView.setNodeId(nodeId)
+        }
+    }
+    
+    // Helper to convert string resize mode to UIView.ContentMode
+    private func contentModeFromString(_ resizeMode: String) -> UIView.ContentMode {
+        switch resizeMode.lowercased() {
+        case "cover", "covercrop":
+            return .scaleAspectFill
+        case "contain", "scaleaspectfit":
+            return .scaleAspectFit
+        case "stretch", "scaletofill":
+            return .scaleToFill
+        case "center":
+            return .center
+        case "repeat":
+            // UIKit doesn't have a direct equivalent to "repeat", default to .center
+            return .center
+        default:
+            // Default to aspect fit which preserves aspect ratio
+            return .scaleAspectFit
         }
     }
 }

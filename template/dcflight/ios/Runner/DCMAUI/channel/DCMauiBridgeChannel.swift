@@ -91,6 +91,15 @@ class DCMauiBridgeMethodChannel: NSObject {
                 result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
             }
             
+        // --- START NEW METHOD FOR COMPONENT LEVEL METHODS ---    
+        case "callComponentMethod":
+            if let args = args {
+                handleCallComponentMethod(args, result: result)
+            } else {
+                result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
+            }
+        // --- END NEW METHOD ---
+            
         default:
             result(FlutterMethodNotImplemented)
         }
@@ -250,6 +259,65 @@ class DCMauiBridgeMethodChannel: NSObject {
             result(allSucceeded)
         }
     }
+    
+    // --- START NEW HANDLER ---
+    // Handle calls to component-specific methods
+    private func handleCallComponentMethod(_ args: [String: Any], result: @escaping FlutterResult) {
+        guard let viewId = args["viewId"] as? String,
+              let methodName = args["methodName"] as? String,
+              let methodArgs = args["args"] as? [String: Any] else {
+            result(FlutterError(code: "ARGS_ERROR", message: "Invalid arguments for callComponentMethod. Required: viewId (String), methodName (String), args (Map)", details: args))
+            return
+        }
+
+        print("📞 Received callComponentMethod: viewId=\(viewId), method=\(methodName)")
+
+        // Execute on main thread
+        DispatchQueue.main.async {
+            // Find the view using the comprehensive lookup
+            guard let view = self.getViewById(viewId) else {
+                print("❌ callComponentMethod: View not found with ID: \(viewId)")
+                result(FlutterError(code: "VIEW_NOT_FOUND", message: "View not found", details: viewId))
+                return
+            }
+
+            // Determine component type and call method
+            var success = false
+            var errorMessage: String? = nil
+
+            // --- ScrollView Methods ---
+            if let scrollView = view as? UIScrollView {
+                let component = DCMauiScrollViewComponent() // Use a temporary instance to access the method
+                if methodName == "scrollTo" {
+                    component.scrollTo(view: scrollView, args: methodArgs)
+                    success = true // Assume success if no error thrown
+                } else if methodName == "scrollToEnd" {
+                    component.scrollToEnd(view: scrollView, args: methodArgs)
+                    success = true // Assume success if no error thrown
+                } else {
+                    errorMessage = "Method '\(methodName)' not supported for ScrollView"
+                }
+            }
+            // --- Add other component types and methods here ---
+            // else if let textView = view as? UITextView {
+            //     let component = DCMauiTextComponent()
+            //     if methodName == "focus" { ... }
+            // }
+            else {
+                errorMessage = "Component type '\(type(of: view))' does not support method calls or method '\(methodName)' is unknown."
+            }
+
+            // Return result
+            if success {
+                print("✅ callComponentMethod successful for \(viewId).\(methodName)")
+                result(true)
+            } else {
+                print("❌ callComponentMethod failed: \(errorMessage ?? "Unknown error")")
+                result(FlutterError(code: "METHOD_EXECUTION_FAILED", message: errorMessage ?? "Failed to execute method", details: methodName))
+            }
+        }
+    }
+    // --- END NEW HANDLER ---
     
     // Check if a view exists
     private func handleViewExists(_ args: [String: Any], result: @escaping FlutterResult) {

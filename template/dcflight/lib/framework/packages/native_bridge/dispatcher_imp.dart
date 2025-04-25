@@ -383,6 +383,25 @@ class PlatformDispatcherIml implements PlatformDispatcher {
   }
 
   @override
+  Future<dynamic> callComponentMethod(
+      String viewId, String methodName, Map<String, dynamic> args) async {
+    try {
+      developer.log(
+          'Calling component method: $viewId.$methodName with args: $args',
+          name: 'BRIDGE');
+      return await bridgeChannel.invokeMethod('callComponentMethod', {
+        'viewId': viewId,
+        'methodName': methodName,
+        'args': args,
+      });
+    } catch (e) {
+      developer.log('Error calling component method $methodName on $viewId: $e',
+          name: 'BRIDGE');
+      return null; // Or throw an exception if preferred
+    }
+  }
+
+  @override
   Future<bool> startBatchUpdate() async {
     if (_batchUpdateInProgress) {
       return false;

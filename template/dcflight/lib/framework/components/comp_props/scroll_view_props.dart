@@ -1,5 +1,10 @@
+import '../refs/scrollview_ref.dart';
+
 /// Properties specific to ScrollView components
 class ScrollViewProps {
+  /// Reference to control the ScrollView imperatively
+  final ScrollViewRef? ref;
+
   /// Whether the scroll view scrolls horizontally
   final bool? horizontal;
 
@@ -39,8 +44,23 @@ class ScrollViewProps {
   /// Whether scrolling is enabled
   final bool? scrollEnabled;
 
-  /// Create scroll view component-specific props
-  const ScrollViewProps({
+  /// Scroll event callback
+  final Function(Map<String, dynamic>)? onScroll;
+
+  /// Scroll begin drag event callback
+  final Function(Map<String, dynamic>)? onScrollBeginDrag;
+
+  /// Scroll end drag event callback
+  final Function(Map<String, dynamic>)? onScrollEndDrag;
+
+  /// Momentum scroll begin event callback
+  final Function(Map<String, dynamic>)? onMomentumScrollBegin;
+
+  /// Momentum scroll end event callback
+  final Function(Map<String, dynamic>)? onMomentumScrollEnd;
+
+  ScrollViewProps({
+    this.ref,
     this.horizontal,
     this.contentWidth,
     this.contentHeight,
@@ -54,12 +74,18 @@ class ScrollViewProps {
     this.contentInsetLeft,
     this.contentInsetRight,
     this.scrollEnabled,
+    this.onScroll,
+    this.onScrollBeginDrag,
+    this.onScrollEndDrag,
+    this.onMomentumScrollBegin,
+    this.onMomentumScrollEnd,
   });
 
   /// Convert to map for serialization
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{};
 
+    // ref is not sent to native, it's used on the Dart side
     if (horizontal != null) map['horizontal'] = horizontal;
     if (contentWidth != null) map['contentWidth'] = contentWidth;
     if (contentHeight != null) map['contentHeight'] = contentHeight;
@@ -82,12 +108,20 @@ class ScrollViewProps {
     if (contentInsetRight != null) map['contentInsetRight'] = contentInsetRight;
     if (scrollEnabled != null) map['scrollEnabled'] = scrollEnabled;
 
+    // Add boolean flags to indicate event registration
+    if (onScroll != null) map['onScroll'] = true;
+    if (onScrollBeginDrag != null) map['onScrollBeginDrag'] = true;
+    if (onScrollEndDrag != null) map['onScrollEndDrag'] = true;
+    if (onMomentumScrollBegin != null) map['onMomentumScrollBegin'] = true;
+    if (onMomentumScrollEnd != null) map['onMomentumScrollEnd'] = true;
+
     return map;
   }
 
   /// Create new ScrollViewProps by merging with another
   ScrollViewProps merge(ScrollViewProps other) {
     return ScrollViewProps(
+      ref: other.ref ?? ref,
       horizontal: other.horizontal ?? horizontal,
       contentWidth: other.contentWidth ?? contentWidth,
       contentHeight: other.contentHeight ?? contentHeight,
@@ -103,11 +137,17 @@ class ScrollViewProps {
       contentInsetLeft: other.contentInsetLeft ?? contentInsetLeft,
       contentInsetRight: other.contentInsetRight ?? contentInsetRight,
       scrollEnabled: other.scrollEnabled ?? scrollEnabled,
+      onScroll: other.onScroll ?? onScroll,
+      onScrollBeginDrag: other.onScrollBeginDrag ?? onScrollBeginDrag,
+      onScrollEndDrag: other.onScrollEndDrag ?? onScrollEndDrag,
+      onMomentumScrollBegin: other.onMomentumScrollBegin ?? onMomentumScrollBegin,
+      onMomentumScrollEnd: other.onMomentumScrollEnd ?? onMomentumScrollEnd,
     );
   }
 
   /// Create a copy with certain properties modified
   ScrollViewProps copyWith({
+    ScrollViewRef? ref,
     bool? horizontal,
     double? contentWidth,
     double? contentHeight,
@@ -121,8 +161,14 @@ class ScrollViewProps {
     double? contentInsetLeft,
     double? contentInsetRight,
     bool? scrollEnabled,
+    Function(Map<String, dynamic>)? onScroll,
+    Function(Map<String, dynamic>)? onScrollBeginDrag,
+    Function(Map<String, dynamic>)? onScrollEndDrag,
+    Function(Map<String, dynamic>)? onMomentumScrollBegin,
+    Function(Map<String, dynamic>)? onMomentumScrollEnd,
   }) {
     return ScrollViewProps(
+      ref: ref ?? this.ref,
       horizontal: horizontal ?? this.horizontal,
       contentWidth: contentWidth ?? this.contentWidth,
       contentHeight: contentHeight ?? this.contentHeight,
@@ -138,6 +184,11 @@ class ScrollViewProps {
       contentInsetLeft: contentInsetLeft ?? this.contentInsetLeft,
       contentInsetRight: contentInsetRight ?? this.contentInsetRight,
       scrollEnabled: scrollEnabled ?? this.scrollEnabled,
+      onScroll: onScroll ?? this.onScroll,
+      onScrollBeginDrag: onScrollBeginDrag ?? this.onScrollBeginDrag,
+      onScrollEndDrag: onScrollEndDrag ?? this.onScrollEndDrag,
+      onMomentumScrollBegin: onMomentumScrollBegin ?? this.onMomentumScrollBegin,
+      onMomentumScrollEnd: onMomentumScrollEnd ?? this.onMomentumScrollEnd,
     );
   }
 }

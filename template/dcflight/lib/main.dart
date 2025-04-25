@@ -44,24 +44,24 @@ class GalleryApp extends StatefulComponent {
         final seed = "${category}_$i";
         final imageUrl = "https://picsum.photos/seed/$seed/100/100";
         return DC.Image(
-          imageProps: ImageProps(source: imageUrl), // Corrected back to 'source'
+          imageProps: ImageProps(source: imageUrl), 
           layout: LayoutProps(
             width: 100,
             height: 100,
-            margin: 5, // Add some spacing between images
+            margin: 5, 
           ),
           style: StyleSheet(backgroundColor: Colors.grey[800]), // Placeholder bg
         );
       });
 
       return DC.ScrollView(
-        layout: LayoutProps(flex: 1), // ScrollView should take available space
-        scrollViewProps: ScrollViewProps(), // Basic ScrollView props
+        layout: LayoutProps(flex: 1), 
+        scrollViewProps: ScrollViewProps(),
         children: [
           DC.View(
             layout: LayoutProps(
-              flexDirection: YogaFlexDirection.row, // Arrange images horizontally
-              flexWrap: YogaWrap.wrap, // Allow images to wrap to the next line
+              flexDirection: YogaFlexDirection.row, 
+              flexWrap: YogaWrap.wrap, 
               justifyContent: YogaJustifyContent.center, // Center images horizontally
               padding: 10,
             ),
@@ -97,7 +97,7 @@ class GalleryApp extends StatefulComponent {
     return DC.View(
       layout: LayoutProps(
         flex: 1, // Take full screen height
-        flexDirection: YogaFlexDirection.column, // Stack vertically
+        flexDirection: YogaFlexDirection.column, 
       ),
       style: StyleSheet(backgroundColor: Colors.black), // Overall background
       children: [

@@ -55,6 +55,10 @@ abstract class PlatformDispatcher {
   Future<dynamic> invokeMethod(String method,
       [Map<String, dynamic>? arguments]);
 
+  /// Calls a specific method on a native component instance.
+  Future<dynamic> callComponentMethod(
+      String viewId, String methodName, Map<String, dynamic> args);
+
   // Batch updates
   Future<bool> startBatchUpdate();
   Future<bool> commitBatchUpdate();
