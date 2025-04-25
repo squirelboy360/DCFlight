@@ -61,7 +61,10 @@ class GalleryApp extends StatefulComponent {
 
       return DC.ScrollView(
         // Pass the ref's current value to the ScrollView
-        scrollViewProps: ScrollViewProps(scrollEnabled: true, ref: scrollRef.value),
+        scrollViewProps: ScrollViewProps(scrollEnabled: true, ref: scrollRef.value,onScroll: (v){
+          print("Scroll event: $v");
+        
+        }) ,
         layout: LayoutProps(flex: 1),
         children: [
           DC.View(

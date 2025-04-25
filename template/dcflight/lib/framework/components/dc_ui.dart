@@ -182,7 +182,7 @@ class DC {
     ScrollViewProps? scrollViewProps,
     List<VDomNode> children = const [],
     String? key,
-    Function? onScroll,
+
   }) {
     // Merge props from both layout and style
     final propsMap = <String, dynamic>{};
@@ -200,10 +200,6 @@ class DC {
       propsMap.addAll(scrollViewProps.toMap());
     }
 
-    // CRITICAL FIX: Add event handler directly to props for consistent handling
-    if (onScroll != null) {
-      propsMap['onScroll'] = onScroll;
-    }
 
     return VDomElement(
       type: 'ScrollView',
