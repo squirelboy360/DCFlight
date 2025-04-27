@@ -18,34 +18,21 @@ extension AppDelegate {
         DCMauiLayoutMethodHandler.shared.initialize(with: flutterEngine.binaryMessenger)
         
    
-        self.window = UIWindow(frame: UIScreen.main.bounds)
         let nativeRootVC = UIViewController()
         nativeRootVC.view.backgroundColor = .white
         nativeRootVC.title = "Root View (DCMAUI)"
         self.window.rootViewController = nativeRootVC
-        setupDCMauiNativeBridge(rootView: nativeRootVC.view)
+        setupDCF(rootView: nativeRootVC.view)
         
         // Initialize screen utilities
         _ = DCFScreenUtilities.shared
     }
     
     // Setup the DCMauiNativeBridge
-    private func setupDCMauiNativeBridge(rootView: UIView) {
-        // Set up the root container view - FULL SIZE
-        let rootContainer = UIView(frame: rootView.bounds)
-        // CRITICAL FIX: Set constraints to make sure rootContainer fills the parent view
-        rootContainer.translatesAutoresizingMaskIntoConstraints = false
-        rootView.addSubview(rootContainer)
-        
-        NSLayoutConstraint.activate([
-            rootContainer.topAnchor.constraint(equalTo: rootView.topAnchor),
-            rootContainer.bottomAnchor.constraint(equalTo: rootView.bottomAnchor),
-            rootContainer.leadingAnchor.constraint(equalTo: rootView.leadingAnchor),
-            rootContainer.trailingAnchor.constraint(equalTo: rootView.trailingAnchor)
-        ])
-        
+    private func setupDCF(rootView: UIView) {
+
         // Set up the root with the props
-        DCMauiBridgeImpl.shared.registerView(rootContainer, withId: "root")
+        DCMauiBridgeImpl.shared.registerView(rootView, withId: "root")
         // Initialize screen utilities with the Flutter binary messenger
         DCFScreenUtilities.shared.initialize(with: flutterEngine.binaryMessenger)
         
