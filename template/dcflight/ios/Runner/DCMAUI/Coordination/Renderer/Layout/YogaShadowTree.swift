@@ -294,7 +294,7 @@ class YogaShadowTree {
                 
                 // We can still track this for debugging if needed
                 if let viewId = getViewIdForNode(node),
-                   let view = DCMauiLayoutManager.shared.getView(withId: viewId) {
+                   let view = DCFLayoutManager.shared.getView(withId: viewId) {
                     view.accessibilityLabel = "width:\(percentValue)%"
                 }
             }
@@ -308,7 +308,7 @@ class YogaShadowTree {
                 
                 // We can still track this for debugging if needed
                 if let viewId = getViewIdForNode(node),
-                   let view = DCMauiLayoutManager.shared.getView(withId: viewId) {
+                   let view = DCFLayoutManager.shared.getView(withId: viewId) {
                     view.accessibilityLabel = "height:\(percentValue)%"
                 }
             }
@@ -966,7 +966,7 @@ class YogaShadowTree {
         for affectedId in affectedNodeIds {
             if let layout = getNodeLayout(nodeId: affectedId) {
                 // Apply layout to the affected view
-                DCMauiLayoutManager.shared.applyLayout(
+                DCFLayoutManager.shared.applyLayout(
                     to: affectedId,
                     left: layout.origin.x,
                     top: layout.origin.y,
@@ -985,7 +985,7 @@ class YogaShadowTree {
     
     private func applyLayoutToView(viewId: String, frame: CGRect) {
         // Get the view from the layout manager
-        guard let view = DCMauiLayoutManager.shared.getView(withId: viewId) else {
+        guard let view = DCFLayoutManager.shared.getView(withId: viewId) else {
             print("⚠️ View not found for ID \(viewId) when applying layout")
             return
         }
@@ -994,7 +994,7 @@ class YogaShadowTree {
         
         // Apply layout directly using layout manager
         DispatchQueue.main.async {
-            DCMauiLayoutManager.shared.applyLayout(
+            DCFLayoutManager.shared.applyLayout(
                 to: viewId,
                 left: frame.origin.x,
                 top: frame.origin.y,

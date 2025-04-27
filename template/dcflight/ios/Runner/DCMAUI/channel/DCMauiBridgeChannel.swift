@@ -287,7 +287,7 @@ class DCMauiBridgeMethodChannel: NSObject {
 
             // --- ScrollView Methods ---
             if let scrollView = view as? UIScrollView {
-                let component = DCMauiScrollViewComponent() // Use a temporary instance to access the method
+                let component = DCFScrollViewComponent() // Use a temporary instance to access the method
                 if methodName == "scrollTo" {
                     component.scrollTo(view: scrollView, args: methodArgs)
                     success = true // Assume success if no error thrown

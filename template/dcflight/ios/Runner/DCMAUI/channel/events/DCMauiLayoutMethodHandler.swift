@@ -75,7 +75,7 @@ class DCMauiLayoutMethodHandler: NSObject {
         }
         
         // Apply layout without main thread
-        let success = DCMauiLayoutManager.shared.queueLayoutUpdate(
+        let success = DCFLayoutManager.shared.queueLayoutUpdate(
             to: viewId,
             left: left,
             top: top,

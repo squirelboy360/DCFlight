@@ -1,15 +1,15 @@
 import UIKit
 import yoga
 
-class DCMauiButtonComponent: NSObject, DCMauiComponent {
+class DCFButtonComponent: NSObject, DCFComponent {
     // Keep singleton instance to prevent deallocation when button targets are registered
-    private static let sharedInstance = DCMauiButtonComponent()
+    private static let sharedInstance = DCFButtonComponent()
     
     // Static storage for button handlers
     private static var buttonEventHandlers = [UIButton: (String, (String, String, [String: Any]) -> Void)]()
     
     // Store strong reference to self when buttons are registered
-    private static var registeredButtons = [UIButton: DCMauiButtonComponent]()
+    private static var registeredButtons = [UIButton: DCFButtonComponent]()
     
     required override init() {
         super.init()
@@ -178,14 +178,14 @@ class DCMauiButtonComponent: NSObject, DCMauiComponent {
         button.removeTarget(nil, action: nil, for: .touchCancel)
         
         // Use sharedInstance to ensure the target isn't deallocated
-        button.addTarget(DCMauiButtonComponent.sharedInstance, action: #selector(handleButtonPress(_:)), for: .touchUpInside)
-        button.addTarget(DCMauiButtonComponent.sharedInstance, action: #selector(handleButtonTouchDown(_:)), for: .touchDown)
-        button.addTarget(DCMauiButtonComponent.sharedInstance, action: #selector(handleButtonTouchUp(_:)), for: .touchUpInside)
-        button.addTarget(DCMauiButtonComponent.sharedInstance, action: #selector(handleButtonTouchUp(_:)), for: .touchUpOutside)
-        button.addTarget(DCMauiButtonComponent.sharedInstance, action: #selector(handleButtonTouchUp(_:)), for: .touchCancel)
+        button.addTarget(DCFButtonComponent.sharedInstance, action: #selector(handleButtonPress(_:)), for: .touchUpInside)
+        button.addTarget(DCFButtonComponent.sharedInstance, action: #selector(handleButtonTouchDown(_:)), for: .touchDown)
+        button.addTarget(DCFButtonComponent.sharedInstance, action: #selector(handleButtonTouchUp(_:)), for: .touchUpInside)
+        button.addTarget(DCFButtonComponent.sharedInstance, action: #selector(handleButtonTouchUp(_:)), for: .touchUpOutside)
+        button.addTarget(DCFButtonComponent.sharedInstance, action: #selector(handleButtonTouchUp(_:)), for: .touchCancel)
         
         // Store strong reference to component instance to prevent deallocation
-        DCMauiButtonComponent.registeredButtons[button] = DCMauiButtonComponent.sharedInstance
+        DCFButtonComponent.registeredButtons[button] = DCFButtonComponent.sharedInstance
         
         print("✅ Successfully added event handlers to button \(viewId)")
     }
@@ -231,7 +231,7 @@ class DCMauiButtonComponent: NSObject, DCMauiComponent {
         )
         
         // Store in static dictionary as additional backup
-        DCMauiButtonComponent.buttonEventHandlers[button] = (viewId, callback)
+        DCFButtonComponent.buttonEventHandlers[button] = (viewId, callback)
     }
     
     func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String]) {
@@ -249,8 +249,8 @@ class DCMauiButtonComponent: NSObject, DCMauiComponent {
     // Helper to clean up all event references
     private func cleanupEventReferences(from button: UIButton, viewId: String) {
         // Remove from static handlers dictionary
-        DCMauiButtonComponent.buttonEventHandlers.removeValue(forKey: button)
-        DCMauiButtonComponent.registeredButtons.removeValue(forKey: button)
+        DCFButtonComponent.buttonEventHandlers.removeValue(forKey: button)
+        DCFButtonComponent.registeredButtons.removeValue(forKey: button)
         
         // Clear all associated objects
         let keys = ["viewId", "eventTypes", "eventCallback", "buttonViewId", "buttonCallback"]
@@ -301,7 +301,7 @@ class DCMauiButtonComponent: NSObject, DCMauiComponent {
     
     // Try handling via static dictionary
     private func tryStaticDictionaryHandling(_ sender: UIButton) -> Bool {
-        if let (viewId, callback) = DCMauiButtonComponent.buttonEventHandlers[sender] {
+        if let (viewId, callback) = DCFButtonComponent.buttonEventHandlers[sender] {
             print("🔘 Button pressed via static dictionary: \(viewId)")
             
             callback(viewId, "onPress", [

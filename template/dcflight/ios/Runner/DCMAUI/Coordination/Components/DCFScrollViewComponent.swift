@@ -1,7 +1,7 @@
 import UIKit
 import yoga
 
-class DCMauiScrollViewComponent: NSObject, DCMauiComponent {
+class DCFScrollViewComponent: NSObject, DCFComponent {
     required override init() {
         super.init()
     }
@@ -67,27 +67,7 @@ class DCMauiScrollViewComponent: NSObject, DCMauiComponent {
     }
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        guard let scrollView = view as? UIScrollView else { return }
-
-        // Apply frame layout to the scroll view itself
-        scrollView.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
-        
-        // Calculate content size based on child views
-        // UIScrollView should derive its contentSize from its subviews' frames
-        // Yoga will have already laid out the children through the shadow tree
-        if let contentView = scrollView.subviews.first {
-            // Use the frame calculated by Yoga for the content view
-            let contentSize = CGSize(
-                width: max(contentView.frame.maxX, scrollView.frame.width),
-                height: max(contentView.frame.maxY, scrollView.frame.height)
-            )
-            
-            // Only update if different
-            if scrollView.contentSize != contentSize {
-                scrollView.contentSize = contentSize
-                print("📏 ScrollView contentSize updated to: \(contentSize)")
-            }
-        }
+        view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
     }
     
     // MARK: - Component Method Handlers

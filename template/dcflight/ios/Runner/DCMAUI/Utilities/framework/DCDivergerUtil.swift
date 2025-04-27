@@ -51,7 +51,7 @@ extension AppDelegate {
         
         // Initialize the yoga layout system
         _ = YogaShadowTree.shared
-        _ = DCMauiLayoutManager.shared
+        _ = DCFLayoutManager.shared
 
     
         NotificationCenter.default.addObserver(

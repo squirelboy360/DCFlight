@@ -1,7 +1,7 @@
 import UIKit
 import yoga
 
-class DCMauiTextComponent: NSObject, DCMauiComponent {
+class DCFTextComponent: NSObject, DCFComponent {
     required override init() {
         super.init()
     }

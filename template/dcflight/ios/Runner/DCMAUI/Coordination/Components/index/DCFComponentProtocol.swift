@@ -2,7 +2,7 @@ import UIKit
 import yoga
 
 /// Protocol that all DCMAUI components must implement
-protocol DCMauiComponent {
+protocol DCFComponent {
     /// Initialize the component
     init()
     
@@ -38,7 +38,7 @@ struct YGNodeLayout {
 }
 
 // To resolve initializer requirement issues, make the extension provide a default implementation
-extension DCMauiComponent {
+extension DCFComponent {
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
         // Default implementation - position and size the view
         view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
@@ -167,34 +167,34 @@ extension DCMauiComponent {
     }
 }
 
-// This extension is renamed to avoid conflict with the one in LayoutDebugVisualizer.swift
-extension UIView {
-    // Use direct objc_getAssociatedObject instead of property to avoid conflicts
-    func getNodeId() -> String? {
-        return objc_getAssociatedObject(self, UnsafeRawPointer(bitPattern: "nodeId".hashValue)!) as? String
-    }
-    
-    func setNodeId(_ nodeId: String?) {
-        objc_setAssociatedObject(self, 
-                              UnsafeRawPointer(bitPattern: "nodeId".hashValue)!, 
-                              nodeId, 
-                              .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-    }
-    
-    // Convenience method to trigger events
-    func triggerEvent(_ eventType: String, withData data: [String: Any] = [:]) {
-        // Get the component protocol from the component registry
-        let viewClassName = String(describing: type(of: self))
-        
-        // Try to find component for view's class
-        for (_, componentType) in DCMauiComponentRegistry.shared.componentTypes {
-            let tempInstance = componentType.init()
-            let tempView = tempInstance.createView(props: [:])
-            
-            if String(describing: type(of: tempView)) == viewClassName {
-                tempInstance.triggerEvent(on: self, eventType: eventType, eventData: data)
-                return
-            }
-        }
-    }
-}
+//// This extension is renamed to avoid conflict with the one in LayoutDebugVisualizer.swift
+//extension UIView {
+//    // Use direct objc_getAssociatedObject instead of property to avoid conflicts
+//    func getNodeId() -> String? {
+//        return objc_getAssociatedObject(self, UnsafeRawPointer(bitPattern: "nodeId".hashValue)!) as? String
+//    }
+//    
+//    func setNodeId(_ nodeId: String?) {
+//        objc_setAssociatedObject(self, 
+//                              UnsafeRawPointer(bitPattern: "nodeId".hashValue)!, 
+//                              nodeId, 
+//                              .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+//    }
+//    
+//    // Convenience method to trigger events
+//    func triggerEvent(_ eventType: String, withData data: [String: Any] = [:]) {
+//        // Get the component protocol from the component registry
+//        let viewClassName = String(describing: type(of: self))
+//        
+//        // Try to find component for view's class
+//        for (_, componentType) in DCMauiComponentRegistry.shared.componentTypes {
+//            let tempInstance = componentType.init()
+//            let tempView = tempInstance.createView(props: [:])
+//            
+//            if String(describing: type(of: tempView)) == viewClassName {
+//                tempInstance.triggerEvent(on: self, eventType: eventType, eventData: data)
+//                return
+//            }
+//        }
+//    }
+//}

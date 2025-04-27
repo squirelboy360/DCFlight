@@ -4,9 +4,9 @@ import yoga
 /// Manages layout for DCMAUI components
 /// Note: Primary layout calculations occur on the Dart side
 /// This class primarily handles applying calculated layouts and handling absolute positioning
-class DCMauiLayoutManager {
+class DCFLayoutManager {
     // Singleton instance
-    static let shared = DCMauiLayoutManager()
+    static let shared = DCFLayoutManager()
     
     // Set of views using absolute layout (controlled by Dart)
     private var absoluteLayoutViews = Set<UIView>()
@@ -197,9 +197,9 @@ class DCMauiLayoutManager {
 
 
 //consoidate in the main class later
-extension DCMauiLayoutManager {
+extension DCFLayoutManager {
     // Register view with layout system
-    func registerView(_ view: UIView, withNodeId nodeId: String, componentType: String, componentInstance: DCMauiComponent) {
+    func registerView(_ view: UIView, withNodeId nodeId: String, componentType: String, componentInstance: DCFComponent) {
         // First, register the view for direct access
         registerView(view, withId: nodeId)
         

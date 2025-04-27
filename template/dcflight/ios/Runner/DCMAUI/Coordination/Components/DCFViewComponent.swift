@@ -2,7 +2,7 @@ import UIKit
 import yoga
 
 /// Implementation of a basic View component
-class DCMauiViewComponent: NSObject, DCMauiComponent {
+class DCFViewComponent: NSObject, DCFComponent {
     required override init() {
         super.init()
     }

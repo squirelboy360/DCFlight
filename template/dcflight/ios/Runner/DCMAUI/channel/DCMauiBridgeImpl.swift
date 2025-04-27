@@ -118,7 +118,7 @@ import Foundation
         logLayoutProps(props)
         
         // Create the component instance
-        guard let componentType = DCMauiComponentRegistry.shared.getComponentType(for: viewType) else {
+        guard let componentType = DCFComponentRegistry.shared.getComponentType(for: viewType) else {
             NSLog("Component not found for type: \(viewType)")
             
             // Track sync failure
@@ -140,7 +140,7 @@ import Foundation
         YogaShadowTree.shared.createNode(id: viewId, componentType: viewType)
         
         // Register view with layout system
-        DCMauiLayoutManager.shared.registerView(view, withNodeId: viewId, componentType: viewType, componentInstance: componentInstance)
+        DCFLayoutManager.shared.registerView(view, withNodeId: viewId, componentType: viewType, componentInstance: componentInstance)
         
         // Track successful node creation
         trackSyncStatus(nodeId: viewId, operation: "create_view", success: true)
@@ -150,7 +150,7 @@ import Foundation
         if !layoutProps.isEmpty {
             NSLog("📊 EXTRACTED LAYOUT PROPS: \(layoutProps)")
             
-            DCMauiLayoutManager.shared.updateNodeWithLayoutProps(
+            DCFLayoutManager.shared.updateNodeWithLayoutProps(
                 nodeId: viewId,
                 componentType: viewType,
                 props: layoutProps
@@ -221,7 +221,7 @@ import Foundation
         let yogaNodeExists = YogaShadowTree.shared.nodes[nodeId] != nil
         
         // Check if node is registered with layout manager
-        let layoutNodeExists = DCMauiLayoutManager.shared.getView(withId: nodeId) != nil
+        let layoutNodeExists = DCFLayoutManager.shared.getView(withId: nodeId) != nil
         
         let consistent = viewExists && yogaNodeExists && layoutNodeExists
         
@@ -259,7 +259,7 @@ import Foundation
         
         // If still not found, check LayoutManager
         if view == nil {
-            view = DCMauiLayoutManager.shared.getView(withId: viewId)
+            view = DCFLayoutManager.shared.getView(withId: viewId)
             
             // If found in LayoutManager but not in our registry, update our registry
             if view != nil {
@@ -285,7 +285,7 @@ import Foundation
         // Update layout props if any
         if !layoutProps.isEmpty {
             // Apply to shadow tree which will trigger layout calculation
-            DCMauiLayoutManager.shared.updateNodeWithLayoutProps(
+            DCFLayoutManager.shared.updateNodeWithLayoutProps(
                 nodeId: viewId,
                 componentType: String(describing: type(of: finalView)),
                 props: layoutProps
@@ -300,7 +300,7 @@ import Foundation
             
             // Try to find component based on view class name
             var componentFound = false
-            for (componentName, componentType) in DCMauiComponentRegistry.shared.componentTypes {
+            for (componentName, componentType) in DCFComponentRegistry.shared.componentTypes {
                 let tempInstance = componentType.init()
                 let tempView = tempInstance.createView(props: [:])
                 
@@ -342,7 +342,7 @@ import Foundation
         self.views.removeValue(forKey: viewId)
         
         // Remove node from shadow tree
-        DCMauiLayoutManager.shared.removeNode(nodeId: viewId)
+        DCFLayoutManager.shared.removeNode(nodeId: viewId)
         
         // Track deletion operation
         trackSyncStatus(nodeId: viewId, operation: "delete_view", success: true)
@@ -368,7 +368,7 @@ import Foundation
         parentView.insertSubview(childView, at: index)
         
         // Update shadow tree
-        DCMauiLayoutManager.shared.addChildNode(parentId: parentId, childId: childId, index: index)
+        DCFLayoutManager.shared.addChildNode(parentId: parentId, childId: childId, index: index)
         
         // Track successful attachment
         trackSyncStatus(nodeId: childId, operation: "attach_view", success: true)
@@ -404,7 +404,7 @@ import Foundation
                 parentView.insertSubview(childView, at: index)
                 
                 // Update shadow tree
-                DCMauiLayoutManager.shared.addChildNode(parentId: viewId, childId: childId, index: index)
+                DCFLayoutManager.shared.addChildNode(parentId: viewId, childId: childId, index: index)
             }
         }
         
@@ -538,7 +538,7 @@ import Foundation
         // Check all possible registries for this view
         let inMainRegistry = views[viewId] != nil
         let inViewRegistry = ViewRegistry.shared.getView(id: viewId) != nil
-        let inLayoutManager = DCMauiLayoutManager.shared.getView(withId: viewId) != nil
+        let inLayoutManager = DCFLayoutManager.shared.getView(withId: viewId) != nil
         
         let exists = inMainRegistry || inViewRegistry || inLayoutManager
         
@@ -548,7 +548,7 @@ import Foundation
         // If view was found in secondary registry but not main registry, sync it to main registry
         if !inMainRegistry && (inViewRegistry || inLayoutManager) {
             // Fixed: Use nil coalescing to ensure we're handling the optionals correctly
-            if let view = ViewRegistry.shared.getView(id: viewId) ?? DCMauiLayoutManager.shared.getView(withId: viewId) {
+            if let view = ViewRegistry.shared.getView(id: viewId) ?? DCFLayoutManager.shared.getView(withId: viewId) {
                 // Sync to main registry
                 views[viewId] = view
                 NSLog("🔄 View \(viewId) found in secondary registry - synchronized to main registry")

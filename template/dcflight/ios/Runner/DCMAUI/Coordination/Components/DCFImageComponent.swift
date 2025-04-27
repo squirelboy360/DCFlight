@@ -1,7 +1,7 @@
 import UIKit
 import yoga
 
-class DCMauiImageComponent: NSObject, DCMauiComponent {
+class DCFImageComponent: NSObject, DCFComponent {
     required override init() {
         super.init()
     }

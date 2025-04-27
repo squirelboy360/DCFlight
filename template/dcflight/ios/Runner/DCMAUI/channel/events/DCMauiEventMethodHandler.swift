@@ -124,7 +124,7 @@ class DCMauiEventMethodHandler: NSObject {
         
         // If still not found, try the LayoutManager
         if view == nil {
-            view = DCMauiLayoutManager.shared.getView(withId: viewId)
+            view = DCFLayoutManager.shared.getView(withId: viewId)
         }
         
         guard let foundView = view else {
@@ -161,7 +161,7 @@ class DCMauiEventMethodHandler: NSObject {
         
         // If still not found, try the LayoutManager
         if view == nil {
-            view = DCMauiLayoutManager.shared.getView(withId: viewId)
+            view = DCFLayoutManager.shared.getView(withId: viewId)
         }
         
         guard let foundView = view else {
@@ -190,7 +190,7 @@ class DCMauiEventMethodHandler: NSObject {
         print("🔄 Normalizing event types: \(eventTypes) -> \(normalizedEventTypes)")
         
         // First try to find the component by looking at UI class type
-        for (componentType, componentClass) in DCMauiComponentRegistry.shared.componentTypes {
+        for (componentType, componentClass) in DCFComponentRegistry.shared.componentTypes {
             let tempInstance = componentClass.init()
             let tempView = tempInstance.createView(props: [:])
             
