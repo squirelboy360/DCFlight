@@ -270,41 +270,64 @@ class DCMauiBridgeMethodChannel: NSObject {
             return
         }
 
-        print("📞 Received callComponentMethod: viewId=\(viewId), method=\(methodName)")
+        print("📞 Received callComponentMethod: viewId=\(viewId), method=\(methodName), args=\(methodArgs)")
 
         // Execute on main thread
         DispatchQueue.main.async {
-            // Find the view using the comprehensive lookup
-            guard let view = self.getViewById(viewId) else {
+            // Try to find the view from multiple sources
+            var view: UIView? = self.getViewById(viewId)
+            
+            // If view not found in main registry, try DCMauiBridgeImpl as backup
+            if view == nil {
+                view = DCMauiBridgeImpl.shared.views[viewId]
+                
+                // If found, update our registry
+                if view != nil {
+                    self.views[viewId] = view
+                    print("🔄 View \(viewId) found in DCMauiBridgeImpl but not in bridge channel - synced")
+                }
+            }
+            
+            // Final check - view must exist
+            guard let finalView = view else {
                 print("❌ callComponentMethod: View not found with ID: \(viewId)")
                 result(FlutterError(code: "VIEW_NOT_FOUND", message: "View not found", details: viewId))
                 return
             }
 
-            // Determine component type and call method
+            // Handle methods based on view type
             var success = false
             var errorMessage: String? = nil
 
             // --- ScrollView Methods ---
-            if let scrollView = view as? UIScrollView {
-                let component = DCFScrollViewComponent() // Use a temporary instance to access the method
+            if let scrollView = finalView as? UIScrollView {
+                let component = DCFScrollViewComponent() // Use a temporary instance to access methods
+                
+                print("✅ Found ScrollView for method: \(methodName)")
+                
                 if methodName == "scrollTo" {
                     component.scrollTo(view: scrollView, args: methodArgs)
-                    success = true // Assume success if no error thrown
-                } else if methodName == "scrollToEnd" {
+                    success = true
+                    print("✅ Executed scrollTo with args: \(methodArgs)")
+                } 
+                else if methodName == "scrollToEnd" {
                     component.scrollToEnd(view: scrollView, args: methodArgs)
-                    success = true // Assume success if no error thrown
-                } else {
+                    success = true
+                    print("✅ Executed scrollToEnd with args: \(methodArgs)")
+                }
+                else if methodName == "flashScrollIndicators" {
+                    component.flashScrollIndicators(view: scrollView, args: methodArgs)
+                    success = true
+                    print("✅ Executed flashScrollIndicators")
+                }
+                else {
                     errorMessage = "Method '\(methodName)' not supported for ScrollView"
                 }
             }
-            // --- Add other component types and methods here ---
-            // else if let textView = view as? UITextView {
-            //     let component = DCMauiTextComponent()
-            //     if methodName == "focus" { ... }
-            // }
+            // --- Add handling for other component types here ---
             else {
-                errorMessage = "Component type '\(type(of: view))' does not support method calls or method '\(methodName)' is unknown."
+                errorMessage = "Component type '\(type(of: finalView))' does not support method calls or method '\(methodName)' is unknown."
+                print("⚠️ Unsupported component type: \(type(of: finalView)) for method: \(methodName)")
             }
 
             // Return result

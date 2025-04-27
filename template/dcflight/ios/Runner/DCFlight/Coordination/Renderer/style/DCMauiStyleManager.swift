@@ -57,6 +57,25 @@ extension UIView {
     func applyStyles(props: [String: Any]) {
         print("📊 Applying styles to \(type(of: self)): \(props)")
         
+        // CRITICAL FIX: Special handling for ScrollView to preserve user interaction
+        let isScrollView = self is UIScrollView
+        
+        if isScrollView {
+            // Ensure these properties are always set correctly for ScrollView
+            self.isUserInteractionEnabled = true
+            
+            // For scroll views, explicitly preserve scroll functionality
+            if let scrollView = self as? UIScrollView {
+                // Only apply isScrollEnabled if explicitly set in props
+                if let scrollEnabled = props["scrollEnabled"] as? Bool {
+                    scrollView.isScrollEnabled = scrollEnabled
+                } else {
+                    // Otherwise ensure scrolling is enabled
+                    scrollView.isScrollEnabled = true
+                }
+            }
+        }
+        
         // Border styles
         if let borderRadius = props["borderRadius"] as? CGFloat {
             layer.cornerRadius = borderRadius
@@ -94,30 +113,22 @@ extension UIView {
             layer.borderWidth = borderWidth
         }
         
-        // Background color and opacity - FIXED to use ColorUtilities directly
+        // Background color and opacity
         if let backgroundColorStr = props["backgroundColor"] as? String {
-            // FIXED: Handle special case for ScrollView
-            if self is UIScrollView {
-                if let scrollView = self as? UIScrollView, 
-                   let contentView = scrollView.viewWithTag(1001) {
-                    // Apply to both scroll view and content view for consistency
-                    self.backgroundColor = ColorUtilities.color(fromHexString: backgroundColorStr)
-                    contentView.backgroundColor = ColorUtilities.color(fromHexString: backgroundColorStr)
-                } else {
-                    self.backgroundColor = ColorUtilities.color(fromHexString: backgroundColorStr)
-                }
-            } else {
-                // Standard case for most views
-                self.backgroundColor = ColorUtilities.color(fromHexString: backgroundColorStr)
-            }
+            self.backgroundColor = ColorUtilities.color(fromHexString: backgroundColorStr)
             print("🎨 Applied backgroundColor: \(backgroundColorStr) to \(type(of: self))")
         }
         
         if let opacity = props["opacity"] as? CGFloat {
-            self.alpha = opacity
+            // CRITICAL FIX: Don't set alpha to 0 for ScrollView as it breaks touch handling
+            if isScrollView && opacity == 0 {
+                self.alpha = 0.01 // Barely visible but still receives touches
+            } else {
+                self.alpha = opacity
+            }
         }
         
-        // Shadow properties - FIXED to use ColorUtilities directly
+        // Shadow properties
         if let shadowColorStr = props["shadowColor"] as? String {
             layer.shadowColor = ColorUtilities.color(fromHexString: shadowColorStr)?.cgColor
         }
@@ -171,6 +182,50 @@ extension UIView {
         
         if let testID = props["testID"] as? String {
             self.accessibilityIdentifier = testID
+        }
+        
+        // CRITICAL FIX: Handle pointer events for scroll views differently
+        if let pointerEvents = props["pointerEvents"] as? String {
+            // For ScrollView, never disable user interaction completely
+            if isScrollView {
+                if pointerEvents == "none" {
+                    // Enable user interaction but let subviews handle touches
+                    self.isUserInteractionEnabled = true
+                } else {
+                    self.isUserInteractionEnabled = true
+                }
+            } else {
+                // For non-ScrollView elements, handle normally
+                switch pointerEvents {
+                case "none": self.isUserInteractionEnabled = false
+                case "box-none": 
+                    self.isUserInteractionEnabled = false
+                    for subview in self.subviews {
+                        subview.isUserInteractionEnabled = true
+                    }
+                case "box-only":
+                    self.isUserInteractionEnabled = true
+                    for subview in self.subviews {
+                        subview.isUserInteractionEnabled = false
+                    }
+                default: self.isUserInteractionEnabled = true
+                }
+            }
+        }
+        
+        // CRITICAL FIX: Final check for ScrollView to ensure user interaction is enabled
+        if isScrollView {
+            self.isUserInteractionEnabled = true
+            
+            if let scrollView = self as? UIScrollView {
+                // Check if we need to explicitly enable scrolling again
+                if !scrollView.isScrollEnabled {
+                    scrollView.isScrollEnabled = true
+                    print("🔄 Explicitly re-enabled scrolling for ScrollView")
+                }
+            }
+            
+            print("✅ Ensured ScrollView user interaction is enabled")
         }
     }
 }

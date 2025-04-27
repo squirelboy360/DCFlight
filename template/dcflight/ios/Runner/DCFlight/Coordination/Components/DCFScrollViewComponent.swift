@@ -7,65 +7,70 @@ class DCFScrollViewComponent: NSObject, DCFComponent {
     }
     
     func createView(props: [String: Any]) -> UIView {
-        // Create a UIScrollView with default configuration
+        // Create a UIScrollView with fixed configuration
         let scrollView = UIScrollView()
         
-        // CRITICAL FIX: Ensure user interaction is enabled
+        // Critical configuration - these must never be modified elsewhere
         scrollView.isUserInteractionEnabled = true
-        
-        // CRITICAL FIX: Ensure scroll content touches are handled properly
-        scrollView.delaysContentTouches = true
+        scrollView.isScrollEnabled = true
         scrollView.canCancelContentTouches = true
         
-        // Set default properties - make them very explicit
+        // Default property configuration
         scrollView.showsVerticalScrollIndicator = true
         scrollView.showsHorizontalScrollIndicator = true
         scrollView.bounces = true
-        scrollView.isScrollEnabled = true
-        scrollView.alwaysBounceVertical = true  // CRITICAL FIX: Allow bouncing vertically
+        scrollView.alwaysBounceVertical = true
         
-        // CRITICAL FIX: Make sure the scroll view is actually scrollable
-        scrollView.contentInsetAdjustmentBehavior = .automatic
+        // Create a content view that will contain all children
+        let contentView = UIView()
+        contentView.tag = 1001 // Used to identify the content view
+        scrollView.addSubview(contentView)
         
-        // Apply props to newly created view
+        // Turn off automatic inset adjustments which can break scrolling
+        if #available(iOS 11.0, *) {
+            scrollView.contentInsetAdjustmentBehavior = .never
+        }
+        
+        // Apply additional props
         _ = updateView(scrollView, withProps: props)
         
-        print("🔄 Created a new ScrollView with explicit scrolling behavior enabled")
+        print("✅ Created a new ScrollView with proper scrolling behavior")
         
         return scrollView
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let scrollView = view as? UIScrollView else {
-            print("⚠️ DCMauiScrollViewComponent: Attempting to update non-scrollview view")
+            print("⚠️ DCFScrollViewComponent: Attempting to update non-scrollview view")
             return false 
         }
         
-        // CRITICAL FIX: Always ensure these properties are set before anything else
+        // Ensure the scroll view is always interactive
         scrollView.isUserInteractionEnabled = true
-        scrollView.isScrollEnabled = true
+        scrollView.isScrollEnabled = props["scrollEnabled"] as? Bool ?? true
         
-        // Apply standard styles using common extension
-        view.applyStyles(props: props)
-        
-        // Apply ScrollView-specific props
-        if let showsVerticalIndicator = props["showsVerticalScrollIndicator"] as? Bool {
-            scrollView.showsVerticalScrollIndicator = showsVerticalIndicator
+        // Ensure content view exists
+        var contentView = scrollView.viewWithTag(1001)
+        if contentView == nil {
+            contentView = UIView()
+            contentView!.tag = 1001
+            scrollView.addSubview(contentView!)
+            print("⚠️ Created missing content view in ScrollView")
         }
         
-        if let showsHorizontalIndicator = props["showsHorizontalScrollIndicator"] as? Bool {
-            scrollView.showsHorizontalScrollIndicator = showsHorizontalIndicator
+        // Apply scroll view specific properties
+        if let showsVerticalScrollIndicator = props["showsVerticalScrollIndicator"] as? Bool {
+            scrollView.showsVerticalScrollIndicator = showsVerticalScrollIndicator
+        }
+        
+        if let showsHorizontalScrollIndicator = props["showsHorizontalScrollIndicator"] as? Bool {
+            scrollView.showsHorizontalScrollIndicator = showsHorizontalScrollIndicator
         }
         
         if let bounces = props["bounces"] as? Bool {
             scrollView.bounces = bounces
         }
         
-        if let pagingEnabled = props["pagingEnabled"] as? Bool {
-            scrollView.isPagingEnabled = pagingEnabled
-        }
-        
-        // CRITICAL FIX: Explicit bounce settings
         if let alwaysBounceVertical = props["alwaysBounceVertical"] as? Bool {
             scrollView.alwaysBounceVertical = alwaysBounceVertical
         }
@@ -74,205 +79,322 @@ class DCFScrollViewComponent: NSObject, DCFComponent {
             scrollView.alwaysBounceHorizontal = alwaysBounceHorizontal
         }
         
-        // Handle contentInset if specified
-        if let topInset = props["contentInsetTop"] as? CGFloat,
-           let leftInset = props["contentInsetLeft"] as? CGFloat,
-           let bottomInset = props["contentInsetBottom"] as? CGFloat,
-           let rightInset = props["contentInsetRight"] as? CGFloat {
-            scrollView.contentInset = UIEdgeInsets(top: topInset, left: leftInset, bottom: bottomInset, right: rightInset)
+        if let pagingEnabled = props["pagingEnabled"] as? Bool {
+            scrollView.isPagingEnabled = pagingEnabled
         }
         
-        // CRITICAL FIX: Make sure we're always explicitly enabling scrolling at the end
-        // to override any potential style properties that might disable it
-        if let scrollEnabled = props["scrollEnabled"] as? Bool {
-            scrollView.isScrollEnabled = scrollEnabled
+        if let directionalLockEnabled = props["directionalLockEnabled"] as? Bool {
+            scrollView.isDirectionalLockEnabled = directionalLockEnabled
+        }
+        
+        // Handle content insets
+        if let contentInset = props["contentInset"] as? [String: Any] {
+            let top = contentInset["top"] as? CGFloat ?? 0
+            let left = contentInset["left"] as? CGFloat ?? 0
+            let bottom = contentInset["bottom"] as? CGFloat ?? 0
+            let right = contentInset["right"] as? CGFloat ?? 0
+            scrollView.contentInset = UIEdgeInsets(top: top, left: left, bottom: bottom, right: right)
         } else {
-            scrollView.isScrollEnabled = true
+            // Handle individual inset properties
+            let topInset = props["contentInsetTop"] as? CGFloat ?? scrollView.contentInset.top
+            let leftInset = props["contentInsetLeft"] as? CGFloat ?? scrollView.contentInset.left
+            let bottomInset = props["contentInsetBottom"] as? CGFloat ?? scrollView.contentInset.bottom
+            let rightInset = props["contentInsetRight"] as? CGFloat ?? scrollView.contentInset.right
+            
+            let newInsets = UIEdgeInsets(top: topInset, left: leftInset, bottom: bottomInset, right: rightInset)
+            scrollView.contentInset = newInsets
         }
         
-        // Print status for debugging
-        print("📊 Applying styles to UIScrollView: \(props)")
+        if #available(iOS 11.0, *) {
+            if let contentInsetAdjustmentBehavior = props["contentInsetAdjustmentBehavior"] as? String {
+                switch contentInsetAdjustmentBehavior {
+                case "automatic":
+                    scrollView.contentInsetAdjustmentBehavior = .automatic
+                case "scrollableAxes":
+                    scrollView.contentInsetAdjustmentBehavior = .scrollableAxes
+                case "never":
+                    scrollView.contentInsetAdjustmentBehavior = .never
+                case "always":
+                    scrollView.contentInsetAdjustmentBehavior = .always
+                default:
+                    scrollView.contentInsetAdjustmentBehavior = .never
+                }
+            } else {
+                // Default to never to avoid scroll issues
+                scrollView.contentInsetAdjustmentBehavior = .never
+            }
+            
+            // Ensure scroll indicator insets aren't automatically adjusted (prevents scroll issues)
+            if #available(iOS 13.0, *) {
+                scrollView.automaticallyAdjustsScrollIndicatorInsets = false
+            } else {
+                // Fallback on earlier versions
+            }
+        }
+        
+        // Handle keyboard dismissal behavior
+        if let keyboardDismissMode = props["keyboardDismissMode"] as? String {
+            switch keyboardDismissMode {
+            case "none":
+                scrollView.keyboardDismissMode = .none
+            case "on-drag":
+                scrollView.keyboardDismissMode = .onDrag
+            case "interactive":
+                scrollView.keyboardDismissMode = .interactive
+            default:
+                scrollView.keyboardDismissMode = .none
+            }
+        }
         
         return true
     }
     
-    // Override applyLayout to set contentSize
+    // Apply layout to the scroll view and calculate proper content size
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        guard let scrollView = view as? UIScrollView else {
-            print("⚠️ DCFScrollViewComponent: applyLayout called on non-UIScrollView")
-            return
-        }
-
-        // CRITICAL FIX: Ensure scroll view can be properly interacted with
+        guard let scrollView = view as? UIScrollView else { return }
+        
+        // Always ensure these critical settings on layout
         scrollView.isUserInteractionEnabled = true
         scrollView.isScrollEnabled = true
-
-        // 1. Apply the frame calculated by Yoga to the ScrollView itself
+        
         DispatchQueue.main.async {
+            // Save current scroll position
+            let savedContentOffset = scrollView.contentOffset
+            let wasAtBottom = (scrollView.contentOffset.y + scrollView.bounds.height) >= scrollView.contentSize.height
+            
+            // Apply the frame from yoga layout
             scrollView.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
-            print("📏 Applied frame to ScrollView \(scrollView.accessibilityIdentifier ?? "unknown"): \(scrollView.frame)")
-
-            // CRITICAL FIX: Delay contentSize calculation to ensure subviews have been laid out
-            DispatchQueue.main.async {
-                // 2. Calculate the content size based on subviews - FIXED to account for all content
-                var maxRight: CGFloat = 0
-                var maxBottom: CGFloat = 0
-                var minLeft: CGFloat = CGFloat.greatestFiniteMagnitude
-                var minTop: CGFloat = CGFloat.greatestFiniteMagnitude
-
-                // First pass: find the extreme bounds
-                for subview in scrollView.subviews {
-                    minLeft = min(minLeft, subview.frame.minX)
-                    minTop = min(minTop, subview.frame.minY)
-                    maxRight = max(maxRight, subview.frame.maxX)
-                    maxBottom = max(maxBottom, subview.frame.maxY)
-                }
-                
-                // Adjust if no subviews were found
-                if minLeft == CGFloat.greatestFiniteMagnitude {
-                    minLeft = 0
-                }
-                
-                if minTop == CGFloat.greatestFiniteMagnitude {
-                    minTop = 0
-                }
-
-                // Calculate total content width and height including items with negative positioning
-                let contentWidth = maxRight - minLeft
-                let contentHeight = maxBottom - minTop
-
-                // CRITICAL FIX: Make content height larger if needed to ensure scrollability
-                // This ensures we always have scrollable content when items extend beyond viewport
-                let finalContentWidth = contentWidth > 0 ? max(contentWidth, scrollView.bounds.width) : scrollView.bounds.width
-                
-                // CRITICAL FIX: Add a small buffer to ensure scrollability
-                let finalContentHeight = contentHeight > 0 ? max(contentHeight + 1, scrollView.bounds.height) : scrollView.bounds.height
-                
-                let newContentSize = CGSize(width: finalContentWidth, height: finalContentHeight)
-                
-                print("📊 ScrollView calculation: minLeft=\(minLeft), minTop=\(minTop), maxRight=\(maxRight), maxBottom=\(maxBottom)")
-                print("📊 ScrollView calculated size: \(contentWidth)×\(contentHeight), final: \(finalContentWidth)×\(finalContentHeight)")
-                
-                // Apply the calculated contentSize
-                if scrollView.contentSize != newContentSize {
-                    // CRITICAL FIX: Force content size update on main thread
-                    DispatchQueue.main.async {
-                        // Apply new content size
-                        scrollView.contentSize = newContentSize
-                        print("📐 Updated contentSize for ScrollView \(scrollView.accessibilityIdentifier ?? "unknown"): \(scrollView.contentSize)")
-                        
-                        // CRITICAL FIX: Also adjust content offset if we had negative positioned views
-                        if minLeft < 0 || minTop < 0 {
-                            // Adjust content offset to account for negative positioned views
-                            var newOffset = scrollView.contentOffset
-                            if minLeft < 0 {
-                                newOffset.x += abs(minLeft)
-                            }
-                            if minTop < 0 {
-                                newOffset.y += abs(minTop)
-                            }
-                            
-                            // Apply adjusted offset
-                            scrollView.contentOffset = newOffset
-                            print("📏 Adjusted contentOffset for negative positioned content: \(scrollView.contentOffset)")
-                        }
-                        
-                        // Debug information to verify scrollability
-                        let isVerticallyScrollable = scrollView.contentSize.height > scrollView.bounds.height
-                        let isHorizontallyScrollable = scrollView.contentSize.width > scrollView.bounds.width
-                        print("🔍 ScrollView \(scrollView.accessibilityIdentifier ?? "unknown") scrollability: vertical=\(isVerticallyScrollable), horizontal=\(isHorizontallyScrollable)")
-                        
-                        // CRITICAL FIX: Force layout update after content size change
-                        scrollView.setNeedsLayout()
-                        scrollView.layoutIfNeeded()
-                        
-                        // CRITICAL TEST: Try scrolling programmatically to test scrollability
-                        if isVerticallyScrollable {
-                            let testOffset = CGPoint(x: scrollView.contentOffset.x, y: min(10, scrollView.contentSize.height - scrollView.bounds.height))
-                            scrollView.setContentOffset(testOffset, animated: false)
-                            scrollView.setContentOffset(CGPoint(x: scrollView.contentOffset.x, y: 0), animated: false)
-                            print("🧪 Performed scroll test on ScrollView \(scrollView.accessibilityIdentifier ?? "unknown")")
-                        }
-                    }
-                } else {
-                    print("📐 ContentSize for ScrollView \(scrollView.accessibilityIdentifier ?? "unknown") unchanged: \(scrollView.contentSize)")
+            
+            // Force layout immediately to position all subviews
+            scrollView.setNeedsLayout()
+            scrollView.layoutIfNeeded()
+            
+            // Get the content view
+            guard let contentView = scrollView.viewWithTag(1001) else {
+                print("⚠️ Content view missing when applying scroll layout")
+                return
+            }
+            
+            // Calculate the real content size by examining all subviews
+            var maxWidth: CGFloat = 0
+            var maxHeight: CGFloat = 0
+            
+            for subview in scrollView.subviews {
+                // Skip the content view itself when calculating
+                if subview.tag != 1001 {
+                    maxWidth = max(maxWidth, subview.frame.maxX)
+                    maxHeight = max(maxHeight, subview.frame.maxY)
                 }
             }
-        }
-    }
-    
-    // CRITICAL FIX: Override to install a gesture recognizer for debugging
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
-        view.accessibilityIdentifier = nodeId
-        
-        if let scrollView = view as? UIScrollView {
-            // Add a tap gesture recognizer to debug touches
-            let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleScrollViewTap(_:)))
-            tapGesture.numberOfTapsRequired = 2  // Double-tap for debugging
-            scrollView.addGestureRecognizer(tapGesture)
             
-            print("🔍 Added debug tap gesture to ScrollView \(nodeId)")
+            // Ensure content is scrollable by using max of calculated size and scrollview bounds
+            let contentWidth = max(maxWidth, scrollView.bounds.width) + 1  // Adding 1 to ensure scrollability
+            let contentHeight = max(maxHeight, scrollView.bounds.height) + 1
+            
+            // Set the content view frame to match
+            contentView.frame = CGRect(x: 0, y: 0, width: contentWidth, height: contentHeight)
+            
+            // Set the content size - this is critical for scrolling
+            let newContentSize = CGSize(width: contentWidth, height: contentHeight)
+            scrollView.contentSize = newContentSize
+            
+            // Maintenance of scroll position
+            if wasAtBottom {
+                // If we were at the bottom, stay at the bottom
+                let newMaxY = max(0, scrollView.contentSize.height - scrollView.bounds.height)
+                scrollView.contentOffset = CGPoint(x: savedContentOffset.x, y: newMaxY)
+            } else if savedContentOffset != .zero {
+                // Otherwise restore the previous position
+                scrollView.contentOffset = savedContentOffset
+            }
+            
+            // Debug information
+            print("📊 ScrollView contentSize: \(scrollView.contentSize), frame: \(scrollView.frame)")
+            print("📊 ScrollView scrollable: \(scrollView.contentSize.height > scrollView.bounds.height ? "YES" : "NO")")
         }
     }
     
-    // Debug helper for tap gesture
-    @objc func handleScrollViewTap(_ gesture: UITapGestureRecognizer) {
-        guard let scrollView = gesture.view as? UIScrollView else { return }
-        
-        print("🔍 ScrollView DEBUG TAP - Current state:")
-        print("   - contentSize: \(scrollView.contentSize)")
-        print("   - bounds: \(scrollView.bounds)")
-        print("   - isScrollEnabled: \(scrollView.isScrollEnabled)")
-        print("   - isUserInteractionEnabled: \(scrollView.isUserInteractionEnabled)")
-        print("   - contentOffset: \(scrollView.contentOffset)")
-        print("   - subview count: \(scrollView.subviews.count)")
-        
-        // Test scrolling programmatically
-        if scrollView.contentSize.height > scrollView.bounds.height {
-            let halfwayY = (scrollView.contentSize.height - scrollView.bounds.height) / 2
-            scrollView.setContentOffset(CGPoint(x: scrollView.contentOffset.x, y: halfwayY), animated: true)
-            print("🔄 Attempted to scroll to halfway point: \(halfwayY)")
-        }
-    }
+    // MARK: - Method Handlers
     
-    // MARK: - Component Method Handlers
-    
-    /// Handle scrollTo method calls from Dart
     func scrollTo(view: UIScrollView, args: [String: Any]) {
-        guard let x = args["x"] as? CGFloat,
-              let y = args["y"] as? CGFloat else {
-            print("❌ scrollTo: Missing x or y coordinates")
+        guard let x = args["x"] as? CGFloat, let y = args["y"] as? CGFloat else {
+            print("❌ ScrollView.scrollTo: Missing coordinates")
             return
         }
         
         let animated = args["animated"] as? Bool ?? true
         
-        // Apply scroll on main thread
         DispatchQueue.main.async {
-            // CRITICAL FIX: Make sure scrolling is enabled before trying to scroll
+            // Ensure scrolling is enabled
             view.isScrollEnabled = true
-            view.setContentOffset(CGPoint(x: x, y: y), animated: animated)
+            
+            // Calculate safe coordinates (don't exceed content size)
+            let safeX = min(max(0, x), max(0, view.contentSize.width - view.bounds.width))
+            let safeY = min(max(0, y), max(0, view.contentSize.height - view.bounds.height))
+            
+            // Apply scroll
+            view.setContentOffset(CGPoint(x: safeX, y: safeY), animated: animated)
+            
+            // Force layout immediately if not animated
+            if !animated {
+                view.layoutIfNeeded()
+            }
+            
+            print("✅ ScrollView.scrollTo: (\(safeX), \(safeY)), animated: \(animated)")
         }
     }
     
-    /// Handle scrollToEnd method calls from Dart (scroll to bottom)
     func scrollToEnd(view: UIScrollView, args: [String: Any]) {
         let animated = args["animated"] as? Bool ?? true
         
-        // Calculate the bottom offset
-        let bottomOffset = CGPoint(
-            x: 0,
-            y: max(0, view.contentSize.height - view.bounds.height)
-        )
-        
-        // Apply scroll on main thread
         DispatchQueue.main.async {
-            // CRITICAL FIX: Make sure scrolling is enabled before trying to scroll
+            // Ensure scrolling is enabled
             view.isScrollEnabled = true
+            
+            // Calculate bottom position
+            let maxY = max(0, view.contentSize.height - view.bounds.height)
+            let bottomOffset = CGPoint(x: 0, y: maxY)
+            
+            // Apply scroll
             view.setContentOffset(bottomOffset, animated: animated)
             
-            // Log for debugging
-            print("📜 Scrolling to end: \(bottomOffset.y) (content height: \(view.contentSize.height), view height: \(view.bounds.height))")
+            // Force layout immediately if not animated
+            if !animated {
+                view.layoutIfNeeded()
+            }
+            
+            print("✅ ScrollView.scrollToEnd: Y: \(maxY), animated: \(animated)")
         }
+    }
+    
+    func flashScrollIndicators(view: UIScrollView, args: [String: Any]) {
+        DispatchQueue.main.async {
+            view.flashScrollIndicators()
+        }
+    }
+    
+    // MARK: - View Registration
+    
+    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+        view.accessibilityIdentifier = nodeId
+        
+        // Ensure scroll view properties are maintained
+        if let scrollView = view as? UIScrollView {
+            scrollView.isUserInteractionEnabled = true
+            scrollView.isScrollEnabled = true
+        }
+    }
+    
+    // MARK: - Event Handling
+    
+    func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], eventCallback: @escaping (String, String, [String: Any]) -> Void) {
+        guard let scrollView = view as? UIScrollView else { return }
+        
+        // Store the event information using associated objects
+        objc_setAssociatedObject(
+            view,
+            UnsafeRawPointer(bitPattern: "viewId".hashValue)!,
+            viewId,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        
+        objc_setAssociatedObject(
+            view,
+            UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!,
+            eventCallback,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        
+        // Create and set the delegate
+        let delegate = ScrollViewDelegateHandler(viewId: viewId, eventCallback: eventCallback)
+        scrollView.delegate = delegate
+        
+        // Store the delegate to keep it alive
+        objc_setAssociatedObject(
+            view,
+            UnsafeRawPointer(bitPattern: "scrollDelegate".hashValue)!,
+            delegate,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        
+        print("✅ Added scroll event handlers for: \(eventTypes)")
+    }
+    
+    func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String]) {
+        guard let scrollView = view as? UIScrollView else { return }
+        
+        // Reset delegate
+        scrollView.delegate = nil
+        
+        // Remove associated objects
+        objc_setAssociatedObject(
+            scrollView,
+            UnsafeRawPointer(bitPattern: "scrollDelegate".hashValue)!,
+            nil,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+    }
+}
+
+// MARK: - ScrollView Delegate Handler
+class ScrollViewDelegateHandler: NSObject, UIScrollViewDelegate {
+    let viewId: String
+    let eventCallback: (String, String, [String: Any]) -> Void
+    
+    init(viewId: String, eventCallback: @escaping (String, String, [String: Any]) -> Void) {
+        self.viewId = viewId
+        self.eventCallback = eventCallback
+        super.init()
+    }
+    
+    // Scroll event
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        // Create event data with all relevant information
+        let eventData: [String: Any] = [
+            "contentOffset": ["x": scrollView.contentOffset.x, "y": scrollView.contentOffset.y],
+            "contentSize": ["width": scrollView.contentSize.width, "height": scrollView.contentSize.height],
+            "layoutMeasurement": ["width": scrollView.bounds.width, "height": scrollView.bounds.height]
+        ]
+        
+        eventCallback(viewId, "onScroll", eventData)
+    }
+    
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        let eventData: [String: Any] = [
+            "contentOffset": ["x": scrollView.contentOffset.x, "y": scrollView.contentOffset.y]
+        ]
+        
+        eventCallback(viewId, "onScrollBeginDrag", eventData)
+    }
+    
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        let eventData: [String: Any] = [
+            "contentOffset": ["x": scrollView.contentOffset.x, "y": scrollView.contentOffset.y],
+            "decelerate": decelerate
+        ]
+        
+        eventCallback(viewId, "onScrollEndDrag", eventData)
+    }
+    
+    func scrollViewWillBeginDecelerating(_ scrollView: UIScrollView) {
+        let eventData: [String: Any] = [
+            "contentOffset": ["x": scrollView.contentOffset.x, "y": scrollView.contentOffset.y]
+        ]
+        
+        eventCallback(viewId, "onMomentumScrollBegin", eventData)
+    }
+    
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        let eventData: [String: Any] = [
+            "contentOffset": ["x": scrollView.contentOffset.x, "y": scrollView.contentOffset.y]
+        ]
+        
+        eventCallback(viewId, "onMomentumScrollEnd", eventData)
+    }
+    
+    // Handle scrollsToTop behavior (status bar tap)
+    func scrollViewShouldScrollToTop(_ scrollView: UIScrollView) -> Bool {
+        eventCallback(viewId, "onScrollToTop", [:])
+        return true
     }
 }
