@@ -66,8 +66,44 @@ class DCFScrollViewComponent: NSObject, DCFComponent {
         return true
     }
     
+    // Override applyLayout to set contentSize
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
+        guard let scrollView = view as? UIScrollView else {
+            print("⚠️ DCFScrollViewComponent: applyLayout called on non-UIScrollView")
+            return
+        }
+
+        // 1. Apply the frame calculated by Yoga to the ScrollView itself
+        // Ensure this happens on the main thread
+        DispatchQueue.main.async {
+            scrollView.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
+            print("📏 Applied frame to ScrollView \(scrollView.accessibilityIdentifier ?? "unknown"): \(scrollView.frame)")
+
+            // 2. Calculate the content size based on subviews
+            var contentWidth: CGFloat = 0
+            var contentHeight: CGFloat = 0
+
+            for subview in scrollView.subviews {
+                // Use the frame set by Yoga's layout application on the subviews
+                let subviewFrame = subview.frame
+                contentWidth = max(contentWidth, subviewFrame.maxX)
+                contentHeight = max(contentHeight, subviewFrame.maxY)
+            }
+
+            // 3. Set the contentSize
+            // Ensure contentSize is at least the size of the scroll view's bounds
+            // Add a small buffer if needed, or ensure Yoga layout accounts for padding correctly
+            let finalContentWidth = max(contentWidth, scrollView.bounds.width)
+            let finalContentHeight = max(contentHeight, scrollView.bounds.height)
+            let newContentSize = CGSize(width: finalContentWidth, height: finalContentHeight)
+
+            if scrollView.contentSize != newContentSize {
+                scrollView.contentSize = newContentSize
+                print("📐 Updated contentSize for ScrollView \(scrollView.accessibilityIdentifier ?? "unknown"): \(scrollView.contentSize)")
+            } else {
+                 print("📐 ContentSize for ScrollView \(scrollView.accessibilityIdentifier ?? "unknown") unchanged: \(scrollView.contentSize)")
+            }
+        }
     }
     
     // MARK: - Component Method Handlers
