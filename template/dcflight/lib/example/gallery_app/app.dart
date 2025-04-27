@@ -1,4 +1,4 @@
-import 'package:dcflight/example_app_components/gallery_app/components/content.dart';
+import 'package:dcflight/example/gallery_app/components/content.dart';
 import 'package:dcflight/framework/components/comp_props/button_props.dart';
 import 'package:dcflight/framework/components/comp_props/text_props.dart';
 import 'package:dcflight/framework/components/dc_ui.dart';
