@@ -300,22 +300,6 @@ class DCMauiTextComponent: NSObject, DCMauiComponent {
         }
     }
     
-    // Helper to convert string weight to UIFont.Weight
-    private func fontWeightFromString(_ weight: String) -> UIFont.Weight {
-        switch weight {
-        case "bold", "700":    return .bold
-        case "600":            return .semibold
-        case "500":            return .medium
-        case "400", "normal":  return .regular
-        case "300":            return .light
-        case "200":            return .thin
-        case "100":            return .ultraLight
-        case "800":            return .heavy
-        case "900":            return .black
-        default:               return .regular
-        }
-    }
-    
     // Helper to apply line height
     private func applyLineHeight(_ lineHeight: CGFloat, to label: UILabel) {
         let paragraphStyle = NSMutableParagraphStyle()

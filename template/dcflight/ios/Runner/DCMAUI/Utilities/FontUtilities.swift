@@ -57,3 +57,20 @@ extension UIFont {
         return .regular
     }
 }
+
+
+// Helper to convert string weight to UIFont.Weight
+ func fontWeightFromString(_ weight: String) -> UIFont.Weight {
+    switch weight {
+    case "bold", "700":    return .bold
+    case "600":            return .semibold
+    case "500":            return .medium
+    case "400", "normal", "regular": return .regular
+    case "300":            return .light
+    case "200":            return .thin
+    case "100":            return .ultraLight
+    case "800":            return .heavy
+    case "900":            return .black
+    default:               return .regular
+    }
+}
