@@ -1,8 +1,8 @@
 import UIKit
 import Flutter
 
-class DCMauiScreenUtilities {
-    static let shared = DCMauiScreenUtilities()
+class DCFScreenUtilities {
+    static let shared = DCFScreenUtilities()
     
     // Store the Flutter binary messenger
     private var flutterBinaryMessenger: FlutterBinaryMessenger?

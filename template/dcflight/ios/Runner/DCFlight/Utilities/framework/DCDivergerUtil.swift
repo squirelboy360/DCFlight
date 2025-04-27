@@ -6,7 +6,7 @@
 //
 
 extension AppDelegate {
-    internal func DivergeToDCMAUI() {
+    internal func divergeToFlight() {
         // Initialize and run the Flutter engine
         flutterEngine.run(withEntrypoint: nil, initialRoute: "/")
         let flutterViewController = FlutterViewController(engine: flutterEngine, nibName: nil, bundle: nil)
@@ -26,7 +26,7 @@ extension AppDelegate {
         setupDCMauiNativeBridge(rootView: nativeRootVC.view)
         
         // Initialize screen utilities
-        _ = DCMauiScreenUtilities.shared
+        _ = DCFScreenUtilities.shared
     }
     
     // Setup the DCMauiNativeBridge
@@ -47,7 +47,7 @@ extension AppDelegate {
         // Set up the root with the props
         DCMauiBridgeImpl.shared.registerView(rootContainer, withId: "root")
         // Initialize screen utilities with the Flutter binary messenger
-        DCMauiScreenUtilities.shared.initialize(with: flutterEngine.binaryMessenger)
+        DCFScreenUtilities.shared.initialize(with: flutterEngine.binaryMessenger)
         
         // Initialize the yoga layout system
         _ = YogaShadowTree.shared

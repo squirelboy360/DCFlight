@@ -18,7 +18,7 @@ class AppDelegate: FlutterAppDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        DivergeToDCMAUI()
+        divergeToFlight()
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
 }

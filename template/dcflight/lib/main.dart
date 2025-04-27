@@ -23,7 +23,7 @@ class GalleryApp extends StatefulComponent {
     // State hook for selected tab index
     final selectedTab = useState(0);
     // Ref hook for the ScrollView
-    final scrollRef = useRef<ScrollViewRef?>(null); 
+    final scrollRef = useRef<ScrollViewRef?>(null);
 
     // Define tab content builders
     UIComponent buildTabContent(int index) {
@@ -61,23 +61,21 @@ class GalleryApp extends StatefulComponent {
 
       return DC.ScrollView(
         // Pass the ref's current value to the ScrollView
-        scrollViewProps: ScrollViewProps(scrollEnabled: true, ref: scrollRef.value,onScroll: (v){
-          print("Scroll event: $v");
-        
-        }) ,
-        layout: LayoutProps(flex: 1),
-        children: [
-          DC.View(
-            layout: LayoutProps(
-              flexDirection: YogaFlexDirection.row,
-              flexWrap: YogaWrap.wrap,
-              justifyContent:
-                  YogaJustifyContent.center, // Center images horizontally
-              padding: 10,
-            ),
-            children: images, // Add the list of images
-          ),
-        ],
+        scrollViewProps: ScrollViewProps(
+            scrollEnabled: true,
+            ref: scrollRef.value,
+            onScroll: (v) {
+              print("Scroll event: $v");
+            }),
+        layout: LayoutProps(
+          flex: 1,
+          flexDirection: YogaFlexDirection.row,
+          flexWrap: YogaWrap.wrap,
+          justifyContent:
+              YogaJustifyContent.center, // Center images horizontally
+          padding: 10,
+        ),
+        children: images,
       );
     }
 
@@ -121,7 +119,7 @@ class GalleryApp extends StatefulComponent {
             // App Bar
             DC.View(
               layout: LayoutProps(
-                height: '10%', 
+                height: '10%',
                 paddingHorizontal: 15,
                 paddingTop: ScreenUtilities.instance.statusBarHeight,
                 flexDirection: YogaFlexDirection.row,
@@ -153,8 +151,10 @@ class GalleryApp extends StatefulComponent {
             DC.View(
               layout: LayoutProps(
                 height: 50,
-                flexDirection: YogaFlexDirection.row, // Arrange tabs horizontally
-                justifyContent: YogaJustifyContent.spaceAround, // Distribute tabs
+                flexDirection:
+                    YogaFlexDirection.row, // Arrange tabs horizontally
+                justifyContent:
+                    YogaJustifyContent.spaceAround, // Distribute tabs
                 alignItems: YogaAlign.stretch, // Stretch buttons vertically
               ),
               style: StyleSheet(backgroundColor: Colors.deepPurpleAccent[900]),
@@ -178,14 +178,13 @@ class GalleryApp extends StatefulComponent {
             flexDirection: YogaFlexDirection.column, // Stack buttons vertically
             alignItems: YogaAlign.flexEnd, // Align buttons to the right
           ),
-        
           children: [
             // Scroll to Top Button
             DC.Button(
               onPress: () {
                 print("Scrolling to top...");
                 // Corrected: Use scrollToTop for the Top button
-                scrollRef.value?.scrollToTop(); 
+                scrollRef.value?.scrollToTop();
               },
               layout: LayoutProps(
                 width: 56,
@@ -206,7 +205,7 @@ class GalleryApp extends StatefulComponent {
             // Scroll to Bottom Button
             DC.Button(
               onPress: () {
-                print("--- End Button Pressed ---"); 
+                print("--- End Button Pressed ---");
                 print("Scrolling to bottom...");
                 scrollRef.value?.scrollToBottom(); // Use the ref
               },
