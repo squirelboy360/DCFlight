@@ -33,14 +33,14 @@ UIComponent buildTabContent(int index, ScrollViewRef? scrollRef) {
         final seed = "${category}_$i";
         final imageUrl = "https://picsum.photos/seed/$seed/100/100";
         return DC.Image(
-          imageProps: ImageProps(source: imageUrl),
+          imageProps: ImageProps(source: imageUrl,resizeMode: 'cover'),
           layout: LayoutProps(
             width: 100,
             height: 100,
             margin: 5,
           ),
           style:
-              StyleSheet(backgroundColor: Colors.grey[800]), // Placeholder bg
+              StyleSheet(backgroundColor: Colors.grey[800],borderRadius: 20), // Placeholder bg
         );
       });
 
@@ -74,6 +74,7 @@ UIComponent buildTabContent(int index, ScrollViewRef? scrollRef) {
           scrollRef?.scrollToTop(animated: false);
           print("Selected tab: $index");
         },
+      
         layout: LayoutProps(
           flex: 1, // Distribute space evenly
           padding: 10,
@@ -82,9 +83,9 @@ UIComponent buildTabContent(int index, ScrollViewRef? scrollRef) {
         ),
         style: StyleSheet(
           backgroundColor:
-              isSelected ? Colors.deepPurpleAccent : Colors.blueGrey[700],
+              isSelected ? Colors.blueAccent : Colors.grey.withOpacity(0.5),
         ),
-        buttonProps: ButtonProps(
+        buttonProps: ButtonProps(titleColor: isSelected? Colors.white : Colors.black,
           title: title,
         ),
       );
