@@ -29,6 +29,17 @@ protocol DCFComponent {
     func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String])
 }
 
+/// Protocol for handling component-specific methods
+protocol ComponentMethodHandler {
+    /// Handle a method call on a specific view instance
+    /// - Parameters:
+    ///   - methodName: The name of the method to call
+    ///   - args: The arguments to pass to the method
+    ///   - view: The view instance to operate on
+    /// - Returns: Whether the method was successfully handled
+    func handleMethod(methodName: String, args: [String: Any], view: UIView) -> Bool
+}
+
 /// Layout information from a Yoga node
 struct YGNodeLayout {
     let left: CGFloat

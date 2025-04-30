@@ -235,13 +235,8 @@ extension DCFLayoutManager {
         // Associate the view with its Yoga node
         print("Associated view with node \(nodeId) of type \(componentType)")
         
-        // Set up special handling for nodes that need to self-measure
-        if componentType == "Text" {
-            // Don't actually set a measure function, but mark it specially
-            view.accessibilityIdentifier = "text_\(nodeId)"
-        }
-        
-        // Let the component know it's registered
+        // Let the component know it's registered - this allows each component 
+        // to handle its own specialized registration logic
         componentInstance.viewRegisteredWithShadowTree(view, nodeId: nodeId)
     }
     

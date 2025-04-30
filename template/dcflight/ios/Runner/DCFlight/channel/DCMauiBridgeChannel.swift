@@ -261,7 +261,7 @@ class DCMauiBridgeMethodChannel: NSObject {
     }
     
     // --- START NEW HANDLER ---
-    // Handle calls to component-specific methods
+    // Handle calls to component-specific methods using protocol-based routing
     private func handleCallComponentMethod(_ args: [String: Any], result: @escaping FlutterResult) {
         guard let viewId = args["viewId"] as? String,
               let methodName = args["methodName"] as? String,
@@ -295,48 +295,44 @@ class DCMauiBridgeMethodChannel: NSObject {
                 return
             }
 
-            // Handle methods based on view type
-            var success = false
-            var errorMessage: String? = nil
-
-            // --- ScrollView Methods ---
-            if let scrollView = finalView as? UIScrollView {
-                let component = DCFScrollViewComponent() // Use a temporary instance to access methods
+            // Find the appropriate component for this view
+            let viewClassName = String(describing: type(of: finalView))
+            var componentInstance: DCFComponent? = nil
+            var componentName: String = "unknown"
+            
+            // Try to find component based on view class name
+            for (name, componentType) in DCFComponentRegistry.shared.componentTypes {
+                let tempInstance = componentType.init()
+                let tempView = tempInstance.createView(props: [:])
                 
-                print("✅ Found ScrollView for method: \(methodName)")
-                
-                if methodName == "scrollTo" {
-                    component.scrollTo(view: scrollView, args: methodArgs)
-                    success = true
-                    print("✅ Executed scrollTo with args: \(methodArgs)")
-                } 
-                else if methodName == "scrollToEnd" {
-                    component.scrollToEnd(view: scrollView, args: methodArgs)
-                    success = true
-                    print("✅ Executed scrollToEnd with args: \(methodArgs)")
-                }
-                else if methodName == "flashScrollIndicators" {
-                    component.flashScrollIndicators(view: scrollView, args: methodArgs)
-                    success = true
-                    print("✅ Executed flashScrollIndicators")
-                }
-                else {
-                    errorMessage = "Method '\(methodName)' not supported for ScrollView"
+                if String(describing: type(of: tempView)) == viewClassName {
+                    componentInstance = tempInstance
+                    componentName = name
+                    print("✅ Found component \(name) for view class: \(viewClassName)")
+                    break
                 }
             }
-            // --- Add handling for other component types here ---
-            else {
-                errorMessage = "Component type '\(type(of: finalView))' does not support method calls or method '\(methodName)' is unknown."
-                print("⚠️ Unsupported component type: \(type(of: finalView)) for method: \(methodName)")
+            
+            guard let component = componentInstance else {
+                print("❌ No component found for view class: \(viewClassName)")
+                result(FlutterError(code: "COMPONENT_NOT_FOUND", message: "No component found for view type", details: viewClassName))
+                return
             }
-
-            // Return result
-            if success {
-                print("✅ callComponentMethod successful for \(viewId).\(methodName)")
-                result(true)
+            
+            // Use component method handler protocol if available
+            if let methodHandler = component as? ComponentMethodHandler {
+                let success = methodHandler.handleMethod(methodName: methodName, args: methodArgs, view: finalView)
+                
+                if success {
+                    print("✅ Method \(methodName) successfully handled by \(componentName) component")
+                    result(true)
+                } else {
+                    print("❌ Component \(componentName) failed to handle method \(methodName)")
+                    result(FlutterError(code: "METHOD_FAILED", message: "Component failed to handle method", details: methodName))
+                }
             } else {
-                print("❌ callComponentMethod failed: \(errorMessage ?? "Unknown error")")
-                result(FlutterError(code: "METHOD_EXECUTION_FAILED", message: errorMessage ?? "Failed to execute method", details: methodName))
+                print("❌ Component \(componentName) does not implement ComponentMethodHandler protocol")
+                result(FlutterError(code: "METHOD_NOT_SUPPORTED", message: "Component does not support method handling", details: componentName))
             }
         }
     }

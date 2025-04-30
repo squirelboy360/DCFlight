@@ -1,7 +1,7 @@
 import UIKit
 import yoga
 
-class DCFScrollViewComponent: NSObject, DCFComponent {
+class DCFScrollViewComponent: NSObject, DCFComponent, ComponentMethodHandler {
     required override init() {
         super.init()
     }
@@ -270,6 +270,33 @@ class DCFScrollViewComponent: NSObject, DCFComponent {
     func flashScrollIndicators(view: UIScrollView, args: [String: Any]) {
         DispatchQueue.main.async {
             view.flashScrollIndicators()
+        }
+    }
+    
+    // MARK: - ComponentMethodHandler Implementation
+    
+    func handleMethod(methodName: String, args: [String: Any], view: UIView) -> Bool {
+        guard let scrollView = view as? UIScrollView else { 
+            print("❌ Cannot call method on non-scrollview: \(methodName)")
+            return false 
+        }
+        
+        switch methodName {
+        case "scrollTo":
+            scrollTo(view: scrollView, args: args)
+            return true
+            
+        case "scrollToEnd":
+            scrollToEnd(view: scrollView, args: args)
+            return true
+            
+        case "flashScrollIndicators":
+            flashScrollIndicators(view: scrollView, args: args)
+            return true
+            
+        default:
+            print("⚠️ Unknown method for ScrollView: \(methodName)")
+            return false
         }
     }
     

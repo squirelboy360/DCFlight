@@ -331,4 +331,17 @@ class DCFTextComponent: NSObject, DCFComponent {
         let size = tempLabel.sizeThatFits(CGSize(width: maxWidth, height: .greatestFiniteMagnitude))
         return CGSize(width: size.width, height: max(size.height, 24))
     }
+    
+    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+        // Set accessibility identifier for easier debugging
+        view.accessibilityIdentifier = "text_\(nodeId)"
+        
+        // Ensure proper tag is maintained on the label
+        if let label = view.viewWithTag(1001) as? UILabel {
+            // Tag is already set correctly
+        } else if let containerView = view as? UIView, let label = containerView.subviews.first as? UILabel {
+            // Ensure the label has the expected tag
+            label.tag = 1001
+        }
+    }
 }
