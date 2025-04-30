@@ -1,6 +1,6 @@
 import 'dart:developer' as developer;
 
-import 'package:dcflight/framework/packages/vdom/vdom_node.dart';
+import 'package:dcflight/framework/renderer/vdom/vdom_node.dart';
 
 
 import 'component.dart';

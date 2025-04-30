@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:dcflight/framework/packages/vdom/vdom_element.dart';
-import 'package:dcflight/framework/packages/vdom/vdom_node.dart';
+import 'package:dcflight/framework/renderer/vdom/vdom_element.dart';
+import 'package:dcflight/framework/renderer/vdom/vdom_node.dart';
 
 
 import 'component.dart';

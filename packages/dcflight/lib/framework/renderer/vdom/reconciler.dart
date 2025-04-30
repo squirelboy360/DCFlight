@@ -1,7 +1,7 @@
 import 'dart:developer' as developer;
 import 'dart:math' as math;
-import 'package:dcflight/framework/packages/native_bridge/dispatcher.dart';
-import 'package:dcflight/framework/packages/vdom/component/component_node.dart';
+import 'package:dcflight/framework/renderer/native_bridge/dispatcher.dart';
+import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 
 import '../../constants/layout_properties.dart';
 

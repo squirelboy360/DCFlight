@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
-import '../packages/vdom/vdom_node.dart';
-import '../packages/vdom/vdom_element.dart';
+import '../renderer/vdom/vdom_node.dart';
+import '../renderer/vdom/vdom_element.dart';
 
 /// Type definition for a component factory function
 /// This will be used to register component factories with the framework

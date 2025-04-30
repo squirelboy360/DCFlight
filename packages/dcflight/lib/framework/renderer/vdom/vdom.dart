@@ -4,12 +4,12 @@ import 'dart:async';
 import 'dart:developer' as developer;
 
 
-import 'package:dcflight/framework/packages/native_bridge/dispatcher.dart' show NativeBridgeFactory, PlatformDispatcher;
-import 'package:dcflight/framework/packages/vdom/component/component.dart';
-import 'package:dcflight/framework/packages/vdom/component/component_node.dart';
-import 'package:dcflight/framework/packages/vdom/component/context.dart';
-import 'package:dcflight/framework/packages/vdom/component/error_boundary.dart';
-import 'package:dcflight/framework/packages/vdom/vdom_element.dart';
+import 'package:dcflight/framework/renderer/native_bridge/dispatcher.dart' show NativeBridgeFactory, PlatformDispatcher;
+import 'package:dcflight/framework/renderer/vdom/component/component.dart';
+import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
+import 'package:dcflight/framework/renderer/vdom/component/context.dart';
+import 'package:dcflight/framework/renderer/vdom/component/error_boundary.dart';
+import 'package:dcflight/framework/renderer/vdom/vdom_element.dart';
 import 'package:dcflight/framework/utilities/screen_utilities.dart';
 
 import '../../constants/yoga_enums.dart';

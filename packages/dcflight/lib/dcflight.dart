@@ -2,16 +2,16 @@
 library dcflight;
 
 // Core Infrastructure
-export 'framework/packages/vdom/vdom.dart';
-export 'framework/packages/vdom/vdom_node.dart';
-export 'framework/packages/vdom/vdom_element.dart';
-export 'framework/packages/vdom/reconciler.dart';
-export 'framework/packages/vdom/fragment.dart';
-export 'framework/packages/vdom/component/component.dart';
+export 'framework/renderer/vdom/vdom.dart';
+export 'framework/renderer/vdom/vdom_node.dart';
+export 'framework/renderer/vdom/vdom_element.dart';
+export 'framework/renderer/vdom/reconciler.dart';
+export 'framework/renderer/vdom/fragment.dart';
+export 'framework/renderer/vdom/component/component.dart';
 
 // Native Bridge System
-export 'framework/packages/native_bridge/dispatcher.dart';
-export 'framework/packages/native_bridge/dispatcher_imp.dart';
+export 'framework/renderer/native_bridge/dispatcher.dart';
+export 'framework/renderer/native_bridge/dispatcher_imp.dart';
 
 // Core Constants and Properties - explicitly exported for component developers
 export 'framework/constants/yoga_enums.dart';
@@ -31,9 +31,9 @@ export 'framework/protocol/plugin_protocol.dart';
 import 'package:dcflight/framework/protocol/component_protocol.dart';
 import 'package:dcflight/framework/protocol/component_registry.dart';
 
-import 'framework/packages/vdom/vdom.dart';
-import 'framework/packages/vdom/component/component.dart';
-import 'framework/packages/native_bridge/dispatcher.dart';
+import 'framework/renderer/vdom/vdom.dart';
+import 'framework/renderer/vdom/component/component.dart';
+import 'framework/renderer/native_bridge/dispatcher.dart';
 import 'framework/utilities/screen_utilities.dart';
 import 'framework/protocol/plugin_protocol.dart';
 import 'package:flutter/material.dart';
