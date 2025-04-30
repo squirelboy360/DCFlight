@@ -105,6 +105,23 @@ class DCFScrollViewComponent: NSObject, DCFComponent, ComponentMethodHandler {
             scrollView.contentInset = newInsets
         }
         
+        // Handle contentOffset
+        if let contentOffset = props["contentOffset"] as? [String: Any] {
+            let x = contentOffset["x"] as? CGFloat ?? 0
+            let y = contentOffset["y"] as? CGFloat ?? 0
+            scrollView.contentOffset = CGPoint(x: x, y: y)
+        }
+        
+        // Apply scroll indicator insets
+        if let scrollIndicatorInsets = props["scrollIndicatorInsets"] as? [String: Any] {
+            let top = scrollIndicatorInsets["top"] as? CGFloat ?? 0
+            let left = scrollIndicatorInsets["left"] as? CGFloat ?? 0
+            let bottom = scrollIndicatorInsets["bottom"] as? CGFloat ?? 0
+            let right = scrollIndicatorInsets["right"] as? CGFloat ?? 0
+            scrollView.scrollIndicatorInsets = UIEdgeInsets(top: top, left: left, bottom: bottom, right: right)
+        }
+        
+        // Advanced iOS-specific properties
         if #available(iOS 11.0, *) {
             if let contentInsetAdjustmentBehavior = props["contentInsetAdjustmentBehavior"] as? String {
                 switch contentInsetAdjustmentBehavior {
@@ -124,11 +141,13 @@ class DCFScrollViewComponent: NSObject, DCFComponent, ComponentMethodHandler {
                 scrollView.contentInsetAdjustmentBehavior = .never
             }
             
-            // Ensure scroll indicator insets aren't automatically adjusted (prevents scroll issues)
+            // Handle automaticallyAdjustsScrollIndicatorInsets (iOS 13+)
             if #available(iOS 13.0, *) {
-                scrollView.automaticallyAdjustsScrollIndicatorInsets = false
-            } else {
-                // Fallback on earlier versions
+                if let automaticallyAdjustsScrollIndicatorInsets = props["automaticallyAdjustsScrollIndicatorInsets"] as? Bool {
+                    scrollView.automaticallyAdjustsScrollIndicatorInsets = automaticallyAdjustsScrollIndicatorInsets
+                } else {
+                    scrollView.automaticallyAdjustsScrollIndicatorInsets = false
+                }
             }
         }
         
@@ -146,7 +165,60 @@ class DCFScrollViewComponent: NSObject, DCFComponent, ComponentMethodHandler {
             }
         }
         
+        // Handle scrollsToTop - status bar tap scrolls to top
+        if let scrollsToTop = props["scrollsToTop"] as? Bool {
+            scrollView.scrollsToTop = scrollsToTop
+        }
+        
+        // Handle zoom properties
+        if let minimumZoomScale = props["minimumZoomScale"] as? CGFloat {
+            scrollView.minimumZoomScale = minimumZoomScale
+        }
+        
+        if let maximumZoomScale = props["maximumZoomScale"] as? CGFloat {
+            scrollView.maximumZoomScale = maximumZoomScale
+        }
+        
+        if let zoomScale = props["zoomScale"] as? CGFloat {
+            scrollView.zoomScale = zoomScale
+        }
+        
+        if let bouncesZoom = props["bouncesZoom"] as? Bool {
+            scrollView.bouncesZoom = bouncesZoom
+        }
+        
+        // Handle canCancelContentTouches
+        if let canCancelContentTouches = props["canCancelContentTouches"] as? Bool {
+            scrollView.canCancelContentTouches = canCancelContentTouches
+        }
+        
+        // Setup proper content size for the content view
+        updateContentSize(scrollView, contentView: contentView)
+        
         return true
+    }
+    
+    // Helper method to update content size
+    private func updateContentSize(_ scrollView: UIScrollView, contentView: UIView?) {
+        guard let contentView = contentView else { return }
+        
+        // Calculate content size based on subviews (excluding content view itself)
+        var maxWidth: CGFloat = 0
+        var maxHeight: CGFloat = 0
+        
+        for subview in scrollView.subviews {
+            if subview.tag != 1001 {  // Skip content view itself
+                maxWidth = max(maxWidth, subview.frame.maxX)
+                maxHeight = max(maxHeight, subview.frame.maxY)
+            }
+        }
+        
+        // Set minimum content size to ensure scrollability
+        let contentWidth = max(maxWidth, scrollView.bounds.width)
+        let contentHeight = max(maxHeight, scrollView.bounds.height) 
+        
+        contentView.frame = CGRect(x: 0, y: 0, width: contentWidth, height: contentHeight)
+        scrollView.contentSize = CGSize(width: contentWidth, height: contentHeight)
     }
     
     // Apply layout to the scroll view and calculate proper content size
