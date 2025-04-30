@@ -1,6 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'component_protocol.dart';
-import 'component_registry.dart';
 
 /// Base class for DCFlight plugins
 abstract class DCFPlugin {
