@@ -17,8 +17,8 @@ void main() {
 class GalleryApp extends StatefulComponent {
   @override
   UIComponent render() {
-    // Create an instance of View and call build() to get the UIComponent
-    return View(
+    // Create an instance of view using lowerCamelCase naming
+    return view(
       style: StyleSheet(
         backgroundColor: const Color(0xFFFFFFFF),
       ),
@@ -29,14 +29,14 @@ class GalleryApp extends StatefulComponent {
         justifyContent: YogaJustifyContent.center,
       ),
       children: [
-        Text(
+        text(
           content: "Welcome to DCFlight",
           textProps: TextProps(
             fontSize: 24,
             color: const Color(0xFF000000),
           ),
-        ).render(),
+        ),
       ],
-    ).render();  // Call build() here to get the actual UIComponent
+    );
   }
 }
