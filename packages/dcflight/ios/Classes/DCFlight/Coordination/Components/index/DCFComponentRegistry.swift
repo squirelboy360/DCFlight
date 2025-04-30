@@ -7,12 +7,8 @@ class DCFComponentRegistry {
     internal var componentTypes: [String: DCFComponent.Type] = [:]
     
     private init() {
-        // Register all built-in components
-        registerComponent("View", componentClass: DCFViewComponent.self)
-        registerComponent("Button", componentClass: DCFButtonComponent.self)
-        registerComponent("Text", componentClass: DCFTextComponent.self)
-        registerComponent("Image", componentClass: DCFImageComponent.self)
-        registerComponent("ScrollView", componentClass: DCFScrollViewComponent.self)
+        // No built-in components are registered here
+        // Module developers will register their own components
         
         // Add debugging function to verify prop handling
         #if DEBUG
