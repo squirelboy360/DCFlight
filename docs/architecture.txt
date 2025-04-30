@@ -1,0 +1,366 @@
+# DCFlight Architecture & Component Flow
+
+## Architecture Overview
+
+DCFlight is a high-performance cross-platform UI framework that uses a modularized architecture with several key layers:
+
+```
+┌─────────────────────────────────────────┐
+│              Application                │
+└───────────────────┬─────────────────────┘
+                    │
+┌───────────────────▼─────────────────────┐
+│         Component Implementations        │ ◄── Modular Component Packages
+│           (Primitives Package)           │
+└───────────────────┬─────────────────────┘
+                    │
+┌───────────────────▼─────────────────────┐
+│                                         │
+│        Framework Layer (DCFlight)        │
+│                                         │
+│  ┌─────────────────────────────────┐    │
+│  │         ┌───────────────┐       │    │
+│  │         │   VDOM Core   │       │    │
+│  │         └───────┬───────┘       │    │
+│  │                 │               │    │
+│  │         ┌───────▼───────┐       │    │
+│  │         │  Reconciler   │       │    │
+│  │         └───────┬───────┘       │    │
+│  │                 │               │    │
+│  │   ┌─────────────▼───────────┐   │    │
+│  │   │    Platform Dispatcher   │   │    │
+│  │   └─────────────┬───────────┘   │    │
+│  │                 │               │    │
+│  └─────────────────┼───────────────┘    │
+│                    │                     │
+└───────────────────┬─────────────────────┘
+                    │
+        +-----------+-----------+
+        │           │           │
+┌───────▼─────┐ ┌───▼────┐ ┌───▼────┐
+│ Method      │ │ FFI    │ │ JNI    │
+│ Channels    │ │ Bridge │ │ Bridge │
+└───────┬─────┘ └───┬────┘ └───┬────┘
+        │           │           │
+┌───────▼───────────▼───────────▼─────┐
+│                                     │
+│         Native Platform Layer        │
+│                                     │
+│  ┌─────────────────────────────┐    │
+│  │    Component Registry        │    │
+│  └─────────────────────────────┘    │
+│                                     │
+│  ┌─────────────────────────────┐    │
+│  │     Module System           │    │
+│  └─────────────────────────────┘    │
+│                                     │
+│  ┌─────────────────────────────┐    │
+│  │     Layout Engine (Yoga)    │    │
+│  └─────────────────────────────┘    │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+## Custom Component Registration & Discovery Flow
+
+### 1. Module Registration (Framework Initialization)
+
+When the app starts, modules are registered with the framework:
+
+```
+┌────────────┐      ┌──────────────┐      ┌─────────────────┐
+│ Host App   │──1──▶│ DCFlight     │──2──▶│ PluginRegistry  │
+│            │      │ initialize() │      │ registerPlugin()│
+└────────────┘      └──────────────┘      └─────────┬───────┘
+                                                   │
+                                                   ▼
+┌────────────────┐     ┌───────────────────┐      3
+│ ComponentDef   │◀──5─┤ CustomPlugin     │◀────┘
+│ register()     │     │ registerComponents│
+└────────────────┘     └───────────────────┘
+```
+
+1. Host app calls `DCFlight.initialize()`
+2. DCFlight registers the core plugin with `PluginRegistry`
+3. The host app registers custom plugins: `DCFlight.registerPlugin(MyCustomPlugin.instance)`
+4. `MyCustomPlugin.registerComponents()` is called
+5. Plugin registers its components: `ComponentRegistry.registerComponentDefinition(MyCustomComponentDef)`
+
+### 2. Native Side Module Registration
+
+Similarly on the native side:
+
+```
+┌────────────┐      ┌─────────────┐      ┌─────────────────┐
+│ AppDelegate│──1──▶│ DCFlight    │──2──▶│ DCFModuleManager│
+│            │      │ initialize()│      │ register()      │
+└────────────┘      └─────────────┘      └─────────┬───────┘
+                                                   │
+                                                   ▼
+┌────────────────┐     ┌───────────────────┐      3
+│ ComponentReg   │◀──5─┤ CustomModule      │◀────┘
+│ register()     │     │ registerComponents│
+└────────────────┘     └───────────────────┘
+```
+
+1. AppDelegate calls `divergeToFlight()`
+2. DCFlight initializes and registers core modules
+3. Custom modules are registered: `DCFInitializer.shared.registerModule(MyCustomModule.shared)`
+4. `MyCustomModule.registerComponents()` is called
+5. Module registers its components: `DCFComponentRegistry.shared.registerComponent("CustomButton", componentClass: CustomButtonComponent.self)`
+
+### 3. Component Creation & Rendering Flow
+
+When a component is created and rendered:
+
+```
+┌────────────────┐     ┌───────────────┐     ┌──────────────────┐    ┌────────────────┐
+│ App Component  │─1─▶ │ VDom          │─2─▶ │ ComponentRegistry │─3─▶│ ComponentDef   │
+│ render()       │     │ createElement()│     │ getFactory()     │    │ create()       │
+└────────────────┘     └───────┬───────┘     └──────────────────┘    └────────┬───────┘
+                               │                                              │
+                               ▼                                              │
+                      ┌──────────────────┐                                    │
+                      │ VDomElement      │◀───────────────────────────────────┘
+                      └────────┬─────────┘
+                               │
+                               │
+                               ▼
+┌────────────────┐     ┌───────────────┐     ┌──────────────────────────┐
+│ VDom           │◀─4─ │ Reconciler    │─5─▶ │ PlatformDispatcher       │
+│ render()       │     │ process()     │     │ createView()/updateView()│
+└────────────────┘     └───────────────┘     └──────────────┬───────────┘
+                                                           │
+                                                           │
+                                                           │
+                      ┌─────────────────────┐              │
+                      │ Native Bridge       │◀─────────────┘
+                      │ Method Channel      │
+                      └─────────┬───────────┘
+                                │
+                                ▼
+                     ┌───────────────────────┐
+                     │ DCMauiBridgeChannel   │
+                     │ handleMethodCall()    │
+                     └───────────┬───────────┘
+                                 │
+                                 ▼
+┌────────────────────────┐     ┌───────────────────────┐
+│ DCFComponentRegistry   │◀─6─ │ DCMauiBridgeImpl      │
+│ getComponentType()     │     │ createView()          │
+└─────────┬──────────────┘     └───────────────────────┘
+          │
+          │
+          ▼
+┌───────────────────────┐
+│ CustomComponent       │─7─▶ UIView instance created
+│ createView()          │
+└───────────────────────┘
+```
+
+1. App component calls `createElement("CustomButton", props, children)`
+2. VDom looks up the component factory in the registry
+3. ComponentRegistry returns the factory registered by the custom plugin
+4. VDom reconciler processes the element tree
+5. Platform dispatcher sends createView command to native
+6. Native bridge looks up component by type in DCFComponentRegistry
+7. Component creates and returns a UIView instance
+
+## Custom Component Example Flow
+
+Let's follow a concrete example of a custom "ContextButton" component:
+
+### 1. Define Dart-side Component
+
+```dart
+// In a custom module package:
+class ContextButtonPlugin extends DCFPlugin {
+  @override
+  String get name => 'context_button_plugin';
+  
+  @override
+  void registerComponents() {
+    // Register component factory
+    ComponentRegistry.instance.registerComponent('ContextButton', createContextButtonElement);
+    
+    // Register component definition
+    ComponentRegistry.instance.registerComponentDefinition(ContextButtonDefinition());
+  }
+  
+  VDomElement createContextButtonElement(Map<String, dynamic> props, List<VDomNode> children) {
+    return VDomElement(type: 'ContextButton', props: props, children: children);
+  }
+}
+
+// Component definition handling methods
+class ContextButtonDefinition implements ComponentDefinition {
+  @override
+  String get type => 'ContextButton';
+  
+  @override
+  VDomElement create(Map<String, dynamic> props, List<VDomNode> children) {
+    return VDomElement(type: 'ContextButton', props: props, children: children);
+  }
+  
+  @override
+  Future<dynamic> callMethod(String viewId, String methodName, Map<String, dynamic> args) async {
+    // Handle method calls for ContextButton
+    return await PlatformDispatcher.instance.callComponentMethod(
+      viewId: viewId, 
+      methodName: methodName, 
+      args: args
+    );
+  }
+}
+```
+
+### 2. Define Native-side Component
+
+```swift
+// In iOS module implementation:
+class ContextButtonModule: NSObject, DCFModule {
+  static let shared = ContextButtonModule()
+  
+  var name: String { return "context_button_module" }
+  var priority: Int { return 100 }
+  
+  func initialize() {
+    registerComponents()
+  }
+  
+  func registerComponents() {
+    DCFComponentRegistry.shared.registerComponent("ContextButton", componentClass: ContextButtonComponent.self)
+  }
+}
+
+class ContextButtonComponent: NSObject, DCFComponent, ComponentMethodHandler {
+  required override init() {
+    super.init()
+  }
+  
+  func createView(props: [String: Any]) -> UIView {
+    let button = UIButton(type: .system)
+    // Set up button
+    updateView(button, withProps: props)
+    return button
+  }
+  
+  func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
+    guard let button = view as? UIButton else { return false }
+    // Apply props
+    view.applyStyles(props: props)
+    return true
+  }
+  
+  func handleMethod(methodName: String, args: [String: Any], view: UIView) -> Bool {
+    // Handle method calls
+    switch methodName {
+    case "showContext":
+      // Show context menu
+      return true
+    default:
+      return false
+    }
+  }
+}
+```
+
+### 3. Register Plugin in App
+
+```dart
+// In app's main.dart:
+void main() async {
+  // Initialize DCFlight
+  await DCFlight.initialize();
+  
+  // Register the custom plugin
+  DCFlight.registerPlugin(ContextButtonPlugin.instance);
+  
+  // Start app
+  await DCFlight.start(app: MyApp());
+}
+```
+
+### 4. Register Module in AppDelegate
+
+```swift
+// In app's AppDelegate:
+override func application(
+    _ application: UIApplication,
+    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+) -> Bool {
+    // Set up DCFlight
+    DCFInitializer.shared.registerModule(ContextButtonModule.shared)
+    
+    divergeToFlight()
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+}
+```
+
+### 5. Use the Component
+
+```dart
+class MyScreen extends Component {
+  @override
+  render() {
+    return View(
+      children: [
+        ContextButton(
+          title: "Options",
+          onPress: () {
+            print("Button pressed");
+          }
+        )
+      ]
+    );
+  }
+}
+```
+
+## Performance Characteristics
+
+The DCFlight architecture is designed for high-performance rendering:
+
+1. **Method Channel Performance**:
+   - Modern Flutter uses FFI/JNI internally for method channels
+   - Synchronous operations are very fast (nearly native speed)
+   - Callbacks are async but highly optimized
+   - Serialization overhead is minimal for small data payloads
+
+2. **Layout Performance**:
+   - Uses Yoga layout engine (same as React Native)
+   - Layout calculations happen on dedicated thread
+   - Batch updates minimize layout recalculations
+   - Shadow tree synchronization prevents unnecessary native view updates
+
+3. **Rendering Pipeline**:
+   - Direct manipulation of native views (UIKit/Android Views)
+   - Bypasses Flutter's Skia rendering for UI components
+   - Leverages platform rendering optimizations
+   - Minimal view hierarchy depth for better performance
+
+4. **Component Method Call Performance**:
+   - Method calls routed directly to component instances
+   - No reflection or dynamic dispatch in hot paths
+   - Component registry uses hash lookup (O(1) complexity)
+
+5. **Event Handling**:
+   - Events registered directly with native views
+   - Callbacks stored on the native side for quick access
+   - Event data serialization only happens when crossing to Dart
+
+6. **Bottlenecks and Optimizations**:
+   - VDOM reconciliation is still a JavaScript-like operation
+   - Large trees may have reconciliation overhead
+   - Component method calls have slight overhead due to bridge crossing
+   - Deep component trees should be flattened where possible
+   - Consider using fragmentation for large lists to minimize updates
+
+7. **Estimated Performance Metrics** (based on architecture):
+   - UI rendering: ~60fps for most UIs (16.7ms per frame budget)
+   - Method call overhead: ~1-3ms per call across boundary
+   - Event handling: ~5-10ms from native event to Dart callback
+   - Layout calculation: ~5-10ms for complex layouts (100+ nodes)
+   - Startup time: Initial module registration adds ~50-100ms
+
+Overall, the architecture provides near-native performance for most UIs with the flexibility of a React-like programming model. The modular design ensures that only needed components are loaded, reducing memory footprint and initialization time.

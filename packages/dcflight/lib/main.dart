@@ -13,7 +13,7 @@ export 'framework/packages/vdom/component/component.dart';
 export 'framework/packages/native_bridge/dispatcher.dart';
 export 'framework/packages/native_bridge/dispatcher_imp.dart';
 
-// Core Constants and Properties
+// Core Constants and Properties - explicitly exported for component developers
 export 'framework/constants/yoga_enums.dart';
 export 'framework/constants/layout_properties.dart';
 export 'framework/constants/style_properties.dart';
