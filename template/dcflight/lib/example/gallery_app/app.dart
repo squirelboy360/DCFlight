@@ -9,8 +9,9 @@ import 'package:dcflight/framework/constants/yoga_enums.dart';
 import 'package:dcflight/framework/packages/vdom/component/component.dart';
 import 'package:dcflight/framework/packages/vdom/vdom_node.dart';
 
-import 'package:dcflight/framework/utilities/flutter.dart';
+import 'package:dcflight/framework/utilities/flutter.dart'; 
 import 'package:dcflight/framework/utilities/screen_utilities.dart';
+
 
 class GalleryApp extends StatefulComponent {
   @override
@@ -19,6 +20,9 @@ class GalleryApp extends StatefulComponent {
     final selectedTab = useState(0);
     // Ref hook for the ScrollView
     final scrollRef = useRef<ScrollViewRef?>(null);
+
+ 
+  
 
     return DC.View(
       layout: LayoutProps(
@@ -35,14 +39,14 @@ class GalleryApp extends StatefulComponent {
             DC.View(
               layout: LayoutProps(
                 height: '10%',
-                paddingHorizontal: 18,
+                paddingHorizontal: 15,
                 paddingTop: ScreenUtilities.instance.statusBarHeight,
                 flexDirection: YogaFlexDirection.row,
                 alignItems: YogaAlign.center,
                 justifyContent: YogaJustifyContent
-                    .spaceBetween, 
+                    .spaceBetween, // Title left, actions right (if any)
               ),
-              style: StyleSheet(backgroundColor: Colors.blueAccent),
+              style: StyleSheet(backgroundColor: Colors.deepPurpleAccent),
               children: [
                 DC.Text(
                   content: "My Gallery",
@@ -58,8 +62,7 @@ class GalleryApp extends StatefulComponent {
                 flex: 1, // Takes remaining vertical space
               ),
               children: [
-                buildTabContent(selectedTab.value,
-                    scrollRef.value), // Dynamically show content
+                buildTabContent(selectedTab.value,scrollRef.value), // Dynamically show content
               ],
             ),
 
@@ -73,14 +76,11 @@ class GalleryApp extends StatefulComponent {
                     YogaJustifyContent.spaceAround, // Distribute tabs
                 alignItems: YogaAlign.stretch, // Stretch buttons vertically
               ),
-              style: StyleSheet(backgroundColor: Colors.blueAccent[900]),
+              style: StyleSheet(backgroundColor: Colors.deepPurpleAccent[900]),
               children: [
-                buildTabButton(
-                    "Nature", 0, selectedTab, scrollRef.value), // Updated title
-                buildTabButton(
-                    "Cities", 1, selectedTab, scrollRef.value), // Updated title
-                buildTabButton("Animals", 2, selectedTab,
-                    scrollRef.value), // Updated title
+                buildTabButton("Nature", 0,selectedTab,scrollRef.value), // Updated title
+                buildTabButton("Cities", 1,selectedTab,scrollRef.value), // Updated title
+                buildTabButton("Animals", 2,selectedTab,scrollRef.value), // Updated title
               ],
             ),
           ],
@@ -89,7 +89,6 @@ class GalleryApp extends StatefulComponent {
         // Floating Action Button Container
         DC.View(
           layout: LayoutProps(
-            width: 58,
             height: 200,
             marginBottom: '5%',
             position: YogaPositionType.absolute, // Absolute positioning
@@ -114,7 +113,7 @@ class GalleryApp extends StatefulComponent {
                 alignItems: YogaAlign.center,
               ),
               style: StyleSheet(
-                backgroundColor: Colors.red,
+                backgroundColor: Colors.pinkAccent,
                 borderRadius: 28, // Make it circular
               ),
               buttonProps: ButtonProps(
@@ -149,3 +148,4 @@ class GalleryApp extends StatefulComponent {
     );
   }
 }
+ 
