@@ -25,6 +25,6 @@ flutter:
   plugin:
     platforms:
       ios:
-        pluginClass: DCFlight/AppDelegate
+        pluginClass: AppDelegate
       
 
