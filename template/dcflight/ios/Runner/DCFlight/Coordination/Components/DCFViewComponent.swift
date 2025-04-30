@@ -17,12 +17,9 @@ class DCFViewComponent: NSObject, DCFComponent {
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-    
-        // Apply styles directly via the extension
+        // Apply styles directly via the generic extension
         view.applyStyles(props: props)
-        
-      
-        
+        // No view-specific props other than styles for a basic UIView
         return true
     }
     

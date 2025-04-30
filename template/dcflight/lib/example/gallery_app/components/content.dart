@@ -28,7 +28,7 @@ UIComponent buildTabContent(int index, ScrollViewRef? scrollRef) {
       }
 
       // Generate a list of image components
-      final List<UIComponent> images = List.generate(100, (i) {
+      final List<UIComponent> images = List.generate(20, (i) {
         // Use different seeds for variety
         final seed = "${category}_$i";
         final imageUrl = "https://picsum.photos/seed/$seed/100/100";

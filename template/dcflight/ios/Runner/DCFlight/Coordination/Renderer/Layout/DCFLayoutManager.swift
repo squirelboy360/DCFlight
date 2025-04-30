@@ -158,7 +158,36 @@ class DCFLayoutManager {
         view.setNeedsLayout()
         view.layoutIfNeeded()
     }
-    
+
+    // New method to apply a dictionary of calculated layout frames
+    func applyLayoutResults(_ results: [String: CGRect], animationDuration: TimeInterval = 0.0) {
+        // Must be called on main thread
+        assert(Thread.isMainThread, "applyLayoutResults must be called on the main thread")
+        
+        print("✅ Applying \(results.count) layout results.")
+        
+        if animationDuration > 0 {
+            UIView.animate(withDuration: animationDuration) {
+                for (viewId, frame) in results {
+                    if let view = self.getView(withId: viewId) {
+                        self.applyLayoutDirectly(to: view, frame: frame)
+                    } else {
+                        print("⚠️ Layout Warning: View not found for ID \(viewId) during batch apply.")
+                    }
+                }
+            }
+        } else {
+            for (viewId, frame) in results {
+                if let view = self.getView(withId: viewId) {
+                    self.applyLayoutDirectly(to: view, frame: frame)
+                } else {
+                    print("⚠️ Layout Warning: View not found for ID \(viewId) during batch apply.")
+                }
+            }
+        }
+        print("✅ Finished applying layout results.")
+    }
+
     // New method to batch process layout updates
     private func applyPendingLayouts(animationDuration: TimeInterval = 0.0) {
         // Must be called on main thread

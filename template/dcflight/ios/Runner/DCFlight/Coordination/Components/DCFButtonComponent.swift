@@ -36,17 +36,22 @@ class DCFButtonComponent: NSObject, DCFComponent {
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let button = view as? UIButton else { 
-            print("⚠️ DCMauiButtonComponent: Attempting to update non-button view")
+            print("⚠️ DCFButtonComponent: Attempting to update non-button view")
             return false 
         }
         
-        // Apply standard styles using common extension
+        // Apply standard styles using the generic UIView extension
+        // This handles background, borders, opacity, shadows, transforms, etc.
         view.applyStyles(props: props)
         
-        // Apply button-specific props
+        // Apply button-specific props (title, title color, font, padding, state)
+        // These might override or complement the generic styles
         updateButtonContent(button, props: props)
-        updateButtonAppearance(button, props: props)
-        updateButtonState(button, props: props)
+        updateButtonAppearance(button, props: props) // Handles titleColor, font, padding
+        updateButtonState(button, props: props) // Handles disabled state, activeOpacity
+        
+        // Ensure interaction state is correct based on 'disabled' prop
+        button.isUserInteractionEnabled = !(props["disabled"] as? Bool ?? false)
         
         return true
     }

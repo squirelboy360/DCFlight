@@ -37,78 +37,49 @@ class DCFTextComponent: NSObject, DCFComponent {
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        // First find the label inside the container
-        guard let label = view.viewWithTag(1001) as? UILabel else {
-            // Direct label case (legacy) or label not found
-            if let directLabel = view as? UILabel {
-                return updateLabelDirectly(directLabel, withProps: props)
-            }
-            
-            // CRITICAL FIX: Label not found - container might need recreation
-            print("⚠️ Could not find label inside container - attempting label re-creation")
-            
-            // Create a new label and add it to the container
-            let newLabel = UILabel()
-            newLabel.numberOfLines = 0
-            newLabel.tag = 1001
-            
-            // Add label to container
-            view.addSubview(newLabel)
-            
-            // Setup constraints to make label fill the container
-            newLabel.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([
-                newLabel.topAnchor.constraint(equalTo: view.topAnchor),
-                newLabel.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-                newLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-                newLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor)
-            ])
-            
-            // Now update the recreated label
-            print("✅ Successfully recreated label inside container")
-            return updateLabelDirectly(newLabel, withProps: props)
+        // Find the container and the label
+        guard let containerView = view as? UIView, // It's always the container
+              let label = containerView.viewWithTag(1001) as? UILabel else {
+            print("❌ DCFTextComponent: updateView failed - Could not find container or label (tag 1001)")
+            return false
         }
-        
-        // CRITICAL FIX: Check explicitly for content update and always apply
-        if let content = props["content"] {
-            // For content updates, keep it simple
-            var contentStr = ""
-            if let contentAsString = content as? String {
-                contentStr = contentAsString
-            } else {
-                contentStr = "\(content)" // Convert any type to string
-            }
-            label.text = contentStr
-            print("📝 Updated text content to: \(contentStr)")
-        } else if let text = props["text"] as? String {
-            label.text = text
-            print("📝 Updated text to: \(text)")
-        }
-        
+
         // Determine if this is a content-only update
-        let isContentOnlyUpdate = isContentOnlyUpdate(props)
-        
-        // Store current style state before any updates
+        let isContentOnlyUpdate = self.isContentOnlyUpdate(props)
+
+        // Store current style state before any updates if it's content-only
         let currentState = isContentOnlyUpdate ? captureLabelState(label) : nil
-        
-        // Apply container styling if needed (skip for content-only updates)
+
+        // Apply container styling (background, borders, etc.) using the generic extension
+        // Skip container styling if it's a content-only update to avoid unnecessary work
         if !isContentOnlyUpdate {
-            // Apply standard styling to the container view
-            view.applyStyles(props: props)
+             print("🎨 Applying container styles for Text component")
+             containerView.applyStyles(props: props)
+        } else {
+             print("⚡️ Skipping container style update for content-only change.")
         }
-        
-        // Apply text-specific props to label
+
+
+        // Apply text-specific props directly to the label
         let success = updateLabelDirectly(label, withProps: props, isContentOnlyUpdate: isContentOnlyUpdate)
-        
-        // Restore styling if this was a content-only update
+
+        // Restore styling if this was a content-only update and styling was captured
         if isContentOnlyUpdate, let state = currentState {
-            restoreLabelState(label, state: state)
+             print("🔄 Restoring label style state after content-only update.")
+             restoreLabelState(label, state: state)
         }
-        
-        // CRITICAL FIX: Force layout update after text content changes
-        view.setNeedsLayout()
-        view.layoutIfNeeded()
-        
+
+        // Force layout update after potential text content or style changes
+        // Use async to avoid potential layout loops if called during layout pass
+        DispatchQueue.main.async {
+             containerView.setNeedsLayout()
+             containerView.layoutIfNeeded()
+             // Also layout the label itself if needed
+             label.setNeedsLayout()
+             label.layoutIfNeeded()
+        }
+
+
         return success
     }
     
