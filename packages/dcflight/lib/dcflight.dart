@@ -97,13 +97,3 @@ class DCFlight {
   }
 }
 
-/// Simplified version of the original entry point for backward compatibility
-void initializeApplication(Component app) async {
-  await DCFlight.initialize();
-  await DCFlight.start(app: app);
-}
-
-/// Simplified version of startNativeApp for backward compatibility
-void startNativeApp({required Component app}) async {
-  await DCFlight.start(app: app);
-}
