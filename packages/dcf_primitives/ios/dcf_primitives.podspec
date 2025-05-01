@@ -9,15 +9,15 @@ This package provides View, Button, Text, Image, and ScrollView components.
   s.homepage         = 'https://github.com/squirelboy360/dcflight'
   s.license          = { :file => '../LICENSE' }
   s.author           = { 'Your Company' => 'your-email@example.com' }
-  s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*'
   s.public_header_files = 'Classes/**/*.h'
   s.dependency 'Flutter'
-  
+  s.dependency 'dcflight'  
+  s.source           = { :path => '.' }
   
   s.platform = :ios, '13.5'
   s.swift_version = '5.0'
   
- # Flutter.framework does not contain a i386 slice.
- s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
+  # Flutter.framework does not contain a i386 slice.
+  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
 end
