@@ -1,5 +1,6 @@
 PODS:
   - dcf_primitives (0.0.1):
+    - dcflight
     - Flutter
   - dcflight (0.0.1):
     - Flutter
@@ -19,7 +20,7 @@ EXTERNAL SOURCES:
     :path: Flutter
 
 SPEC CHECKSUMS:
-  dcf_primitives: 97f11dbc8d48cf4111d05990d930984cd63e6e1c
+  dcf_primitives: a6fb597f8362f16525c17b3e96daf18b6a3c3ab9
   dcflight: b6d685b11c24ffb142e9a689e363d2c4f857bce8
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
 

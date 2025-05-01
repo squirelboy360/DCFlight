@@ -10,10 +10,6 @@ class DCFComponentRegistry {
         // No built-in components are registered here
         // Module developers will register their own components
         
-        // Add debugging function to verify prop handling
-        #if DEBUG
-        verifyComponentPropHandling()
-        #endif
     }
     
     /// Register a component type handler

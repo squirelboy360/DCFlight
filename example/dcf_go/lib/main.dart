@@ -6,7 +6,7 @@ import 'package:dcflight/dcflight.dart';
 void main() {
   // First, register the primitives plugin
   DCFlight.initialize().then((_) {
-    // Register the primitives plugin
+    // Register the primitives plugin                                                                                                                                                                                                                               
     DCFlight.registerPlugin(DCFPrimitivesPlugin.instance);
     
     // Start the app

@@ -4,6 +4,7 @@
 //
 //  Created by Tahiru Agbanwa on 4/15/25.
 //
+import Flutter
 
 extension AppDelegate {
     internal func divergeToFlight() {
