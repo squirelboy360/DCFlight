@@ -6,8 +6,10 @@
 //
 import Flutter
 
-extension AppDelegate {
-    public func divergeToFlight() {
+@objc public extension FlutterAppDelegate {
+    func divergeToFlight() {
+        // Get the Flutter engine from the app delegate
+        let flutterEngine = FlutterEngine(name: "main engine")
         // Initialize and run the Flutter engine
         flutterEngine.run(withEntrypoint: nil, initialRoute: "/")
         let flutterViewController = FlutterViewController(engine: flutterEngine, nibName: nil, bundle: nil)
@@ -23,14 +25,14 @@ extension AppDelegate {
         nativeRootVC.view.backgroundColor = .white
         nativeRootVC.title = "Root View (DCMAUI)"
         self.window.rootViewController = nativeRootVC
-        setupDCF(rootView: nativeRootVC.view)
+        setupDCF(rootView: nativeRootVC.view, flutterEngine: flutterEngine)
         
         // Initialize screen utilities
         _ = DCFScreenUtilities.shared
     }
     
     // Setup the DCMauiNativeBridge
-    private func setupDCF(rootView: UIView) {
+    private func setupDCF(rootView: UIView, flutterEngine: FlutterEngine) {
 
         // Set up the root with the props
         DCMauiBridgeImpl.shared.registerView(rootView, withId: "root")

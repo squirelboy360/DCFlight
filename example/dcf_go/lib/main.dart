@@ -20,7 +20,7 @@ class GalleryApp extends StatefulComponent {
     // Create an instance of view using lowerCamelCase naming
     return view(
       style: StyleSheet(
-        backgroundColor: const Color(0xFFFFFFFF),
+        backgroundColor: const Color.fromARGB(255, 228, 20, 20),
       ),
       layout: const LayoutProps(
         width: '100%',
