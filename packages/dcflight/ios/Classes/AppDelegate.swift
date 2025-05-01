@@ -20,7 +20,7 @@ import yoga
         print("✅ DCFlight plugin registered with Flutter")
     }
    
-    override func application(
+    override public func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
