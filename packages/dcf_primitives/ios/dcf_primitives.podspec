@@ -13,12 +13,11 @@ This package provides View, Button, Text, Image, and ScrollView components.
   s.source_files = 'Classes/**/*'
   s.public_header_files = 'Classes/**/*.h'
   s.dependency 'Flutter'
-  s.dependency 'dcflight'
-  s.dependency 'yoga'
   
-  s.platform = :ios, '13.0'
+  
+  s.platform = :ios, '13.5'
   s.swift_version = '5.0'
   
-  # This line ensures that the pod is linked properly
-  s.xcconfig = { 'DEFINES_MODULE' => 'YES' }
+ # Flutter.framework does not contain a i386 slice.
+ s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
 end

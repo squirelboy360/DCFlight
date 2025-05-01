@@ -1,0 +1,28 @@
+PODS:
+  - dcf_primitives (0.0.1):
+    - Flutter
+  - dcflight (0.0.1):
+    - Flutter
+  - Flutter (1.0.0)
+
+DEPENDENCIES:
+  - dcf_primitives (from `.symlinks/plugins/dcf_primitives/ios`)
+  - dcflight (from `.symlinks/plugins/dcflight/ios`)
+  - Flutter (from `Flutter`)
+
+EXTERNAL SOURCES:
+  dcf_primitives:
+    :path: ".symlinks/plugins/dcf_primitives/ios"
+  dcflight:
+    :path: ".symlinks/plugins/dcflight/ios"
+  Flutter:
+    :path: Flutter
+
+SPEC CHECKSUMS:
+  dcf_primitives: 97f11dbc8d48cf4111d05990d930984cd63e6e1c
+  dcflight: b6d685b11c24ffb142e9a689e363d2c4f857bce8
+  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
+
+PODFILE CHECKSUM: e7ba086104a4dcba0aede791a6d2271fb254b2fd
+
+COCOAPODS: 1.16.2

@@ -12,9 +12,12 @@ A crossplatform framework.
   s.source_files = 'Classes/**/*'
   s.platform = :ios, '13.5'
   s.dependency 'Flutter'
-  s.dependency 'yoga'
+  s.source = {
+    :git => 'https://github.com/DotCorr/yoga.git',
+    :branch => 'main'
+  }
   s.swift_version = '5.0'
 
-  # Flutter.framework does not contain a i386 slice.
-  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
+ # Flutter.framework does not contain a i386 slice.
+ s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
 end
