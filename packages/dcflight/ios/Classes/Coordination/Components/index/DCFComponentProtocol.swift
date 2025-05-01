@@ -2,7 +2,7 @@ import UIKit
 import yoga
 
 /// Protocol that all DCMAUI components must implement
-protocol DCFComponent {
+public protocol DCFComponent {
     /// Initialize the component
     init()
     
@@ -30,7 +30,7 @@ protocol DCFComponent {
 }
 
 /// Protocol for handling component-specific methods
-protocol ComponentMethodHandler {
+public protocol ComponentMethodHandler {
     /// Handle a method call on a specific view instance
     /// - Parameters:
     ///   - methodName: The name of the method to call
@@ -41,11 +41,11 @@ protocol ComponentMethodHandler {
 }
 
 /// Layout information from a Yoga node
-struct YGNodeLayout {
-    let left: CGFloat
-    let top: CGFloat
-    let width: CGFloat
-    let height: CGFloat
+public struct YGNodeLayout {
+    public let left: CGFloat
+    public let top: CGFloat
+    public let width: CGFloat
+    public let height: CGFloat
 }
 
 // To resolve initializer requirement issues, make the extension provide a default implementation
