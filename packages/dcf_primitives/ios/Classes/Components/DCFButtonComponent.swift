@@ -1,6 +1,6 @@
 import UIKit
 import yoga
-import DCFlight
+import dcflight
 
 class DCFButtonComponent: NSObject, DCFComponent, ComponentMethodHandler {
     required override init() {

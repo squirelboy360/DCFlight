@@ -1,6 +1,6 @@
 import UIKit
 import yoga
-import DCFlight
+import dcflight
 
 class DCFViewComponent: NSObject, DCFComponent {
     required override init() {

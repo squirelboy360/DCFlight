@@ -1,6 +1,6 @@
 import UIKit
 import yoga
-import DCFlight
+import dcflight
 
 class DCFScrollViewComponent: NSObject, DCFComponent, ComponentMethodHandler, UIScrollViewDelegate {
     required override init() {

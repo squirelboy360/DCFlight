@@ -1,6 +1,6 @@
 import UIKit
 import Flutter
-import DCFlight
+import dcflight
 
 @objc public class DcfPrimitives: NSObject {
     @objc public static func register(with registrar: FlutterPluginRegistrar) {
