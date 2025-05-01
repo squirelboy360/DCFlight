@@ -10,9 +10,15 @@ import Flutter
 import yoga
 
 @UIApplicationMain
-class AppDelegate: FlutterAppDelegate {
+@objc public class AppDelegate: FlutterAppDelegate {
     lazy var flutterEngine = FlutterEngine(name: "main engine")
     
+    // Add Flutter plugin registration method
+    @objc public static func registerWithRegistrar(_ registrar: FlutterPluginRegistrar) {
+        // This method is required by Flutter's plugin system
+        // The actual initialization happens in divergeToFlight
+        print("✅ DCFlight plugin registered with Flutter")
+    }
    
     override func application(
         _ application: UIApplication,
