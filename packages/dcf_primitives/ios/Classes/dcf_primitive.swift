@@ -3,9 +3,12 @@ import Flutter
 import dcflight
 
 @objc public class DcfPrimitives: NSObject {
-    @objc public static func register(with registrar: FlutterPluginRegistrar) {
+    @objc public static func registerWithRegistrar(_ registrar: FlutterPluginRegistrar) {
         // This is required by the Flutter plugin system
         print("DCF Primitives plugin registered with Flutter")
+        
+        // Register all primitive components when the plugin is registered
+        registerComponents()
     }
     
     @objc public static func registerComponents() {
