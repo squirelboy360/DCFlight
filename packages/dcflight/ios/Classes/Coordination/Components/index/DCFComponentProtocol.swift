@@ -27,6 +27,9 @@ public protocol DCFComponent {
     
     /// Remove event listeners from a view
     func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String])
+    
+    /// Trigger an event on a view - adding this to the protocol ensures components can call it
+    func triggerEvent(on view: UIView, eventType: String, eventData: [String: Any])
 }
 
 /// Protocol for handling component-specific methods
@@ -46,10 +49,17 @@ public struct YGNodeLayout {
     public let top: CGFloat
     public let width: CGFloat
     public let height: CGFloat
+    
+    public init(left: CGFloat, top: CGFloat, width: CGFloat, height: CGFloat) {
+        self.left = left
+        self.top = top
+        self.width = width
+        self.height = height
+    }
 }
 
-// To resolve initializer requirement issues, make the extension provide a default implementation
-extension DCFComponent {
+// Make all the extension methods public so they can be accessed from other modules
+public extension DCFComponent {
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
         // Default implementation - position and size the view
         view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)

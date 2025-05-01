@@ -1,5 +1,4 @@
 import UIKit
-import yoga
 import dcflight
 
 class DCFScrollViewComponent: NSObject, DCFComponent, ComponentMethodHandler, UIScrollViewDelegate {

@@ -1,5 +1,4 @@
 import UIKit
-import yoga
 import dcflight
 
 class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {

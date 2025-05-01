@@ -12,10 +12,11 @@ A crossplatform framework.
   s.source_files = 'Classes/**/*'
   s.platform = :ios, '13.5'
   s.dependency 'Flutter'
-  s.source = {
-    :git => 'https://github.com/DotCorr/yoga.git',
-    :branch => 'main'
-  }
+  # s.source = {
+  #   :git => 'https://github.com/DotCorr/yoga.git',
+  #   :branch => 'main',
+  #   :tag => 3.2.1,
+  # }
   s.swift_version = '5.0'
 
  # Flutter.framework does not contain a i386 slice.

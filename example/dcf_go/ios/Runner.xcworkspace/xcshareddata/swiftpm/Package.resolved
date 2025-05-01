@@ -1,10 +1,10 @@
 {
-  "originHash" : "dd587f00a1caf7bb94063551e0e77da74f096b290b6956fbd2985102f329d84f",
+  "originHash" : "ec3d5dae3b37d44718cb6900fe920d7bd522b827cbbacbbf621a9c8cb50eabfa",
   "pins" : [
     {
       "identity" : "yoga",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/squirelboy360/yoga.git",
+      "location" : "https://github.com/DotCorr/yoga.git",
       "state" : {
         "branch" : "main",
         "revision" : "79cef614ceca6be7ecfec6967042f8188e904108"

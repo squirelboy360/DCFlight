@@ -1,5 +1,4 @@
 import UIKit
-import yoga
 import dcflight
 
 class DCFButtonComponent: NSObject, DCFComponent, ComponentMethodHandler {

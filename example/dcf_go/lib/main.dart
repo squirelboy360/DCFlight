@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
 
-void main() {
+void main() { 
   // First, register the primitives plugin
   DCFlight.initialize().then((_) {
     // Register the primitives plugin                                                                                                                                                                                                                               

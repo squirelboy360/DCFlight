@@ -1,8 +1,8 @@
 import UIKit
 
 /// Registry for all component types
-class DCFComponentRegistry {
-    static let shared = DCFComponentRegistry()
+public class DCFComponentRegistry {
+   public static let shared = DCFComponentRegistry()
     
     internal var componentTypes: [String: DCFComponent.Type] = [:]
     
@@ -13,7 +13,7 @@ class DCFComponentRegistry {
     }
     
     /// Register a component type handler
-    func registerComponent(_ type: String, componentClass: DCFComponent.Type) {
+    public func registerComponent(_ type: String, componentClass: DCFComponent.Type) {
         componentTypes[type] = componentClass
         print("Registered component type: \(type)")
     }
