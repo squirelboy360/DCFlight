@@ -1,8 +1,8 @@
 name: dcflight
 description: ""
 version: 0.0.1
-homepage: https://github.com/squirelboy360/dcflight
-repository: https://github.com/squirelboy360/dcflight
+homepage: https://github.com/Dotcorr/dcflight
+repository: https://github.com/Dotcorr/dcflight
 
 environment:
   sdk: ^3.6.1

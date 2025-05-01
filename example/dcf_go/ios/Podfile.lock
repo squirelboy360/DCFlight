@@ -4,12 +4,18 @@ PODS:
     - Flutter
   - dcflight (0.0.1):
     - Flutter
+    - Yoga
   - Flutter (1.0.0)
+  - Yoga (3.2.1)
 
 DEPENDENCIES:
   - dcf_primitives (from `.symlinks/plugins/dcf_primitives/ios`)
   - dcflight (from `.symlinks/plugins/dcflight/ios`)
   - Flutter (from `Flutter`)
+
+SPEC REPOS:
+  trunk:
+    - Yoga
 
 EXTERNAL SOURCES:
   dcf_primitives:
@@ -21,8 +27,9 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   dcf_primitives: a6fb597f8362f16525c17b3e96daf18b6a3c3ab9
-  dcflight: b6d685b11c24ffb142e9a689e363d2c4f857bce8
+  dcflight: 55f6c0f60109df44a1cfa1b03b88ccd839f6ac1e
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
+  Yoga: 636ce73bd247407928a7df089f3bc3675916b3ff
 
 PODFILE CHECKSUM: e7ba086104a4dcba0aede791a6d2271fb254b2fd
 
