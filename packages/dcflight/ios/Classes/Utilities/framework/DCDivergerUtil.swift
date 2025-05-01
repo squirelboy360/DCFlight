@@ -7,7 +7,7 @@
 import Flutter
 
 extension AppDelegate {
-    internal func divergeToFlight() {
+    public func divergeToFlight() {
         // Initialize and run the Flutter engine
         flutterEngine.run(withEntrypoint: nil, initialRoute: "/")
         let flutterViewController = FlutterViewController(engine: flutterEngine, nibName: nil, bundle: nil)
