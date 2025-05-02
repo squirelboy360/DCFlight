@@ -66,7 +66,14 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
                                 imageView.image = image
                             }, completion: { _ in
                                 // Trigger onLoad event
-                                self.triggerEvent(on: imageView, eventType: "onLoad", eventData: [:])
+                                if let viewId = objc_getAssociatedObject(imageView, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String,
+                                   let callback = objc_getAssociatedObject(imageView, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!) as? (String, String, [String: Any]) -> Void {
+                                    // Use direct callback for more reliable event delivery
+                                    callback(viewId, "onLoad", [:])
+                                } else {
+                                    // Fall back to generic event triggering
+                                    self.triggerEvent(on: imageView, eventType: "onLoad", eventData: [:])
+                                }
                             })
                         }
                     } else {
@@ -82,7 +89,14 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
             if let image = UIImage(named: source) {
                 imageView.image = image
                 // Trigger onLoad event
-                self.triggerEvent(on: imageView, eventType: "onLoad", eventData: [:])
+                if let viewId = objc_getAssociatedObject(imageView, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String,
+                   let callback = objc_getAssociatedObject(imageView, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!) as? (String, String, [String: Any]) -> Void {
+                    // Use direct callback for more reliable event delivery
+                    callback(viewId, "onLoad", [:])
+                } else {
+                    // Fall back to generic event triggering
+                    self.triggerEvent(on: imageView, eventType: "onLoad", eventData: [:])
+                }
             } else {
                 // Trigger onError event
                 self.triggerEvent(on: imageView, eventType: "onError", eventData: ["error": "Image not found"])

@@ -96,7 +96,14 @@ class DCFScrollViewComponent: NSObject, DCFComponent, ComponentMethodHandler, UI
     
     // Handle scroll view delegate methods
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
-        triggerEvent(on: scrollView, eventType: "onScrollBegin", eventData: [:])
+        // Check for direct event callback first
+        if let viewId = objc_getAssociatedObject(scrollView, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String,
+           let callback = objc_getAssociatedObject(scrollView, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!) as? (String, String, [String: Any]) -> Void {
+            callback(viewId, "onScrollBegin", [:])
+        } else {
+            // Fall back to generic event
+            triggerEvent(on: scrollView, eventType: "onScrollBegin", eventData: [:])
+        }
     }
     
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {

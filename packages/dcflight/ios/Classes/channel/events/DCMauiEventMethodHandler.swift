@@ -68,14 +68,18 @@ class DCMauiEventMethodHandler: NSObject {
         
         if let callback = self.eventCallback {
             // Use the stored callback if available
+            print("🎯 Using direct callback for event dispatch")
             callback(viewId, normalizedEventName, eventData)
         } else if let channel = methodChannel {
             // Fall back to method channel
-            channel.invokeMethod("onEvent", arguments: [
-                "viewId": viewId,
-                "eventType": normalizedEventName,
-                "eventData": eventData
-            ])
+            print("📤 Using method channel for event dispatch")
+            DispatchQueue.main.async {
+                self.methodChannel?.invokeMethod("onEvent", arguments: [
+                    "viewId": viewId,
+                    "eventType": normalizedEventName,
+                    "eventData": eventData
+                ])
+            }
         } else {
             print("❌ No method to send events available")
         }
