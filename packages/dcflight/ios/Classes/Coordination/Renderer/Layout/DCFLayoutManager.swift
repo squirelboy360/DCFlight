@@ -222,44 +222,6 @@ class DCFLayoutManager {
             }
         }
     }
-
-    // NEW: Add method to handle view visibility changes during tab switching
-    func setViewVisibility(viewId: String, visible: Bool) {
-        guard let view = getView(withId: viewId) else {
-            print("❌ View not found for visibility change: \(viewId)")
-            return
-        }
-        
-        // Apply visibility change on main thread
-        DispatchQueue.main.async {
-            view.isHidden = !visible
-            view.alpha = visible ? 1.0 : 0.0
-            
-            // If showing view, ensure layout is up to date
-            if visible {
-                // Force layout if needed
-                view.setNeedsLayout()
-                view.layoutIfNeeded()
-                
-                // Ensure any native-specific visibility handlers are called
-                if let viewInfo = ViewRegistry.shared.getViewInfo(id: viewId) {
-                    let viewType = viewInfo.type
-                    
-                    // Find component for this view type
-                    if let componentType = DCFComponentRegistry.shared.getComponentType(for: viewType) {
-                        let componentInstance = componentType.init()
-                        
-                        // Check if component handles visibility changes
-                        if let visibilityHandler = componentInstance as? ComponentVisibilityHandler {
-                            visibilityHandler.handleVisibilityChange(view: view, visible: true)
-                        }
-                    }
-                }
-            }
-        }
-        
-        print("🔍 View \(viewId) visibility set to \(visible ? "visible" : "hidden")")
-    }
 }
 
 

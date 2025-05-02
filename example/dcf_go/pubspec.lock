@@ -52,14 +52,14 @@ packages:
   dcf_primitives:
     dependency: "direct main"
     description:
-      path: "../../dcf_primitives"
+      path: "../../packages/dcf_primitives"
       relative: true
     source: path
     version: "0.0.1"
   dcflight:
     dependency: "direct main"
     description:
-      path: "../../dcflight"
+      path: "../../packages/dcflight"
       relative: true
     source: path
     version: "0.0.1"
