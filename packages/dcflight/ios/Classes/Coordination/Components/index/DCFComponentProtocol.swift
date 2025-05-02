@@ -43,6 +43,15 @@ public protocol ComponentMethodHandler {
     func handleMethod(methodName: String, args: [String: Any], view: UIView) -> Bool
 }
 
+/// Protocol for handling component visibility changes
+public protocol ComponentVisibilityHandler {
+    /// Handle a visibility change for a specific view instance
+    /// - Parameters:
+    ///   - view: The view instance to operate on
+    ///   - visible: Whether the view is becoming visible or hidden
+    func handleVisibilityChange(view: UIView, visible: Bool)
+}
+
 /// Layout information from a Yoga node
 public struct YGNodeLayout {
     public let left: CGFloat

@@ -233,7 +233,7 @@ class DCMauiEventMethodHandler: NSObject {
     }
     
     // Helper method to unregister event listeners
-    private func unregisterEventListeners(view: UIView, viewId: String, eventTypes: [String]) -> Bool {
+    internal func unregisterEventListeners(view: UIView, viewId: String, eventTypes: [String]) -> Bool {
         // Remove event data from the view
         if let storedEventTypes = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!) as? [String] {
             var remainingTypes = storedEventTypes

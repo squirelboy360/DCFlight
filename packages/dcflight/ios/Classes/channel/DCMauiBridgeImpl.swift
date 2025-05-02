@@ -329,20 +329,31 @@ import Foundation
     @objc func deleteView(viewId: String) -> Bool {
         NSLog("DCMauiFFIBridge: deleteView called for \(viewId)")
         
+        // NEW: Check if view exists in any registry first
+        if !viewExists(viewId: viewId) {
+            NSLog("View not found with ID: \(viewId)")
+            return false
+        }
+        
         // Get the view
         guard let view = self.views[viewId] else {
             NSLog("View not found with ID: \(viewId)")
             return false
         }
         
+        // Remove all event listeners first
+        DCMauiEventMethodHandler.shared.unregisterEventListeners(view: view, viewId: viewId, eventTypes: [])
+        
+        // Remove node from shadow tree before removing from view hierarchy
+        DCFLayoutManager.shared.removeNode(nodeId: viewId)
+        
         // Remove view from hierarchy
         view.removeFromSuperview()
         
-        // Remove view reference
+        // Remove view reference from all registries
         self.views.removeValue(forKey: viewId)
-        
-        // Remove node from shadow tree
-        DCFLayoutManager.shared.removeNode(nodeId: viewId)
+        ViewRegistry.shared.removeView(id: viewId)
+        DCFLayoutManager.shared.cleanUp(viewId: viewId)
         
         // Track deletion operation
         trackSyncStatus(nodeId: viewId, operation: "delete_view", success: true)
@@ -539,23 +550,62 @@ import Foundation
         let inMainRegistry = views[viewId] != nil
         let inViewRegistry = ViewRegistry.shared.getView(id: viewId) != nil
         let inLayoutManager = DCFLayoutManager.shared.getView(withId: viewId) != nil
+        let inYogaTree = YogaShadowTree.shared.nodes[viewId] != nil
         
-        let exists = inMainRegistry || inViewRegistry || inLayoutManager
-        
-        // Log detailed information about where the view was found
-        NSLog("🔍 View existence check for \(viewId): main=\(inMainRegistry), viewRegistry=\(inViewRegistry), layoutManager=\(inLayoutManager)")
-        
-        // If view was found in secondary registry but not main registry, sync it to main registry
+        // If not found in main registry but found elsewhere, sync to main registry
         if !inMainRegistry && (inViewRegistry || inLayoutManager) {
-            // Fixed: Use nil coalescing to ensure we're handling the optionals correctly
             if let view = ViewRegistry.shared.getView(id: viewId) ?? DCFLayoutManager.shared.getView(withId: viewId) {
-                // Sync to main registry
+                // Sync to main registry with proper logging
                 views[viewId] = view
                 NSLog("🔄 View \(viewId) found in secondary registry - synchronized to main registry")
+                
+                // NEW: If not in yoga tree but should be, attempt to repair
+                if !inYogaTree {
+                    NSLog("⚠️ View \(viewId) exists in UI but not in layout tree - attempting repair")
+                    repairNodeInLayoutTree(viewId: viewId, view: view)
+                }
             }
         }
         
+        let exists = inMainRegistry || inViewRegistry || inLayoutManager
+        NSLog("🔍 View existence check for \(viewId): main=\(inMainRegistry), viewRegistry=\(inViewRegistry), layoutManager=\(inLayoutManager), yogaTree=\(inYogaTree)")
+        
         return exists
+    }
+    
+    // NEW: Helper method to repair broken layout tree entries
+    private func repairNodeInLayoutTree(viewId: String, view: UIView) {
+        // Determine the view type based on view class
+        let componentType: String
+        if view is UIButton {
+            componentType = "Button"
+        } else if view is UILabel {
+            componentType = "Text"
+        } else if view is UIImageView {
+            componentType = "Image"
+        } else if view is UIScrollView {
+            componentType = "ScrollView"
+        } else {
+            componentType = "View"
+        }
+        
+        // Create node in shadow tree
+        YogaShadowTree.shared.createNode(id: viewId, componentType: componentType)
+        NSLog("🔧 Repaired node \(viewId) in layout tree with type \(componentType)")
+        
+        // Attempt to determine parent by looking at view hierarchy
+        if let parentView = view.superview {
+            // Try to find parent ID
+            for (id, registeredView) in views where registeredView == parentView {
+                NSLog("🔍 Found parent view with ID \(id) for repaired node \(viewId)")
+                // If parent exists in yoga tree, establish parent-child relationship
+                if YogaShadowTree.shared.nodes[id] != nil {
+                    YogaShadowTree.shared.addChildNode(parentId: id, childId: viewId)
+                    NSLog("🔄 Established parent-child relationship: parent=\(id), child=\(viewId)")
+                }
+                break
+            }
+        }
     }
 }
 

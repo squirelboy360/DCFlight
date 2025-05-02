@@ -136,16 +136,24 @@ class YogaShadowTree {
             return
         }
         
+        // Before removing from parent, store parent ID for later reference
+        let parentId = nodeParents[nodeId]
+        
         // Remove from parent if any
-        if let parentId = nodeParents[nodeId], let parentNode = nodes[parentId] {
+        if let parentId = parentId, let parentNode = nodes[parentId] {
             YGNodeRemoveChild(parentNode, node)
+            print("✅ Removed child \(nodeId) from parent \(parentId)")
         }
         
-        // Clean up children
-        let childCount = YGNodeGetChildCount(node)
-        for i in 0..<childCount {
-            let childNode = YGNodeGetChild(node, 0) // Always remove the first one
-            YGNodeRemoveChild(node, childNode)
+        // NEW: Remove all children first to prevent orphaned references
+        let childNodeIds = nodeParents.filter { $0.value == nodeId }.map { $0.key }
+        for childId in childNodeIds {
+            // Remove the child node connection to parent first
+            if let childNode = nodes[childId] {
+                YGNodeRemoveChild(node, childNode)
+            }
+            // Update parent references
+            nodeParents.removeValue(forKey: childId)
         }
         
         // Free memory

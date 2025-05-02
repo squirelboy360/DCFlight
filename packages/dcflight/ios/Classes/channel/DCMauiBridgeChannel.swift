@@ -100,6 +100,13 @@ class DCMauiBridgeMethodChannel: NSObject {
             }
         // --- END NEW METHOD ---
             
+        case "setViewVisibility":
+            if let args = args {
+                handleSetViewVisibility(args, result: result)
+            } else {
+                result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
+            }
+            
         default:
             result(FlutterMethodNotImplemented)
         }
@@ -337,6 +344,21 @@ class DCMauiBridgeMethodChannel: NSObject {
         }
     }
     // --- END NEW HANDLER ---
+    
+    // NEW: Handle setting view visibility for tab switching
+    private func handleSetViewVisibility(_ args: [String: Any], result: @escaping FlutterResult) {
+        guard let viewId = args["viewId"] as? String,
+              let visible = args["visible"] as? Bool else {
+            result(FlutterError(code: "VISIBILITY_ERROR", message: "Invalid view visibility parameters", details: nil))
+            return
+        }
+        
+        // Execute on main thread
+        DispatchQueue.main.async {
+            DCFLayoutManager.shared.setViewVisibility(viewId: viewId, visible: visible)
+            result(true)
+        }
+    }
     
     // Check if a view exists
     private func handleViewExists(_ args: [String: Any], result: @escaping FlutterResult) {
