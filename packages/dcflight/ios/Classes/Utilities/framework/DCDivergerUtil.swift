@@ -22,9 +22,9 @@ import Flutter
         flutterEngine.viewController = flutterViewController
         
         // Initialize method channels if they haven't been initialized already
-//        DCMauiBridgeMethodChannel.shared.initialize(with: flutterEngine.binaryMessenger)
-//        DCMauiEventMethodHandler.shared.initialize(with: flutterEngine.binaryMessenger)
-//        DCMauiLayoutMethodHandler.shared.initialize(with: flutterEngine.binaryMessenger)
+        DCMauiBridgeMethodChannel.shared.initialize(with: flutterEngine.binaryMessenger)
+        DCMauiEventMethodHandler.shared.initialize(with: flutterEngine.binaryMessenger)
+        DCMauiLayoutMethodHandler.shared.initialize(with: flutterEngine.binaryMessenger)
         
         // Create and set up the native root view controller
         let nativeRootVC = UIViewController()
@@ -34,7 +34,7 @@ import Flutter
         setupDCF(rootView: nativeRootVC.view, flutterEngine: flutterEngine)
         
         // Initialize screen utilities
-//        _ = DCFScreenUtilities.shared
+        _ = DCFScreenUtilities.shared
     }
     
     // Setup the DCMauiNativeBridge
