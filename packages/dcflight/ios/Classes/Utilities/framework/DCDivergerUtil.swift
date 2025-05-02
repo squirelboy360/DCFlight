@@ -23,7 +23,7 @@ import Flutter
    
         let nativeRootVC = UIViewController()
         nativeRootVC.view.backgroundColor = .white
-        nativeRootVC.title = "Root View (DCMAUI)"
+        nativeRootVC.title = "Root View (DCFLight)"
         self.window.rootViewController = nativeRootVC
         setupDCF(rootView: nativeRootVC.view, flutterEngine: flutterEngine)
         

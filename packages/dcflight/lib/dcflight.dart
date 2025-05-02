@@ -28,6 +28,9 @@ export 'framework/protocol/component_registry.dart';
 export 'framework/protocol/plugin_protocol.dart';
 
 // Application Entry Point
+// import 'package:dcflight/framework/protocol/component_protocol.dart';
+// import 'package:dcflight/framework/protocol/component_registry.dart';
+
 import 'package:dcflight/framework/protocol/component_protocol.dart';
 import 'package:dcflight/framework/protocol/component_registry.dart';
 
@@ -41,7 +44,7 @@ import 'package:flutter/material.dart';
 /// DCFlight Framework entry points
 class DCFlight {
   /// Initialize the DCFlight framework
-  static Future<bool> initialize() async {
+  static Future<bool> _initialize() async {
     WidgetsFlutterBinding.ensureInitialized();
     
     // Initialize platform dispatcher
@@ -60,6 +63,7 @@ class DCFlight {
   
   /// Start the application with the given root component
   static Future<void> start({required Component app}) async {
+  await   _initialize();
     // Create VDOM instance
     final vdom = VDom();
     
@@ -82,14 +86,16 @@ class DCFlight {
   }
   
   /// Register a plugin with the framework
-  static void registerPlugin(DCFPlugin plugin) {
-    PluginRegistry.instance.registerPlugin(plugin);
-  }
+  /// No need to use this externally, maybe for something in your primitive module fine but you mostly dont need 
+  /// to manually register plugins
+  // static void registerPlugin(DCFPlugin plugin) {
+  //   PluginRegistry.instance.registerPlugin(plugin);
+  // }
   
   /// Register a component factory with the framework
-  static void registerComponent(String type, ComponentFactory factory) {
-    ComponentRegistry.instance.registerComponent(type, factory);
-  }
+  // static void registerComponent(String type, ComponentFactory factory) {
+  //   ComponentRegistry.instance.registerComponent(type, factory);
+  // }
   
   /// Register a component definition with the framework
   static void registerComponentDefinition(ComponentDefinition definition) {

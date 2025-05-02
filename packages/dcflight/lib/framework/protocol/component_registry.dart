@@ -20,10 +20,10 @@ class ComponentRegistry {
   final Map<String, ComponentDefinition> _definitions = {};
   
   /// Register a component factory
-  void registerComponent(String type, ComponentFactory factory) {
-    _factories[type] = factory;
-    debugPrint('Registered component factory: $type');
-  }
+  // void registerComponent(String type, ComponentFactory factory) {
+  //   _factories[type] = factory;
+  //   debugPrint('Registered component factory: $type');
+  // }
   
   /// Register a component definition
   void registerComponentDefinition(ComponentDefinition definition) {

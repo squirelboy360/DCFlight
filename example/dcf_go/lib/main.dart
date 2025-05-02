@@ -2,16 +2,12 @@ import 'dart:ui';
 
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
+import 'package:flutter/material.dart';
 
-void main() { 
-  // First, register the primitives plugin
-  DCFlight.initialize().then((_) {
-    // Register the primitives plugin                                                                                                                                                                                                                               
-    DCFlight.registerPlugin(DCFPrimitivesPlugin.instance);
-    
-    // Start the app
-    DCFlight.start(app: GalleryApp());
-  });
+void main() async {  runApp(Scaffold(backgroundColor: Colors.amber));
+
+  DCFlight.start(app: GalleryApp());
+
 }
 
 class GalleryApp extends StatefulComponent {
@@ -31,10 +27,7 @@ class GalleryApp extends StatefulComponent {
       children: [
         text(
           content: "Welcome to DCFlight",
-          textProps: TextProps(
-            fontSize: 24,
-            color: const Color(0xFF000000),
-          ),
+          textProps: TextProps(fontSize: 24, color: const Color(0xFF000000)),
         ),
       ],
     );
