@@ -4,8 +4,8 @@ import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
 import 'package:flutter/material.dart';
 
-void main() async {  runApp(Scaffold(backgroundColor: Colors.amber));
-
+void main() async {
+print("Evidence of dart side running");
   DCFlight.start(app: GalleryApp());
 
 }

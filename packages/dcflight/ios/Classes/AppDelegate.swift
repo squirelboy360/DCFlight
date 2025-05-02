@@ -27,6 +27,7 @@ import UIKit
   ) -> Bool {
     
     divergeToFlight()
+      print("divergence complete")
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 }
