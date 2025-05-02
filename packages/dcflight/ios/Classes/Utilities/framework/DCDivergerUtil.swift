@@ -10,8 +10,8 @@ import Flutter
     func divergeToFlight() {
         // Get the Flutter engine from the app delegate
         let flutterEngine = FlutterEngine(name: "main engine")
-        // Initialize and run the Flutter engine
-        flutterEngine.run(withEntrypoint: nil, initialRoute: "/")
+        // Initialize and run the Flutter engine with explicit entry point
+        flutterEngine.run(withEntrypoint: "main", libraryURI: nil)
         let flutterViewController = FlutterViewController(engine: flutterEngine, nibName: nil, bundle: nil)
         flutterEngine.viewController = flutterViewController
         
