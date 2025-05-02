@@ -37,13 +37,6 @@ import UIKit
       self.flutterEngine = FlutterEngine(name: "io.dcflight.engine")
       self.flutterEngine?.run(withEntrypoint: "main", libraryURI: nil)
       
-      // Register generated plugins with this engine if available
-      if let registrarMethod = NSClassFromString("GeneratedPluginRegistrant") {
-          let registerSelector = NSSelectorFromString("registerWithRegistry:")
-          if registrarMethod.responds(to: registerSelector) {
-              registrarMethod.perform(registerSelector, with: self, afterDelay: 0.2)
-          }
-      }
       
       // Now diverge to DCFlight setup
       divergeToFlight()
