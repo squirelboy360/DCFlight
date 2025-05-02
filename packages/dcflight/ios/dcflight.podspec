@@ -18,7 +18,9 @@ A crossplatform framework.
   
   # Add plugin registration
   s.public_header_files = 'Classes/**/*.h'
-  s.static_framework = true
+  
+  # CRITICAL CHANGE: Set to false - use dynamic framework instead of static
+  s.static_framework = false
   
   s.swift_version = '5.0'
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
