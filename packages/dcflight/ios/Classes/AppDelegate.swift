@@ -5,11 +5,8 @@
 //  Created by Tahiru Agbanwa on 4/15/25.
 //
 
-
-
 import Flutter
 import UIKit
-
 
 @objc open class DCAppDelegate: FlutterAppDelegate {
     
@@ -17,9 +14,19 @@ import UIKit
     var flutterEngine: FlutterEngine?
     
     @objc public static func registerWithRegistrar(_ registrar: FlutterPluginRegistrar) {
-        // This method is required by Flutter's plugin system
-        // The actual initialization happens in divergeToFlight
+        // Register the plugin with the Flutter engine
         print("✅ DCFlight plugin registered with Flutter")
+        
+        // Set up method channels directly through the registrar
+        let messenger = registrar.messenger()
+        
+        // Initialize method channels for bridge, events, and layout
+        DCMauiBridgeMethodChannel.shared.initialize(with: messenger)
+        DCMauiEventMethodHandler.shared.initialize(with: messenger)
+        DCMauiLayoutMethodHandler.shared.initialize(with: messenger)
+        
+        // Initialize screen utilities
+        DCFScreenUtilities.shared.initialize(with: messenger)
     }
     
     override open func application(
@@ -30,8 +37,13 @@ import UIKit
       self.flutterEngine = FlutterEngine(name: "io.dcflight.engine")
       self.flutterEngine?.run(withEntrypoint: "main", libraryURI: nil)
       
-      // Register plugins with this engine
-//      GeneratedPluginRegistrant.register(with: self)
+      // Register generated plugins with this engine if available
+      if let registrarMethod = NSClassFromString("GeneratedPluginRegistrant") {
+          let registerSelector = NSSelectorFromString("registerWithRegistry:")
+          if registrarMethod.responds(to: registerSelector) {
+              registrarMethod.perform(registerSelector, with: self, afterDelay: 0.2)
+          }
+      }
       
       // Now diverge to DCFlight setup
       divergeToFlight()

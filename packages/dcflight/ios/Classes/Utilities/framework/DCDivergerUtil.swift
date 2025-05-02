@@ -9,18 +9,24 @@ import Flutter
 @objc public extension FlutterAppDelegate {
     func divergeToFlight() {
         // Get the Flutter engine from the app delegate
-        let flutterEngine = FlutterEngine(name: "main engine")
-        // Initialize and run the Flutter engine with explicit entry point
-        flutterEngine.run(withEntrypoint: "main", libraryURI: nil)
+        let appDelegate = self as? DCAppDelegate
+        let flutterEngine = appDelegate?.flutterEngine ?? FlutterEngine(name: "main engine")
+        
+        // If it wasn't created in the app delegate, initialize it here
+        if appDelegate?.flutterEngine == nil {
+            flutterEngine.run(withEntrypoint: "main", libraryURI: nil)
+        }
+        
+        // Create a FlutterViewController to ensure proper setup
         let flutterViewController = FlutterViewController(engine: flutterEngine, nibName: nil, bundle: nil)
         flutterEngine.viewController = flutterViewController
         
-        // Initialize method channels
+        // Initialize method channels if they haven't been initialized already
         DCMauiBridgeMethodChannel.shared.initialize(with: flutterEngine.binaryMessenger)
         DCMauiEventMethodHandler.shared.initialize(with: flutterEngine.binaryMessenger)
         DCMauiLayoutMethodHandler.shared.initialize(with: flutterEngine.binaryMessenger)
         
-   
+        // Create and set up the native root view controller
         let nativeRootVC = UIViewController()
         nativeRootVC.view.backgroundColor = .white
         nativeRootVC.title = "Root View (DCFLight)"
