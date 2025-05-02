@@ -18,23 +18,6 @@ class YogaShadowTree {
     // Map for storing component types
     private var nodeTypes = [String: String]()
     
-    // NEW: Track node creation timestamps for synchronization
-    private var nodeCreationTimes = [String: TimeInterval]()
-    
-    // NEW: Track node modification timestamps
-    private var nodeModificationTimes = [String: TimeInterval]()
-    
-    // NEW: Track synchronization state between native and Dart
-    private var nodeSyncState = [String: Bool]()
-    
-    // NEW: Performance tracking
-    private var layoutCalculationTimes = [TimeInterval]()
-    private var lastLayoutTime: TimeInterval = 0
-    private var layoutCount = 0
-    
-    // NEW: Layout debugging enabled flag
-    private var debugLayoutEnabled = false
-    
     // Private initializer for singleton
     private init() {
         // Create root node
@@ -52,12 +35,6 @@ class YogaShadowTree {
             nodeTypes["root"] = "View"
         }
         
-        // Check if debug layout is enabled via environment variable or user defaults
-        if ProcessInfo.processInfo.environment["DCMAUI_DEBUG_LAYOUT"] == "1" ||
-           UserDefaults.standard.bool(forKey: "DCMauiDebugLayout") {
-            debugLayoutEnabled = true
-        }
-        
         print("YogaShadowTree initialized with root node")
     }
     
@@ -68,16 +45,10 @@ class YogaShadowTree {
         // Create new node
         let node = YGNodeNew()
         
-        
         if let node = node {
-            
             // Store node
             nodes[id] = node
             nodeTypes[id] = componentType
-            
-            // NEW: Track creation time
-            nodeCreationTimes[id] = Date().timeIntervalSince1970
-            nodeSyncState[id] = true
         }
     }
     
@@ -85,13 +56,6 @@ class YogaShadowTree {
     func addChildNode(parentId: String, childId: String, index: Int? = nil) {
         guard let parentNode = nodes[parentId], let childNode = nodes[childId] else {
             print("Cannot add child: parent or child node not found")
-            
-            // NEW: Track sync issue
-            nodeSyncState[parentId] = nodes[parentId] != nil
-            nodeSyncState[childId] = nodes[childId] != nil
-            
-            // NEW: Log detailed error for debugging
-            print("🚫 Failed parent-child relationship: parent=\(parentId) (\(nodes[parentId] != nil ? "exists" : "missing")), child=\(childId) (\(nodes[childId] != nil ? "exists" : "missing"))")
             return
         }
         
@@ -117,22 +81,11 @@ class YogaShadowTree {
         
         // Update parent reference
         nodeParents[childId] = parentId
-        
-        // NEW: Update modification time
-        nodeModificationTimes[childId] = Date().timeIntervalSince1970
-        nodeModificationTimes[parentId] = Date().timeIntervalSince1970
-        nodeSyncState[childId] = true
-        nodeSyncState[parentId] = true
-        
-        // NEW: Log successful relationship
-        print("✅ Added child \(childId) to parent \(parentId)")
     }
     
     // Remove a node from the shadow tree
     func removeNode(nodeId: String) {
         guard let node = nodes[nodeId] else {
-            // NEW: Track removal of non-existent node
-            print("⚠️ Attempted to remove non-existent node: \(nodeId)")
             return
         }
         
@@ -155,120 +108,49 @@ class YogaShadowTree {
         nodes.removeValue(forKey: nodeId)
         nodeParents.removeValue(forKey: nodeId)
         nodeTypes.removeValue(forKey: nodeId)
-        
-        // NEW: Clean up tracking
-        nodeCreationTimes.removeValue(forKey: nodeId)
-        nodeModificationTimes.removeValue(forKey: nodeId)
-        nodeSyncState.removeValue(forKey: nodeId)
     }
     
     // Update a node's layout properties
     func updateNodeLayoutProps(nodeId: String, props: [String: Any]) {
         guard let node = nodes[nodeId] else {
             print("Cannot update layout: node not found for ID \(nodeId)")
-            
-            // NEW: Track sync issue
-            nodeSyncState[nodeId] = false
             return
         }
-        
-        print("Applying layout props to node \(nodeId): \(props)")
         
         // Process each property
         for (key, value) in props {
             applyLayoutProp(node: node, key: key, value: value)
         }
-        
-
-        nodeModificationTimes[nodeId] = Date().timeIntervalSince1970
-        nodeSyncState[nodeId] = true
-        
-      
-        print("layout props cleaned and recalculated for node \(nodeId) and with props \(props)")
     }
     
-    
-
-    
-    // ENHANCED: Calculate and apply layout in one call with better performance monitoring
+    // Calculate and apply layout
     func calculateAndApplyLayout(width: CGFloat, height: CGFloat) -> Bool {
-        print("🚀 Complete layout calculation and application started for dimensions: \(width)×\(height)")
+        print("Layout calculation started with dimensions: \(width)×\(height)")
         
-        let startTime = Date().timeIntervalSince1970
-        
-        // CRITICAL FIX: Make sure root node exists before proceeding
+        // Make sure root node exists
         guard let root = nodes["root"] else {
-            print("⚠️ ERROR: Root node not found. Cannot calculate layout")
+            print("Root node not found. Cannot calculate layout")
             return false
         }
         
-//        // CRITICAL DEBUGGING: Print node hierarchy before calculation
-//        print("📊 Node hierarchy before calculation:")
-//        printNodeHierarchy()
-        
-        // CRITICAL FIX: Reset any cached layout data to ensure fresh calculation
-        YGNodeCalculateLayout(root, Float.nan, Float.nan, YGDirection.LTR)
-        
-        // CRITICAL FIX: Set proper width and height on root
+        // Set proper width and height on root
         YGNodeStyleSetWidth(root, Float(width))
         YGNodeStyleSetHeight(root, Float(height))
         
-        print("📏 ROOT NODE DIMENSIONS SET: \(width)×\(height)")
-        
-        // Calculate layout with proper dimensions
+        // Calculate layout
         YGNodeCalculateLayout(root, Float(width), Float(height), YGDirection.LTR)
         
-        // DEBUG: Check what the calculated root layout is
-        let rootWidth = YGNodeLayoutGetWidth(root)
-        let rootHeight = YGNodeLayoutGetHeight(root)
-        print("📐 ROOT LAYOUT CALCULATED: \(rootWidth)×\(rootHeight)")
-        
-        // CRITICAL FIX: Force immediate application of layout to all views in a specific order
-        // Starting from root which must exist
-        let allNodeIds = nodes.keys.sorted()
-        
-        print("🔄 Applying layout to \(allNodeIds.count) nodes...")
-        
-        // CRITICAL FIX: Process nodes in parent-first order to ensure proper positioning
-        var processedNodes = Set<String>()
-        
-        // First apply to root node
-        if let rootLayout = getNodeLayout(nodeId: "root") {
-            applyLayoutToView(viewId: "root", frame: rootLayout)
-            processedNodes.insert("root")
-            print("✅ Applied layout to root: \(rootLayout)")
-        }
-        
-        // Process remaining nodes in parent-child order
-        // This ensures parents are positioned before children
-        var nodesToProcess = ["root"]
-        while !nodesToProcess.isEmpty {
-            let parentId = nodesToProcess.removeFirst()
-            processedNodes.insert(parentId)
-            
-            // Find all direct children of this parent
-            for (childId, currentParentId) in nodeParents where currentParentId == parentId {
-                if !processedNodes.contains(childId) {
-                    if let layout = getNodeLayout(nodeId: childId) {
-                        applyLayoutToView(viewId: childId, frame: layout)
-                        processedNodes.insert(childId)
-                        print("✅ Applied layout to child \(childId) of \(parentId): \(layout)")
-                    }
-                    nodesToProcess.append(childId)
-                }
+        // Apply layout to all views
+        for (nodeId, _) in nodes {
+            if let layout = getNodeLayout(nodeId: nodeId) {
+                applyLayoutToView(viewId: nodeId, frame: layout)
             }
         }
-    
-       
-        let endTime = Date().timeIntervalSince1970
-        let duration = endTime - startTime
-        
-        print("✅ Complete layout calculation and application finished in \(String(format: "%.2f", duration * 1000))ms")
         
         return true
     }
     
-
+    // Get layout for a node
     func getNodeLayout(nodeId: String) -> CGRect? {
         guard let node = nodes[nodeId] else { return nil }
         
@@ -281,7 +163,7 @@ class YogaShadowTree {
         return CGRect(x: left, y: top, width: width, height: height)
     }
     
-    // Apply a layout property to a node - ENHANCED percentage handling
+    // Apply a layout property to a node
     private func applyLayoutProp(node: YGNodeRef, key: String, value: Any) {
         switch key {
         case "width":
@@ -289,28 +171,14 @@ class YogaShadowTree {
                 YGNodeStyleSetWidth(node, width)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
-                // Directly use Yoga's percentage API
                 YGNodeStyleSetWidthPercent(node, percentValue)
-                
-                // We can still track this for debugging if needed
-                if let viewId = getViewIdForNode(node),
-                   let view = DCFLayoutManager.shared.getView(withId: viewId) {
-                    view.accessibilityLabel = "width:\(percentValue)%"
-                }
             }
         case "height":
             if let height = convertToFloat(value) {
                 YGNodeStyleSetHeight(node, height)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
-                // Directly use Yoga's percentage API
                 YGNodeStyleSetHeightPercent(node, percentValue)
-                
-                // We can still track this for debugging if needed
-                if let viewId = getViewIdForNode(node),
-                   let view = DCFLayoutManager.shared.getView(withId: viewId) {
-                    view.accessibilityLabel = "height:\(percentValue)%"
-                }
             }
         case "minWidth":
             if let minWidth = convertToFloat(value) {
@@ -603,17 +471,9 @@ class YogaShadowTree {
                 YGNodeStyleSetBorder(node, YGEdge.all, borderWidth)
             }
         default:
-            // Unknown property - log for debugging
-            print("⚠️ Unknown layout property: \(key) with value: \(value)")
+            break
         }
     }
-    
-    // NEW: Add helper to find view ID for a node
-    private func getViewIdForNode(_ node: YGNodeRef) -> String? {
-        return nodes.first(where: { $0.value == node })?.key
-    }
-    
-
     
     // Helper to convert input values to Float
     private func convertToFloat(_ value: Any) -> Float? {
@@ -630,7 +490,7 @@ class YogaShadowTree {
         }
         return nil
     }
-
+    
     // Set a custom measure function for nodes that need to self-measure
     func setCustomMeasureFunction(nodeId: String, measureFunc: @escaping YGMeasureFunc) {
         guard let node = nodes[nodeId] else { return }
@@ -641,358 +501,14 @@ class YogaShadowTree {
         }
     }
     
-    // Add debugging method to print the node hierarchy
-    func printNodeHierarchy(startingAt nodeId: String = "root", depth: Int = 0) {
-        guard let node = nodes[nodeId] else {
-            print("Node not found: \(nodeId)")
-            return
-        }
-        
-        let indent = String(repeating: "  ", count: depth)
-        print("\(indent)Node: \(nodeId) - Type: \(nodeTypes[nodeId] ?? "unknown") - Children: \(YGNodeGetChildCount(node))")
-        
-        // Find children of this node
-        let childNodeIds = nodeParents.filter { $0.value == nodeId }.map { $0.key }
-        for childId in childNodeIds {
-            printNodeHierarchy(startingAt: childId, depth: depth + 1)
-        }
-    }
-    
-    // NEW: Validate and repair node hierarchy
-    func validateAndRepairHierarchy(nodeTree: [String: Any], rootId: String) -> (
-        success: Bool,
-        errorMessage: String?,
-        nodesChecked: Int,
-        nodesMismatched: Int,
-        nodesRepaired: Int
-    ) {
-        print("🔍 Validating node hierarchy from root: \(rootId)")
-        
-        var nodesChecked = 0
-        var nodesMismatched = 0
-        var nodesRepaired = 0
-        
-        // First check if root exists
-        guard nodes[rootId] != nil else {
-            return (false, "Root node \(rootId) doesn't exist", 0, 0, 0)
-        }
-        
-        guard let expectedChildren = nodeTree["children"] as? [[String: Any]] else {
-            return (false, "Invalid node tree format", 0, 0, 0)
-        }
-        
-        // Process the hierarchy
-        do {
-            let result = try processNodeTreeLevel(
-                parentId: rootId,
-                expectedChildren: expectedChildren,
-                nodesChecked: &nodesChecked,
-                nodesMismatched: &nodesMismatched,
-                nodesRepaired: &nodesRepaired
-            )
-            
-            if (!result) {
-                return (false, "Failed to repair node hierarchy", nodesChecked, nodesMismatched, nodesRepaired)
-            }
-            
-            print("✅ Node hierarchy validated: checked=\(nodesChecked), mismatched=\(nodesMismatched), repaired=\(nodesRepaired)")
-            return (true, nil, nodesChecked, nodesMismatched, nodesRepaired)
-            
-        } catch let error {
-            return (false, "Error processing hierarchy: \(error.localizedDescription)", nodesChecked, nodesMismatched, nodesRepaired)
-        }
-    }
-    
-    // NEW: Process a level of the node tree
-    private func processNodeTreeLevel(
-        parentId: String,
-        expectedChildren: [[String: Any]],
-        nodesChecked: inout Int,
-        nodesMismatched: inout Int,
-        nodesRepaired: inout Int
-    ) throws -> Bool {
-        guard let parentNode = nodes[parentId] else {
-            print("⚠️ Parent node not found: \(parentId)")
-            return false
-        }
-        
-        // Get actual children in the native hierarchy
-        let actualChildCount = YGNodeGetChildCount(parentNode)
-        var actualChildNodes = [YGNodeRef]()
-        
-        for i in 0..<actualChildCount {
-            actualChildNodes.append(YGNodeGetChild(parentNode, i))
-        }
-        
-        // Get actual child IDs
-        var actualChildIds = [String]()
-        for (nodeId, node) in nodes where nodeParents[nodeId] == parentId {
-            actualChildIds.append(nodeId)
-        }
-        
-        // Expected child IDs from the tree
-        let expectedChildIds = expectedChildren.compactMap { $0["id"] as? String }
-        
-        nodesChecked += 1 + expectedChildIds.count
-        
-        // Check if children match
-        let childrenMatch = (actualChildIds.count == expectedChildIds.count) &&
-            actualChildIds.sorted() == expectedChildIds.sorted()
-        
-        if (!childrenMatch) {
-            print("⚠️ Children mismatch for parent \(parentId):")
-            print("   Expected: \(expectedChildIds)")
-            print("   Actual: \(actualChildIds)")
-            
-            nodesMismatched += 1
-            
-            // Try to repair by removing all children and re-adding them
-            try repairChildren(
-                parentId: parentId,
-                expectedChildren: expectedChildren,
-                nodesChecked: &nodesChecked,
-                nodesMismatched: &nodesMismatched,
-                nodesRepaired: &nodesRepaired
-            )
-        } else {
-            // Children match, but check proper order
-            for (index, childInfo) in expectedChildren.enumerated() {
-                guard let childId = childInfo["id"] as? String,
-                      let actualIndex = actualChildIds.firstIndex(of: childId) else {
-                    continue
-                }
-                
-                if index != actualIndex {
-                    // Child is in wrong position, move it
-                    print("🔄 Reordering child \(childId) from position \(actualIndex) to \(index)")
-                    nodesMismatched += 1
-                    
-                    // Handle reordering by removing and re-adding at correct index
-                    if let childNode = nodes[childId] {
-                        YGNodeRemoveChild(parentNode, childNode)
-                        YGNodeInsertChild(parentNode, childNode, index)
-                        nodesRepaired += 1
-                    }
-                }
-                
-                // Recursively process this child's children
-                if let grandchildren = childInfo["children"] as? [[String: Any]] {
-                    let success = try processNodeTreeLevel(
-                        parentId: childId,
-                        expectedChildren: grandchildren,
-                        nodesChecked: &nodesChecked,
-                        nodesMismatched: &nodesMismatched,
-                        nodesRepaired: &nodesRepaired
-                    )
-                    
-                    if !success {
-                        print("⚠️ Failed to process grandchildren for \(childId)")
-                    }
-                }
-            }
-        }
-        
-        return true
-    }
-    
-    // NEW: Helper to repair children
-    private func repairChildren(
-        parentId: String,
-        expectedChildren: [[String: Any]],
-        nodesChecked: inout Int,
-        nodesMismatched: inout Int,
-        nodesRepaired: inout Int
-    ) throws {
-        guard let parentNode = nodes[parentId] else { return }
-        
-        // Create temporary storage for children to detach and reattach
-        var childrenToReattach = [(String, YGNodeRef)]()
-        
-        // Remove all child references first
-        for (childId, parentIdValue) in nodeParents where parentIdValue == parentId {
-            if let childNode = nodes[childId] {
-                childrenToReattach.append((childId, childNode))
-            }
-        }
-        
-        // Detach all children from parent
-        for _ in 0..<YGNodeGetChildCount(parentNode) {
-            let child = YGNodeGetChild(parentNode, 0)
-            YGNodeRemoveChild(parentNode, child)
-        }
-        
-        // Clean parent references
-        for (childId, _) in childrenToReattach {
-            nodeParents.removeValue(forKey: childId)
-        }
-        
-        // Re-add children in correct order
-        for (index, childInfo) in expectedChildren.enumerated() {
-            guard let childId = childInfo["id"] as? String else { continue }
-            
-            // Find the child in our detached list
-            if let childIndex = childrenToReattach.firstIndex(where: { $0.0 == childId }) {
-                let (_, childNode) = childrenToReattach[childIndex]
-                
-                // Add back to parent at correct index
-                YGNodeInsertChild(parentNode, childNode, index)
-                
-                // Update parent reference
-                nodeParents[childId] = parentId
-                
-                nodesRepaired += 1
-                
-                print("🔄 Reattached child \(childId) to parent \(parentId) at index \(index)")
-            } else {
-                print("⚠️ Expected child \(childId) not found in actual hierarchy")
-            }
-        }
-    }
-    
-    // NEW: Add debug method to get complete hierarchy as JSON
-    func getHierarchyAsJson(startingAt nodeId: String = "root") -> String {
-        print("📊 Generating hierarchy JSON from node \(nodeId)")
-        
-        guard let node = nodes[nodeId] else {
-            return "{\"error\": \"Node not found: \(nodeId)\"}"
-        }
-        
-        let hierarchy = buildHierarchyDict(nodeId: nodeId)
-        
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: hierarchy, options: [.prettyPrinted])
-            return String(data: jsonData, encoding: .utf8) ?? "{\"error\": \"JSON encoding failed\"}"
-        } catch {
-            return "{\"error\": \"JSON serialization failed: \(error.localizedDescription)\"}"
-        }
-    }
-    
-    // NEW: Helper to build hierarchy dictionary
-    private func buildHierarchyDict(nodeId: String) -> [String: Any] {
-        guard let node = nodes[nodeId] else {
-            return ["id": nodeId, "error": "Node not found"]
-        }
-        
-        let componentType = nodeTypes[nodeId] ?? "unknown"
-        
-        // Get parent
-        let parentId = nodeParents.first(where: { $0.value == nodeId })?.key
-        
-        // Get children
-        let childNodeIds = nodeParents.filter { $0.value == nodeId }.map { $0.key }
-        var children: [[String: Any]] = []
-        
-        for childId in childNodeIds {
-            let childDict = buildHierarchyDict(nodeId: childId)
-            children.append(childDict)
-        }
-        
-        // Get layout info
-        let layout: [String: Any] = [
-            "left": YGNodeLayoutGetLeft(node),
-            "top": YGNodeLayoutGetTop(node),
-            "width": YGNodeLayoutGetWidth(node),
-            "height": YGNodeLayoutGetHeight(node)
-        ]
-        
-        // Build complete node info
-        var nodeInfo: [String: Any] = [
-            "id": nodeId,
-            "type": componentType,
-            "layout": layout,
-            "children": children
-        ]
-        
-        // Add tracking info
-        if let creationTime = nodeCreationTimes[nodeId] {
-            nodeInfo["createdAt"] = creationTime
-        }
-        
-        if let modificationTime = nodeModificationTimes[nodeId] {
-            nodeInfo["modifiedAt"] = modificationTime
-        }
-        
-        if let syncState = nodeSyncState[nodeId] {
-            nodeInfo["inSync"] = syncState
-        }
-        
-        if let parentId = parentId {
-            nodeInfo["parent"] = parentId
-        }
-        
-        return nodeInfo
-    }
-    /// Handle incremental layout updates for specific nodes
-    func performIncrementalLayoutUpdate(nodeId: String, props: [String: Any]) -> Bool {
-        print("📐 Performing incremental layout update for node: \(nodeId)")
-        
-        guard let node = nodes[nodeId] else {
-            print("⚠️ Cannot perform incremental layout: node not found for ID \(nodeId)")
-            return false
-        }
-        
-        // CRITICAL FIX: Don't mark as dirty directly
-        // YGNodeMarkDirty(node) - REMOVE THIS LINE
-        
-        // Apply the updated properties to the node
-        for (key, value) in props {
-            applyLayoutProp(node: node, key: key, value: value)
-        }
-        
-        // Find the root node for this subtree
-        var currentNode = node
-        var parentId = nodeParents[nodeId]
-        var affectedNodeIds = Set<String>()
-        affectedNodeIds.insert(nodeId) // Always include the updated node
-        
-        // Find all parent nodes up to the root
-        while let pId = parentId, let parentNode = nodes[pId] {
-            // Mark parent nodes as affected
-            affectedNodeIds.insert(pId)
-            // Continue upward
-            currentNode = parentNode
-            parentId = nodeParents[pId]
-        }
-        
-        // Calculate layout for the entire tree (optimization opportunity)
-        let screenWidth = YGNodeStyleGetWidth(rootNode!).value
-        let screenHeight = YGNodeStyleGetHeight(rootNode!).value
-        
-        YGNodeCalculateLayout(rootNode!, Float(screenWidth), Float(screenHeight), YGDirection.LTR)
-        
-        print("🔄 Incremental layout calculated from node \(nodeId) affecting \(affectedNodeIds.count) nodes")
-        
-        // Apply layout only to affected nodes for performance
-        for affectedId in affectedNodeIds {
-            if let layout = getNodeLayout(nodeId: affectedId) {
-                // Apply layout to the affected view
-                DCFLayoutManager.shared.applyLayout(
-                    to: affectedId,
-                    left: layout.origin.x,
-                    top: layout.origin.y,
-                    width: layout.width,
-                    height: layout.height
-                )
-                print("🔄 Applied incremental layout to \(affectedId): \(layout)")
-            }
-        }
-        
-        // Update modification time
-        nodeModificationTimes[nodeId] = Date().timeIntervalSince1970
-        
-        return true
-    }
-    
+    // Apply layout to a view
     private func applyLayoutToView(viewId: String, frame: CGRect) {
         // Get the view from the layout manager
         guard let view = DCFLayoutManager.shared.getView(withId: viewId) else {
-            print("⚠️ View not found for ID \(viewId) when applying layout")
             return
         }
         
-        print("🎯 Applying layout to view \(viewId): \(frame)")
-        
-        // Apply layout directly using layout manager
+        // Apply layout using layout manager
         DispatchQueue.main.async {
             DCFLayoutManager.shared.applyLayout(
                 to: viewId,
