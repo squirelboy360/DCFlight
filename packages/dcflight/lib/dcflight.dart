@@ -84,19 +84,6 @@ class DCFlight {
       });
     });
   }
-  
-  /// Register a plugin with the framework
-  /// No need to use this externally, maybe for something in your primitive module fine but you mostly dont need 
-  /// to manually register plugins
-  // static void registerPlugin(DCFPlugin plugin) {
-  //   PluginRegistry.instance.registerPlugin(plugin);
-  // }
-  
-  /// Register a component factory with the framework
-  // static void registerComponent(String type, ComponentFactory factory) {
-  //   ComponentRegistry.instance.registerComponent(type, factory);
-  // }
-  
   /// Register a component definition with the framework
   static void registerComponentDefinition(ComponentDefinition definition) {
     ComponentRegistry.instance.registerComponentDefinition(definition);
