@@ -24,7 +24,7 @@ class DCFViewComponent: NSObject, DCFComponent {
         
         // Apply background color if specified
         if let backgroundColor = props["backgroundColor"] as? String {
-            view.backgroundColor = UIColor.colorFromHexString(backgroundColor)
+            view.backgroundColor = ColorUtilities.color(fromHexString:backgroundColor)
         }
         
         // Apply border radius if specified

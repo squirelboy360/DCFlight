@@ -1,11 +1,11 @@
 import UIKit
-
+import Foundation
 /// Utilities for color conversion
-class ColorUtilities {
+ public class ColorUtilities {
     
     /// Convert a hex string to a UIColor
     /// Format: "#RRGGBB" or "#RRGGBBAA" or "#AARRGGBB" (Android format)
-    static func color(fromHexString hexString: String) -> UIColor? {
+   public static func color(fromHexString hexString: String) -> UIColor? {
         print("Color conversion request: \"\(hexString)\"")
         
         // Handle transparent color explicitly

@@ -50,12 +50,12 @@ class DCFButtonComponent: NSObject, DCFComponent, ComponentMethodHandler {
         
         // Set title color if specified
         if let color = props["color"] as? String {
-            button.setTitleColor(UIColor.colorFromHexString(color), for: .normal)
+            button.setTitleColor(ColorUtilities.color(fromHexString: color), for: .normal)
         }
         
         // Set background color if specified
         if let backgroundColor = props["backgroundColor"] as? String {
-            button.backgroundColor = UIColor.colorFromHexString(backgroundColor)
+            button.backgroundColor = ColorUtilities.color(fromHexString:backgroundColor)
         }
         
         // Set disabled state if specified
