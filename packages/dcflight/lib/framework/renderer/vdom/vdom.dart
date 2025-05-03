@@ -1,8 +1,5 @@
-// ignore_for_file: unused_local_variable, unused_field
-
 import 'dart:async';
 import 'dart:developer' as developer;
-
 
 import 'package:dcflight/framework/renderer/native_bridge/dispatcher.dart' show NativeBridgeFactory, PlatformDispatcher;
 import 'package:dcflight/framework/renderer/vdom/component/component.dart';
@@ -10,17 +7,9 @@ import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 import 'package:dcflight/framework/renderer/vdom/component/context.dart';
 import 'package:dcflight/framework/renderer/vdom/component/error_boundary.dart';
 import 'package:dcflight/framework/renderer/vdom/vdom_element.dart';
-import 'package:dcflight/framework/utilities/screen_utilities.dart';
-
-import '../../constants/yoga_enums.dart';
-import '../../constants/layout_properties.dart';
 import 'vdom_node.dart';
-
 import 'reconciler.dart';
-
 import 'fragment.dart';
-
-import 'vdom_node_sync.dart';
 
 /// Performance monitoring for VDOM operations
 class PerformanceMonitor {
@@ -89,7 +78,6 @@ class PerformanceMonitor {
 /// Internal timer class
 class _Timer {
   final DateTime startTime;
-
   _Timer(this.startTime);
 }
 
@@ -117,9 +105,6 @@ class ComponentInstance {
 
   /// Whether component is mounted
   bool isMounted = false;
-
-  /// Whether we've attached an update listener
-  bool hasUpdateListener = false;
 
   ComponentInstance({
     required this.component,
@@ -165,18 +150,11 @@ class VDom {
   /// Error boundaries
   final Map<String, ErrorBoundary> _errorBoundaries = {};
 
-  /// Map of node IDs from creation to view IDs after creation
-  final Map<String, String> _nodeIdToViewId = {};
-
   /// Root component node (for main application)
   ComponentNode? rootComponentNode;
 
   /// Reconciliation engine
   late final Reconciler _reconciler;
-
-  /// Node synchronization manager
-  late final VDomNodeSync _nodeSync;
-
 
   /// Create a new VDom instance
   VDom() {
@@ -203,11 +181,6 @@ class VDom {
 
       // Create reconciler
       _reconciler = Reconciler(this);
-
-      // Initialize node sync
-      _nodeSync = VDomNodeSync(this, _nativeBridge);
-
-  
 
       // Mark as ready
       _readyCompleter.complete();
@@ -270,20 +243,16 @@ class VDom {
         _performanceMonitor.startTimer('event_handler');
         final handler = node.events![eventType] as Function;
         
-        // FIXED: Handle different function signatures
         try {
           if (handler is Function(Map<String, dynamic>)) {
             // Function expects event data
             handler(eventData);
-            developer.log('✅ Executed handler with event data for $eventType on $viewId', name: 'VDom');
           } else if (handler is Function()) {
             // Function takes no parameters
             handler();
-            developer.log('✅ Executed handler with no parameters for $eventType on $viewId', name: 'VDom');
           } else {
             // Try a more general approach
             Function.apply(handler, [], {});
-            developer.log('✅ Executed handler using Function.apply for $eventType on $viewId', name: 'VDom');
           }
         } catch (e, stack) {
           developer.log('❌ Error executing event handler: $e', 
@@ -296,7 +265,6 @@ class VDom {
       }
 
       // If not found in events map, try props with "onX" format
-      // Convert event name to prop name (e.g., 'press' -> 'onPress')
       final propName =
           'on${eventType[0].toUpperCase()}${eventType.substring(1)}';
 
@@ -306,22 +274,13 @@ class VDom {
         _performanceMonitor.startTimer('event_handler');
         final handler = node.props[propName] as Function;
         
-        // FIXED: Handle different function signatures
         try {
-          developer.log('🔔 Executing handler for $propName on $viewId with data: $eventData', name: 'VDom');
-          
           if (handler is Function(Map<String, dynamic>)) {
-            // Function expects event data
             handler(eventData);
-            developer.log('✅ Executed handler with event data', name: 'VDom');
           } else if (handler is Function()) {
-            // Function takes no parameters
             handler();
-            developer.log('✅ Executed handler with no parameters', name: 'VDom');
           } else {
-            // Try a more general approach
             Function.apply(handler, [], {});
-            developer.log('✅ Executed handler using Function.apply', name: 'VDom');
           }
         } catch (e, stack) {
           developer.log('❌ Error executing event handler: $e', 
@@ -329,9 +288,6 @@ class VDom {
         }
         
         _performanceMonitor.endTimer('event_handler');
-      } else {
-        developer.log('⚠️ No handler found for event $eventType or $propName on $viewId',
-            name: 'VDom');
       }
     }
 
@@ -344,7 +300,6 @@ class VDom {
     Map<String, dynamic>? props,
     List<VDomNode>? children,
     String? key,
-    String? tempId,
   }) {
     return VDomElement(
       type: type,
@@ -402,14 +357,6 @@ class VDom {
             parentId: parentId, index: index);
       }
 
-      // After rendering, schedule a sync if this is a significant node
-      if (node is ComponentNode && node.component.typeName == 'App') {
-        // This is the root app component, schedule a sync
-        Future.delayed(Duration(milliseconds: 500), () {
-          _nodeSync.synchronizeHierarchy(rootId: node.nativeViewId ?? 'root');
-        });
-      }
-
       return null;
     } finally {
       _performanceMonitor.endTimer('render_to_native');
@@ -446,11 +393,6 @@ class VDom {
 
     // Store the view ID
     componentNode.contentViewId = viewId;
-
-    // Store component -> viewId mapping for quick lookups
-    if (viewId != null && viewId.isNotEmpty) {
-      //  _componentToViewId[component.instanceId] = viewId;
-    }
 
     // Mark as mounted if not already
     if (componentInstance != null && !componentInstance.isMounted) {
@@ -516,8 +458,7 @@ class VDom {
     _nodesByViewId[viewId] = element;
     element.nativeViewId = viewId;
 
-    // Extract layout props
-    final layoutProps = _extractLayoutProps(element.props);
+
 
     // Create the view
     _performanceMonitor.startTimer('create_native_view');
@@ -538,7 +479,7 @@ class VDom {
       _performanceMonitor.endTimer('attach_view');
     }
 
-    // Register event listeners - modified to use eventTypes getter
+    // Register event listeners
     final eventTypes = element.eventTypes;
     if (eventTypes.isNotEmpty) {
       _performanceMonitor.startTimer('add_event_listeners');
@@ -575,27 +516,15 @@ class VDom {
 
   /// Calculate and apply layout
   Future<void> calculateAndApplyLayout({double? width, double? height}) async {
-    developer.log(
-        '🔥 Starting layout calculation with dimensions: ${width ?? '100%'} x ${height ?? '100%'}',
-        name: 'VDom');
 
-    // Get screen dimensions if not provided
-    final screenWidth = width ?? ScreenUtilities.instance.screenWidth;
-    final screenHeight = height ?? ScreenUtilities.instance.screenHeight;
 
     _performanceMonitor.startTimer('native_layout_calculation');
-
     final success = await _nativeBridge.calculateLayout();
+    _performanceMonitor.endTimer('native_layout_calculation');
 
     if (!success) {
       developer.log('⚠️ Native layout calculation failed', name: 'VDom');
-      // No fallback - native side is now the only source of truth for layout
     }
-
-    _performanceMonitor.endTimer('native_layout_calculation');
-
-    developer.log('✅ Layout calculation delegated to native side',
-        name: 'VDom');
   }
 
   /// Schedule a component update for batching
@@ -662,17 +591,11 @@ class VDom {
       return;
     }
 
-    developer.log('Updating component: ${_components[componentId]!.typeName}',
-        name: 'VDom');
-
     final component = _components[componentId]!;
     final componentNode = _componentNodes[componentId]!;
 
     // Handle stateful components
     if (component is StatefulComponent) {
-      // FIXED: Don't call componentWillUnmount during state updates
-      // This was previously causing all effects to be cleaned up prematurely
-      
       // Reset hook state before render but preserve values
       component.prepareForRender();
     }
@@ -690,15 +613,6 @@ class VDom {
       _performanceMonitor.startTimer('reconcile');
       await _reconciler.reconcile(oldRenderedNode, newRenderedNode);
       _performanceMonitor.endTimer('reconcile');
-
-      // Schedule a hierarchy sync after significant changes
-      if (component.typeName == 'App' ||
-          component.typeName.contains('Screen')) {
-        Future.delayed(Duration(milliseconds: 300), () {
-          _nodeSync.synchronizeHierarchy(
-              rootId: componentNode.nativeViewId ?? 'root');
-        });
-      }
     } else if (componentNode.contentViewId != null) {
       // If no previous node but we have a content view ID, this might be a special case
       // Handle by re-rendering to native
@@ -711,8 +625,6 @@ class VDom {
     // Update component lifecycle
     if (component is StatefulComponent) {
       component.componentDidUpdate({});
-      
-      // FIXED: Run effects after update to ensure state changes take effect
       component.runEffectsAfterRender();
     }
   }
@@ -729,212 +641,7 @@ class VDom {
     return "root"; // Fallback to root if no parent found
   }
 
-  /// Extract layout props from all props
-  LayoutProps? _extractLayoutProps(Map<String, dynamic> props) {
-    // Check if any layout properties exist
-    final hasLayoutProps =
-        props.keys.any((key) => LayoutProps.all.contains(key));
-
-    if (!hasLayoutProps) return null;
-
-    // Handle string enum values that need conversion
-    YogaFlexDirection? convertFlexDirection(dynamic value) {
-      if (value is YogaFlexDirection) return value;
-      if (value is String) {
-        switch (value) {
-          case 'row':
-            return YogaFlexDirection.row;
-          case 'column':
-            return YogaFlexDirection.column;
-          case 'row-reverse':
-            return YogaFlexDirection.rowReverse;
-          case 'column-reverse':
-            return YogaFlexDirection.columnReverse;
-          default:
-            return null;
-        }
-      }
-      return null;
-    }
-
-    YogaJustifyContent? convertJustifyContent(dynamic value) {
-      if (value is YogaJustifyContent) return value;
-      if (value is String) {
-        switch (value) {
-          case 'flex-start':
-            return YogaJustifyContent.flexStart;
-          case 'center':
-            return YogaJustifyContent.center;
-          case 'flex-end':
-            return YogaJustifyContent.flexEnd;
-          case 'space-between':
-            return YogaJustifyContent.spaceBetween;
-          case 'space-around':
-            return YogaJustifyContent.spaceAround;
-          case 'space-evenly':
-            return YogaJustifyContent.spaceEvenly;
-          default:
-            return null;
-        }
-      }
-      return null;
-    }
-
-    YogaAlign? convertAlign(dynamic value) {
-      if (value is YogaAlign) return value;
-      if (value is String) {
-        switch (value) {
-          case 'auto':
-            return YogaAlign.auto;
-          case 'flex-start':
-            return YogaAlign.flexStart;
-          case 'center':
-            return YogaAlign.center;
-          case 'flex-end':
-            return YogaAlign.flexEnd;
-          case 'stretch':
-            return YogaAlign.stretch;
-          case 'baseline':
-            return YogaAlign.baseline;
-          case 'space-between':
-            return YogaAlign.spaceBetween;
-          case 'space-around':
-            return YogaAlign.spaceAround;
-          default:
-            return null;
-        }
-      }
-      return null;
-    }
-
-    YogaWrap? convertFlexWrap(dynamic value) {
-      if (value is YogaWrap) return value;
-      if (value is String) {
-        switch (value) {
-          case 'nowrap':
-            return YogaWrap.nowrap;
-          case 'wrap':
-            return YogaWrap.wrap;
-          case 'wrap-reverse':
-            return YogaWrap.wrapReverse;
-          default:
-            return null;
-        }
-      }
-      return null;
-    }
-
-    YogaDisplay? convertDisplay(dynamic value) {
-      if (value is YogaDisplay) return value;
-      if (value is String) {
-        switch (value) {
-          case 'flex':
-            return YogaDisplay.flex;
-          case 'none':
-            return YogaDisplay.none;
-          default:
-            return null;
-        }
-      }
-      return null;
-    }
-
-    YogaPositionType? convertPositionType(dynamic value) {
-      if (value is YogaPositionType) return value;
-      if (value is String) {
-        switch (value) {
-          case 'relative':
-            return YogaPositionType.relative;
-          case 'absolute':
-            return YogaPositionType.absolute;
-          default:
-            return null;
-        }
-      }
-      return null;
-    }
-
-    YogaOverflow? convertOverflow(dynamic value) {
-      if (value is YogaOverflow) return value;
-      if (value is String) {
-        switch (value) {
-          case 'visible':
-            return YogaOverflow.visible;
-          case 'hidden':
-            return YogaOverflow.hidden;
-          case 'scroll':
-            return YogaOverflow.scroll;
-          default:
-            return null;
-        }
-      }
-      return null;
-    }
-
-    YogaDirection? convertDirection(dynamic value) {
-      if (value is YogaDirection) return value;
-      if (value is String) {
-        switch (value) {
-          case 'inherit':
-            return YogaDirection.inherit;
-          case 'ltr':
-            return YogaDirection.ltr;
-          case 'rtl':
-            return YogaDirection.rtl;
-          default:
-            return null;
-        }
-      }
-      return null;
-    }
-
-    return LayoutProps(
-      width: props['width'],
-      height: props['height'],
-      minWidth: props['minWidth'],
-      maxWidth: props['maxWidth'],
-      minHeight: props['minHeight'],
-      maxHeight: props['maxHeight'],
-      margin: props['margin'],
-      marginTop: props['marginTop'],
-      marginRight: props['marginRight'],
-      marginBottom: props['marginBottom'],
-      marginLeft: props['marginLeft'],
-      marginHorizontal: props['marginHorizontal'],
-      marginVertical: props['marginVertical'],
-      padding: props['padding'],
-      paddingTop: props['paddingTop'],
-      paddingRight: props['paddingRight'],
-      paddingBottom: props['paddingBottom'],
-      paddingLeft: props['paddingLeft'],
-      paddingHorizontal: props['paddingHorizontal'],
-      paddingVertical: props['paddingVertical'],
-      left: props['left'],
-      top: props['top'],
-      right: props['right'],
-      bottom: props['bottom'],
-      position: convertPositionType(props['position']),
-      flexDirection: convertFlexDirection(props['flexDirection']),
-      justifyContent: convertJustifyContent(props['justifyContent']),
-      alignItems: convertAlign(props['alignItems']),
-      alignSelf: convertAlign(props['alignSelf']),
-      alignContent: convertAlign(props['alignContent']),
-      flexWrap: convertFlexWrap(props['flexWrap']),
-      flex: props['flex'] is num ? props['flex'].toDouble() : props['flex'],
-      flexGrow: props['flexGrow'] is num
-          ? props['flexGrow'].toDouble()
-          : props['flexGrow'],
-      flexShrink: props['flexShrink'] is num
-          ? props['flexShrink'].toDouble()
-          : props['flexShrink'],
-      flexBasis: props['flexBasis'],
-      display: convertDisplay(props['display']),
-      overflow: convertOverflow(props['overflow']),
-      direction: convertDirection(props['direction']),
-      borderWidth: props['borderWidth'],
-    );
-  }
-
+ 
   /// Call lifecycle methods for components
   void _callLifecycleMethodsIfNeeded(VDomNode node) {
     // Find component owning this node by traversing up the tree
@@ -954,14 +661,7 @@ class VDom {
       final instance = _componentInstances[component.instanceId];
 
       if (instance != null && !instance.isMounted) {
-        if (component is StatefulComponent) {
-          // Call componentDidMount
-          component.componentDidMount();
-        } else {
-          // For non-stateful components, just call the method
-          component.componentDidMount();
-        }
-
+        component.componentDidMount();
         instance.isMounted = true;
       }
     }
@@ -998,100 +698,9 @@ class VDom {
     return result;
   }
 
-  /// Update a view's properties with resilience to app restarts
+  /// Update a view's properties
   Future<bool> updateView(String viewId, Map<String, dynamic> props) async {
-    try {
-      // First check if this view actually exists - critical for app restarts
-      final exists = await _nativeBridge.viewExists(viewId);
-      
-      if (!exists) {
-        developer.log("⚠️ View $viewId doesn't exist anymore - likely due to app restart", name: 'VDom');
-        
-        // Find the node associated with this viewId
-        final node = _nodesByViewId[viewId];
-        if (node == null) {
-          developer.log("❌ No VDOM node found for viewId: $viewId", name: 'VDom');
-          return false;
-        }
-        
-        // Get the parent info for recreation
-        VDomNode? parentNode = node.parent;
-        String? parentId;
-        int index = 0;
-        
-        // Find first parent with a native view ID
-        while (parentNode != null) {
-          if (parentNode.nativeViewId != null) {
-            parentId = parentNode.nativeViewId;
-            
-            // Find index of node in parent's children
-            if (parentNode is VDomElement) {
-              index = parentNode.children.indexOf(node);
-              if (index < 0) index = 0;
-            }
-            break;
-          }
-          parentNode = parentNode.parent;
-        }
-        
-        // If we have parent info, try to recreate the view
-        if (parentId != null && node is VDomElement) {
-          developer.log("🔄 Recreating view $viewId of type ${node.type}", name: 'VDom');
-          
-          // Create the view with complete props
-          bool success = await _nativeBridge.createView(viewId, node.type, node.props);
-          
-          if (success) {
-            // Attach to parent
-            success = await _nativeBridge.attachView(viewId, parentId, index);
-            
-            if (success) {
-              // If the node has children, we need to recreate them too
-              if (node.children.isNotEmpty) {
-                developer.log("🔄 Recreating children for view $viewId", name: 'VDom');
-                
-                // Schedule a full subtree recreation by clearing native view IDs
-                for (final child in node.getDescendants()) {
-                  child.nativeViewId = null;
-                }
-                
-                // Render all children
-                final childIds = <String>[];
-                int childIndex = 0;
-                
-                for (final child in node.children) {
-                  final childId = await renderToNative(child, parentId: viewId, index: childIndex++);
-                  if (childId != null && childId.isNotEmpty) {
-                    childIds.add(childId);
-                  }
-                }
-                
-                // Update children order
-                if (childIds.isNotEmpty) {
-                  await _nativeBridge.setChildren(viewId, childIds);
-                }
-              }
-              
-              // Now apply the props update
-              success = await _nativeBridge.updateView(viewId, props);
-              return success;
-            }
-          }
-          
-          return false;
-        } else {
-          developer.log("❌ Cannot recreate view $viewId: No parent found", name: 'VDom');
-          return false;
-        }
-      }
-      
-      // Normal flow - view exists, just update it
-      return await _nativeBridge.updateView(viewId, props);
-    } catch (e, stack) {
-      developer.log("❌ Error updating view: $e", 
-                  name: 'VDom', error: e, stackTrace: stack);
-      return false;
-    }
+    return await _nativeBridge.updateView(viewId, props);
   }
 
   /// Delete a view
@@ -1128,10 +737,9 @@ class VDom {
     return await _nativeBridge.attachView(childId, parentId, index);
   }
 
-  /// Detach/delete a view from its parent
+  /// Detach a view from its parent
   Future<bool> detachView(String viewId) async {
-    await _nativeBridge.deleteView(viewId);
-    return true;
+    return await _nativeBridge.deleteView(viewId);
   }
 
   /// Get performance data
@@ -1147,49 +755,6 @@ class VDom {
   /// Find a node by ID
   VDomNode? findNodeById(String id) {
     // Check direct mapping
-    final node = _nodesByViewId[id];
-    if (node != null) return node;
-
-    // If not found directly, do a tree search starting from root
-    if (rootComponentNode != null) {
-      return _findNodeInSubtree(rootComponentNode!, id);
-    }
-
-    return null;
-  }
-
-  /// Helper to find node in a subtree
-  VDomNode? _findNodeInSubtree(VDomNode node, String id) {
-    if (node.nativeViewId == id) return node;
-
-    // Use type-specific access to children
-    List<VDomNode> children = [];
-    if (node is VDomElement) {
-      children = node.children;
-    } else if (node is ComponentNode && node.renderedNode != null) {
-      // For ComponentNode, add its rendered node as a "child"
-      children = [node.renderedNode!];
-    } else if (node is Fragment) {
-      children = node.children;
-    }
-
-    for (final child in children) {
-      final result = _findNodeInSubtree(child, id);
-      if (result != null) return result;
-    }
-
-    return null;
-  }
-
-  /// Synchronize node hierarchy
-  Future<bool> synchronizeNodeHierarchy({String? rootId}) async {
-    final rootNodeId = rootId ?? (rootComponentNode?.nativeViewId ?? 'root');
-    return await _nodeSync.synchronizeHierarchy(rootId: rootNodeId);
-  }
-
-  /// Get native node hierarchy
-  Future<Map<String, dynamic>> getNativeNodeHierarchy(
-      {required String nodeId}) async {
-    return await _nodeSync.getNativeHierarchy(nodeId);
+    return _nodesByViewId[id];
   }
 }

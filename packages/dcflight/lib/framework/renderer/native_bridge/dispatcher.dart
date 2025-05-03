@@ -1,84 +1,65 @@
 import 'dart:async';
-import 'dispatcher_imp.dart';
 
-/// Abstract interface for platform-specific native bridges
+import 'package:dcflight/framework/renderer/native_bridge/dispatcher_imp.dart';
+
+/// Interface for platform-specific native bridge operations
 abstract class PlatformDispatcher {
-  static PlatformDispatcher get instance => _instance!;
-  static PlatformDispatcher? _instance;
-
-  static void initializeInstance(PlatformDispatcher bridge) {
-    _instance = bridge;
-  }
-
-  // Basic UI operations
+  /// Initialize the bridge with native code
   Future<bool> initialize();
-  Future<bool> createView(
-      String viewId, String type, Map<String, dynamic> props);
+
+  /// Create a view with the specified ID, type, and properties
+  Future<bool> createView(String viewId, String type, Map<String, dynamic> props);
+
+  /// Update properties for an existing view
   Future<bool> updateView(String viewId, Map<String, dynamic> propPatches);
+
+  /// Delete a view
   Future<bool> deleteView(String viewId);
+
+  /// Attach a child view to a parent at the specified index
   Future<bool> attachView(String childId, String parentId, int index);
+
+  /// Set all children for a view (replacing any existing children)
   Future<bool> setChildren(String viewId, List<String> childrenIds);
 
-  // Event handling methods
+  /// Add event listeners to a view
   Future<bool> addEventListeners(String viewId, List<String> eventTypes);
+
+  /// Remove event listeners from a view
   Future<bool> removeEventListeners(String viewId, List<String> eventTypes);
-  void setEventHandler(
-      Function(String viewId, String eventType, Map<String, dynamic> eventData)
-          handler);
 
-  // Add default implementation for handleNativeEvent instead of making it abstract
-  void handleNativeEvent(
-      String viewId, String eventType, Map<String, dynamic> eventData) {
-    final viewCallbacks = _eventCallbacks[viewId];
-    if (viewCallbacks != null && viewCallbacks.containsKey(eventType)) {
-      final callback = viewCallbacks[eventType];
-      if (callback != null) {
-        callback(eventData);
-      }
-    }
-  }
+  /// Register a specific callback for a view's event
+  void registerEventCallback(String viewId, String eventType, Function callback);
 
-  // Layout methods
-//
+  /// Set a global event handler for all events
+  void setEventHandler(Function(String viewId, String eventType, Map<String, dynamic> eventData) handler);
+
+  /// Update the layout of a view
+  Future<bool> updateViewLayout(String viewId, double left, double top, double width, double height);
+
+  /// Calculate layout for the entire view hierarchy
   Future<bool> calculateLayout();
-  //
 
-  Future<bool> updateViewLayout(
-      String viewId, double left, double top, double width, double height);
+  /// Check if a view exists
+  Future<bool> viewExists(String viewId);
 
-  // Node synchronization methods
-  Future<Map<String, dynamic>> syncNodeHierarchy(
-      {required String rootId, required String nodeTree});
-  Future<Map<String, dynamic>> getNodeHierarchy({required String nodeId});
+  /// Invoke a generic method on the native platform
+  Future<dynamic> invokeMethod(String method, [Map<String, dynamic>? arguments]);
 
-  // Method invocation
-  Future<dynamic> invokeMethod(String method,
-      [Map<String, dynamic>? arguments]);
+  /// Call a method on a specific component instance
+  Future<dynamic> callComponentMethod(String viewId, String methodName, Map<String, dynamic> args);
 
-  /// Calls a specific method on a native component instance.
-  Future<dynamic> callComponentMethod(
-      String viewId, String methodName, Map<String, dynamic> args);
-
-  // Batch updates
+  /// Start a batch update (multiple operations that will be applied atomically)
   Future<bool> startBatchUpdate();
+
+  /// Commit the pending batch updates
   Future<bool> commitBatchUpdate();
+
+  /// Cancel the pending batch updates
   Future<bool> cancelBatchUpdate();
 
-  // Debug features
-  Future<bool> setVisualDebugEnabled(bool enabled);
-
-  // Add a storage mechanism for event callbacks
-  final Map<String, Map<String, Function>> _eventCallbacks = {};
-
-  // Register an event callback for a specific view and event type
-  void registerEventCallback(
-      String viewId, String eventType, Function callback) {
-    _eventCallbacks[viewId] ??= {};
-    _eventCallbacks[viewId]![eventType] = callback;
-  }
-
-  // Check if a view exists on the native side
-  Future<bool> viewExists(String viewId);
+  /// Handle an event from native code
+  void handleNativeEvent(String viewId, String eventType, Map<String, dynamic> eventData);
 }
 
 /// Factory for creating platform-specific native bridges

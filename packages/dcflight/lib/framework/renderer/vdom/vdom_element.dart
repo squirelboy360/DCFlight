@@ -1,6 +1,7 @@
-import 'package:collection/collection.dart';
+
+import 'package:dcflight/framework/renderer/native_bridge/dispatcher_imp.dart';
+
 import 'vdom_node.dart';
-import '../native_bridge/dispatcher.dart';
 
 /// Represents an element in the Virtual DOM tree
 class VDomElement extends VDomNode {
@@ -89,11 +90,6 @@ class VDomElement extends VDomNode {
     if (type != other.type) return false;
     if (key != other.key) return false;
 
-    // Deep props comparison
-    if (!DeepCollectionEquality().equals(props, other.props)) {
-      return false;
-    }
-
     return true;
   }
 
@@ -168,7 +164,7 @@ class VDomElement extends VDomNode {
     final types = eventTypes;
     if (types.isNotEmpty && nativeViewId != null) {
       // Register events with the native bridge
-      PlatformDispatcher.instance.addEventListeners(nativeViewId!, types);
+      PlatformDispatcherIml().addEventListeners(nativeViewId!, types);
     }
   }
 }

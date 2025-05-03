@@ -1,6 +1,5 @@
 import 'dart:developer' as developer;
 import 'dart:math' as math;
-import 'package:dcflight/framework/renderer/native_bridge/dispatcher.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 
 import '../../constants/layout_properties.dart';
@@ -9,7 +8,6 @@ import 'vdom_node.dart';
 import 'vdom_element.dart';
 
 import 'vdom.dart';
-
 
 /// Class responsible for reconciling differences between VDOM trees
 class Reconciler {
@@ -21,8 +19,6 @@ class Reconciler {
 
   /// Reconcile two nodes and apply minimal changes
   Future<void> reconcile(VDomNode oldNode, VDomNode newNode) async {
-    // developer.log('Reconciling: $oldNode -> $newNode', name: 'Reconciler');
-
     // Handle different types of nodes
     if (oldNode.runtimeType != newNode.runtimeType) {
       // Complete replacement needed
@@ -47,7 +43,7 @@ class Reconciler {
     } else if (oldNode is ComponentNode && newNode is ComponentNode) {
       // Component comparison - check type
       if (oldNode.component.runtimeType == newNode.component.runtimeType) {
-        // Copy over native view IDs and rendered nodes for proper tracking
+        // Copy over native view IDs for proper tracking
         newNode.nativeViewId = oldNode.nativeViewId;
         newNode.contentViewId = oldNode.contentViewId;
 
@@ -78,14 +74,15 @@ class Reconciler {
   }
 
   /// Update an element with new props and children
-  Future<void> _updateElement(
-      {required VDomElement oldElement,
-      required VDomElement newElement}) async {
+  Future<void> _updateElement({
+    required VDomElement oldElement,
+    required VDomElement newElement
+  }) async {
     // Update props if node already has a native view
     if (oldElement.nativeViewId != null) {
       newElement.nativeViewId = oldElement.nativeViewId;
 
-      // Find changed props with generic diffing - excluding layout props
+      // Find changed props with generic diffing
       final changedProps = <String, dynamic>{};
 
       // Check for props that have changed or been added
@@ -103,7 +100,7 @@ class Reconciler {
       // Check for removed props
       for (final key in oldElement.props.keys) {
         if (!newElement.props.containsKey(key)) {
-          // Set to null to indicate removal (handled by native bridge)
+          // Set to null to indicate removal
           changedProps[key] = null;
         }
       }
@@ -121,6 +118,7 @@ class Reconciler {
 
         await vdom.updateView(oldElement.nativeViewId!, changedProps);
 
+        // Request layout calculation if any layout props changed
         if (changedProps.keys.any((key) => _isLayoutProp(key))) {
           vdom.calculateAndApplyLayout();
         }
@@ -249,9 +247,7 @@ class Reconciler {
   Future<void> _reconcileNonKeyedChildren(String parentViewId,
       List<VDomNode> oldChildren, List<VDomNode> newChildren) async {
     final updatedChildren = <String>[];
-    final commonLength = oldChildren.length < newChildren.length
-        ? oldChildren.length
-        : newChildren.length;
+    final commonLength = math.min(oldChildren.length, newChildren.length);
 
     // Update common children
     for (var i = 0; i < commonLength; i++) {
@@ -371,64 +367,7 @@ class Reconciler {
     return _ParentInfo(parent.nativeViewId!, index);
   }
 
-  // Add support for registering events during reconciliation
-  static void mountElement(VDomElement element, String? parentId) async {
-    try {
-      final elementId = element.key ?? generateId();
-
-      // Create the view
-      await PlatformDispatcher.instance.createView(
-        elementId,
-        element.type,
-        element.props,
-      );
-
-      // If parent is not null, attach this view to the parent
-      if (parentId != null) {
-        await PlatformDispatcher.instance.attachView(
-          elementId,
-          parentId,
-          0, // Default index, can be updated later
-        );
-      }
-
-      // Register any events for this element
-      if (element.events != null && element.events!.isNotEmpty) {
-        // Register event listeners with native side
-        List<String> eventTypes = element.events!.keys.toList();
-        await PlatformDispatcher.instance.addEventListeners(elementId, eventTypes);
-
-        // Register callbacks for each event type
-        element.events!.forEach((eventType, callback) {
-          PlatformDispatcher.instance
-              .registerEventCallback(elementId, eventType, callback);
-        });
-      }
-
-      // Now mount all children
-      final childIds = <String>[];
-      for (int i = 0; i < element.children.length; i++) {
-        final child = element.children[i];
-        if (child is VDomElement) {
-          // Get or generate child ID
-          final childId = child.key ?? generateId();
-          childIds.add(childId);
-
-          // Mount the child - don't use return value
-          mountElement(child, elementId); // Don't await or use the result
-        }
-      }
-
-      // Set children in order
-      if (childIds.isNotEmpty) {
-        await PlatformDispatcher.instance.setChildren(elementId, childIds);
-      }
-    } catch (e, st) {
-      developer.log('Error mounting element: $e\n$st');
-    }
-  }
-
-  // Add the missing generateId method
+  /// Generate a unique ID for a node
   static String generateId() {
     final random = math.Random();
     final id =

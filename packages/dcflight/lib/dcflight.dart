@@ -49,7 +49,7 @@ class DCFlight {
     
     // Initialize platform dispatcher
     final bridge = NativeBridgeFactory.create();
-    PlatformDispatcher.initializeInstance(bridge);
+    // PlatformDispatcher.initializeInstance(bridge);
     await bridge.initialize();
     
     // Initialize screen utilities

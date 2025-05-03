@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'dispatcher.dart';
-import 'dart:developer' as developer;
 
 /// Method channel-based implementation of NativeBridge
 class PlatformDispatcherIml implements PlatformDispatcher {
@@ -15,16 +14,15 @@ class PlatformDispatcherIml implements PlatformDispatcher {
   bool _batchUpdateInProgress = false;
   final List<Map<String, dynamic>> _pendingBatchUpdates = [];
 
-  // Event callback
-  Function(String viewId, String eventType, Map<String, dynamic> eventData)?
-      _eventHandler;
-
   // Map to store callbacks for each view and event type
   final Map<String, Map<String, Function>> _eventCallbacks = {};
+  
+  // Global event handler for fallback when a specific callback isn't found
+  Function(String viewId, String eventType, Map<String, dynamic> eventData)? _eventHandler;
 
   // Sets up communication with native code
   PlatformDispatcherIml() {
-    // Set up method channels for events and layout
+    // Set up method channels for events
     _setupMethodChannelEventHandling();
     debugPrint('Method channel bridge initialized');
   }
@@ -43,59 +41,20 @@ class PlatformDispatcherIml implements PlatformDispatcher {
           (key, value) => MapEntry(key.toString(), value),
         );
 
-        debugPrint(
-            'EVENT RECEIVED FROM NATIVE: $eventType for $viewId with data: $typedEventData');
-
-        // First try to find the callback in _eventCallbacks
-        final callback = _eventCallbacks[viewId]?[eventType];
-        if (callback != null) {
-          try {
-            // Handle parameter count mismatch by checking function parameters
-            final Function func = callback;
-            if (func is Function()) {
-              // No parameters - just call it directly
-              func();
-              debugPrint(
-                  'Event callback executed for $eventType on $viewId (no params)');
-            } else if (func is Function(Map<String, dynamic>)) {
-              // One parameter - pass the event data
-              func(typedEventData);
-              debugPrint(
-                  'Event callback executed for $eventType on $viewId (with event data)');
-            } else {
-              // Try anyway with a general approach
-              Function.apply(callback, [], {});
-              debugPrint(
-                  'Event callback executed for $eventType on $viewId (direct apply)');
-            }
-          } catch (e) {
-            debugPrint('Error executing callback: $e');
-          }
-        } else {
-          // If no direct callback found, fall back to the global handler
-          if (_eventHandler != null) {
-            _eventHandler!(viewId, eventType, typedEventData);
-            debugPrint('Event forwarded to global handler');
-          } else {
-            debugPrint('WARNING: No event handler registered to process event');
-          }
-        }
+        // Forward the event to the handler
+        handleNativeEvent(viewId, eventType, typedEventData);
       }
       return null;
     });
-
-    debugPrint('Method channel event handling initialized');
   }
 
   @override
   Future<bool> initialize() async {
     try {
-      developer.log('Initializing method channel bridge', name: 'BRIDGE');
       final result = await bridgeChannel.invokeMethod<bool>('initialize');
-      developer.log('Bridge initialization result: $result', name: 'BRIDGE');
       return result ?? false;
     } catch (e) {
-      developer.log('Failed to initialize bridge: $e', name: 'BRIDGE');
+      debugPrint('Failed to initialize bridge: $e');
       return false;
     }
   }
@@ -115,9 +74,6 @@ class PlatformDispatcherIml implements PlatformDispatcher {
     }
 
     try {
-      developer.log('Creating view via method channel: $viewId, $type',
-          name: 'BRIDGE');
-
       // Preprocess props to handle special types before encoding to JSON
       final processedProps = _preprocessProps(props);
 
@@ -129,7 +85,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
 
       return result ?? false;
     } catch (e) {
-      developer.log('Method channel createView error: $e', name: 'BRIDGE');
+      debugPrint('Method channel createView error: $e');
       return false;
     }
   }
@@ -144,7 +100,6 @@ class PlatformDispatcherIml implements PlatformDispatcher {
         'viewId': viewId,
         'props': propPatches,
       });
-      debugPrint("executing diffed props to native side $propPatches for view id: $viewId");
       return true;
     }
 
@@ -159,7 +114,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
 
       return result ?? false;
     } catch (e) {
-      developer.log('Method channel updateView error: $e', name: 'BRIDGE');
+      debugPrint('Method channel updateView error: $e');
       return false;
     }
   }
@@ -172,7 +127,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
       });
       return result ?? false;
     } catch (e) {
-      developer.log('Method channel deleteView error: $e', name: 'BRIDGE');
+      debugPrint('Method channel deleteView error: $e');
       return false;
     }
   }
@@ -187,7 +142,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
       });
       return result ?? false;
     } catch (e) {
-      developer.log('Method channel attachView error: $e', name: 'BRIDGE');
+      debugPrint('Method channel attachView error: $e');
       return false;
     }
   }
@@ -201,22 +156,18 @@ class PlatformDispatcherIml implements PlatformDispatcher {
       });
       return result ?? false;
     } catch (e) {
-      developer.log('Method channel setChildren error: $e', name: 'BRIDGE');
+      debugPrint('Method channel setChildren error: $e');
       return false;
     }
   }
 
   @override
   Future<bool> addEventListeners(String viewId, List<String> eventTypes) async {
-    debugPrint('Registering for events: $viewId, $eventTypes');
-
-    // Using method channel for events
     try {
       await eventChannel.invokeMethod('addEventListeners', {
         'viewId': viewId,
         'eventTypes': eventTypes,
       });
-      debugPrint('Successfully registered events for view $viewId: $eventTypes');
       return true;
     } catch (e) {
       debugPrint('Error registering events: $e');
@@ -236,8 +187,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
 
       return result ?? false;
     } catch (e) {
-      developer.log('Method channel event unregistration error: $e',
-          name: 'BRIDGE');
+      debugPrint('Method channel event unregistration error: $e');
       return false;
     }
   }
@@ -264,7 +214,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
 
       return result ?? false;
     } catch (e) {
-      developer.log('Error updating view layout: $e', name: 'BRIDGE');
+      debugPrint('Error updating view layout: $e');
       return false;
     }
   }
@@ -276,47 +226,11 @@ class PlatformDispatcherIml implements PlatformDispatcher {
           await layoutChannel.invokeMethod<bool>('calculateLayout', {});
       return result ?? false;
     } catch (e) {
-      developer.log('Error calculating layout: $e', name: 'BRIDGE');
+      debugPrint('Error calculating layout: $e');
       return false;
     }
   }
 
-  @override
-  Future<Map<String, dynamic>> syncNodeHierarchy({
-    required String rootId,
-    required String nodeTree,
-  }) async {
-    try {
-      final result = await layoutChannel
-          .invokeMapMethod<String, dynamic>('syncNodeHierarchy', {
-        'rootId': rootId,
-        'nodeTree': nodeTree,
-      });
-
-      return result ?? {'success': false, 'error': 'Invalid response'};
-    } catch (e) {
-      debugPrint("Error during node hierarchy sync: $e");
-      return {'success': false, 'error': e.toString()};
-    }
-  }
-
-  @override
-  Future<Map<String, dynamic>> getNodeHierarchy(
-      {required String nodeId}) async {
-    try {
-      final result = await layoutChannel
-          .invokeMapMethod<String, dynamic>('getNodeHierarchy', {
-        'nodeId': nodeId,
-      });
-
-      return result ?? {'error': 'Invalid response'};
-    } catch (e) {
-      debugPrint("Error getting node hierarchy: $e");
-      return {'error': e.toString()};
-    }
-  }
-
-  
   @override
   Future<bool> viewExists(String viewId) async {
     try {
@@ -326,7 +240,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
       
       return result ?? false;
     } catch (e) {
-      developer.log('Error checking view existence: $e', name: 'BRIDGE');
+      debugPrint('Error checking view existence: $e');
       return false;
     }
   }
@@ -386,18 +300,14 @@ class PlatformDispatcherIml implements PlatformDispatcher {
   Future<dynamic> callComponentMethod(
       String viewId, String methodName, Map<String, dynamic> args) async {
     try {
-      developer.log(
-          'Calling component method: $viewId.$methodName with args: $args',
-          name: 'BRIDGE');
       return await bridgeChannel.invokeMethod('callComponentMethod', {
         'viewId': viewId,
         'methodName': methodName,
         'args': args,
       });
     } catch (e) {
-      developer.log('Error calling component method $methodName on $viewId: $e',
-          name: 'BRIDGE');
-      return null; // Or throw an exception if preferred
+      debugPrint('Error calling component method $methodName on $viewId: $e');
+      return null;
     }
   }
 
@@ -446,18 +356,6 @@ class PlatformDispatcherIml implements PlatformDispatcher {
   }
 
   @override
-  Future<bool> setVisualDebugEnabled(bool enabled) async {
-    try {
-      await layoutChannel
-          .invokeMethod('setVisualDebugEnabled', {'enabled': enabled});
-      return true;
-    } catch (e) {
-      debugPrint("Error enabling visual debugging: $e");
-      return false;
-    }
-  }
-
-  @override
   void registerEventCallback(
       String viewId, String eventType, Function callback) {
     _eventCallbacks[viewId] ??= {};
@@ -467,11 +365,32 @@ class PlatformDispatcherIml implements PlatformDispatcher {
   @override
   void handleNativeEvent(
       String viewId, String eventType, Map<String, dynamic> eventData) {
-    // Find registered callback for this view and event
+    // First try to find a specific callback for this view and event
+    final callback = _eventCallbacks[viewId]?[eventType];
+    if (callback != null) {
+      try {
+        // Handle parameter count mismatch by checking function parameters
+        final Function func = callback;
+        if (func is Function()) {
+          func();
+        } else if (func is Function(Map<String, dynamic>)) {
+          func(eventData);
+        } else {
+          Function.apply(callback, [], {});
+        }
+        return;
+      } catch (e) {
+        debugPrint('Error executing callback: $e');
+      }
+    }
+    
+    // If no specific callback found, use the global event handler as fallback
     if (_eventHandler != null) {
-      _eventHandler!(viewId, eventType, eventData);
-    } else {
-      debugPrint('Warning: No event handler registered to process event');
+      try {
+        _eventHandler!(viewId, eventType, eventData);
+      } catch (e) {
+        debugPrint('Error executing global event handler: $e');
+      }
     }
   }
 }
