@@ -11,6 +11,10 @@ import Foundation
     // Dictionary to hold view references
     internal var views = [String: UIView]()
     
+    // Track parent-child relationships for proper cleanup
+    private var viewHierarchy = [String: [String]]() // parent ID -> child IDs
+    private var childToParent = [String: String]() // child ID -> parent ID
+    
     // Private initializer for singleton
     private override init() {
         super.init()
@@ -177,10 +181,17 @@ import Foundation
         
         guard let finalView = view else {
             NSLog("View not found with ID: \(viewId)")
+            
+            // Even if view is not found, still clean up any children
+            // This handles the case where a parent was removed but children still exist in registries
+            cleanupOrphanedChildren(parentId: viewId)
             return false
         }
         
-        // Remove view from hierarchy
+        // First, recursively delete all children
+        deleteChildrenRecursively(parentId: viewId)
+        
+        // Then remove the view itself from hierarchy
         finalView.removeFromSuperview()
         
         // Remove from all registries
@@ -189,7 +200,89 @@ import Foundation
         YogaShadowTree.shared.removeNode(nodeId: viewId)
         DCFLayoutManager.shared.unregisterView(withId: viewId)
         
+        // Remove from hierarchy tracking
+        let parentId = childToParent[viewId]
+        if let parentId = parentId {
+            viewHierarchy[parentId]?.removeAll(where: { $0 == viewId })
+        }
+        childToParent.removeValue(forKey: viewId)
+        viewHierarchy.removeValue(forKey: viewId)
+        
         return true
+    }
+    
+    /// Recursively delete all children of a view
+    private func deleteChildrenRecursively(parentId: String) {
+        // Get children for this parent
+        guard let children = viewHierarchy[parentId], !children.isEmpty else {
+            return
+        }
+        
+        NSLog("🧹 Cleaning up \(children.count) children of view \(parentId)")
+        
+        // Make a copy to avoid modification during iteration
+        let childrenCopy = children
+        
+        // Process each child
+        for childId in childrenCopy {
+            // Recursively delete grandchildren first
+            deleteChildrenRecursively(parentId: childId)
+            
+            // Now delete the child view
+            if let childView = self.views[childId] {
+                childView.removeFromSuperview()
+                
+                // Remove from registries
+                self.views.removeValue(forKey: childId)
+                ViewRegistry.shared.removeView(id: childId)
+                YogaShadowTree.shared.removeNode(nodeId: childId)
+                DCFLayoutManager.shared.unregisterView(withId: childId)
+                
+                NSLog("🗑️ Removed child view: \(childId)")
+            }
+            
+            // Update tracking
+            childToParent.removeValue(forKey: childId)
+        }
+        
+        // Clear the children array for this parent
+        viewHierarchy[parentId] = []
+    }
+    
+    /// Clean up any orphaned children if parent is no longer in registry
+    private func cleanupOrphanedChildren(parentId: String) {
+        // Check if we have children records for this parent
+        guard let children = viewHierarchy[parentId], !children.isEmpty else {
+            return
+        }
+        
+        NSLog("🧹 Cleaning up orphaned children of missing view \(parentId)")
+        
+        // Make a copy to avoid modification during iteration
+        let childrenCopy = children
+        
+        // Process each child
+        for childId in childrenCopy {
+            // Recursively delete grandchildren first
+            deleteChildrenRecursively(parentId: childId)
+            
+            // Now delete the child view from registries
+            if let childView = self.views[childId] {
+                childView.removeFromSuperview()
+                self.views.removeValue(forKey: childId)
+            }
+            ViewRegistry.shared.removeView(id: childId)
+            YogaShadowTree.shared.removeNode(nodeId: childId)
+            DCFLayoutManager.shared.unregisterView(withId: childId)
+            
+            NSLog("🗑️ Removed orphaned child view: \(childId)")
+            
+            // Update tracking
+            childToParent.removeValue(forKey: childId)
+        }
+        
+        // Remove the parent from hierarchy tracking
+        viewHierarchy.removeValue(forKey: parentId)
     }
     
     /// Attach a child view to a parent view
@@ -207,6 +300,15 @@ import Foundation
         
         // Update shadow tree
         DCFLayoutManager.shared.addChildNode(parentId: parentId, childId: childId, index: index)
+        
+        // Track parent-child relationship for cleanup
+        if viewHierarchy[parentId] == nil {
+            viewHierarchy[parentId] = []
+        }
+        if !viewHierarchy[parentId]!.contains(childId) {
+            viewHierarchy[parentId]!.append(childId)
+        }
+        childToParent[childId] = parentId
         
         return true
     }
@@ -226,6 +328,22 @@ import Foundation
         guard let parentView = self.views[viewId] else {
             NSLog("Parent view not found with ID: \(viewId)")
             return false
+        }
+        
+        // Remove all existing children from tracking that are not in new list
+        let oldChildren = viewHierarchy[viewId] ?? []
+        for oldChildId in oldChildren {
+            if !childrenIds.contains(oldChildId) {
+                childToParent.removeValue(forKey: oldChildId)
+            }
+        }
+        
+        // Reset children array
+        viewHierarchy[viewId] = childrenIds
+        
+        // Update child->parent mapping
+        for childId in childrenIds {
+            childToParent[childId] = viewId
         }
         
         // Remove all existing subviews
@@ -306,6 +424,29 @@ import Foundation
         return success
     }
     
+    /// Detach a view from its parent
+    @objc func detachView(childId: String) -> Bool {
+        NSLog("DCMauiFFIBridge: detachView called for \(childId)")
+        
+        guard let childView = self.views[childId] else {
+            NSLog("Child view not found with ID: \(childId)")
+            return false
+        }
+        
+        // Remove view from its parent
+        childView.removeFromSuperview()
+        
+        // Update parent-child tracking
+        if let parentId = childToParent[childId] {
+            viewHierarchy[parentId]?.removeAll(where: { $0 == childId })
+        }
+        childToParent.removeValue(forKey: childId)
+        
+        // Note: We don't remove from views or other registries since we're just detaching
+        
+        return true
+    }
+    
     // MARK: - Helper Methods
     
     /// Extract layout properties from props dictionary
@@ -320,6 +461,25 @@ import Foundation
         return self.views[viewId] != nil || 
                ViewRegistry.shared.getView(id: viewId) != nil || 
                DCFLayoutManager.shared.getView(withId: viewId) != nil
+    }
+    
+    // Get children of a view
+    @objc func getChildrenIds(viewId: String) -> [String] {
+        return viewHierarchy[viewId] ?? []
+    }
+    
+    // Get parent of a view
+    @objc func getParentId(childId: String) -> String? {
+        return childToParent[childId]
+    }
+    
+    // Print hierarchy for debugging
+    @objc func printHierarchy() {
+        NSLog("--- View Hierarchy ---")
+        for (parentId, childrenIds) in viewHierarchy {
+            NSLog("Parent: \(parentId), Children: \(childrenIds)")
+        }
+        NSLog("---------------------")
     }
 }
 

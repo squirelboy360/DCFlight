@@ -70,6 +70,13 @@ class DCMauiBridgeMethodChannel: NSObject {
                 result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
             }
             
+        case "detachView":
+            if let args = args {
+                handleDetachView(args, result: result)
+            } else {
+                result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
+            }
+            
         case "setChildren":
             if let args = args {
                 handleSetChildren(args, result: result)
@@ -173,6 +180,21 @@ class DCMauiBridgeMethodChannel: NSObject {
         // Execute on main thread
         DispatchQueue.main.async {
             let success = DCMauiBridgeImpl.shared.deleteView(viewId: viewId)
+            result(success)
+        }
+    }
+    
+    // Detach a view (new method)
+    private func handleDetachView(_ args: [String: Any], result: @escaping FlutterResult) {
+        guard let viewId = args["viewId"] as? String else {
+            result(FlutterError(code: "DETACH_ERROR", message: "Invalid view ID", details: nil))
+            return
+        }
+        
+        // Execute on main thread
+        DispatchQueue.main.async {
+            let success = DCMauiBridgeImpl.shared.detachView(childId: viewId)
+            print("🔄 Detached view \(viewId) from parent: \(success)")
             result(success)
         }
     }

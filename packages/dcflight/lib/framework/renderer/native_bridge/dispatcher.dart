@@ -16,6 +16,9 @@ abstract class PlatformDispatcher {
   /// Delete a view
   Future<bool> deleteView(String viewId);
 
+  /// Detach a view from its parent without deleting it
+  Future<bool> detachView(String viewId);
+
   /// Attach a child view to a parent at the specified index
   Future<bool> attachView(String childId, String parentId, int index);
 

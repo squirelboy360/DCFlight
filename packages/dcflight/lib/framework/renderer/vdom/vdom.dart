@@ -135,6 +135,9 @@ class VDom {
   /// Map of view IDs to VDomNodes
   final Map<String, VDomNode> _nodesByViewId = {};
 
+  /// Map to track detached views for potential reuse
+  final Map<String, VDomNode> _detachedNodes = {};
+  
   /// Performance monitoring
   final PerformanceMonitor _performanceMonitor = PerformanceMonitor();
 
@@ -451,14 +454,56 @@ class VDom {
       return await renderToNative(child, parentId: parentId, index: index);
     }
 
-    // Generate view ID
-    final viewId = element.nativeViewId ?? _generateViewId();
+    // Check if this is a detached node we can reuse
+    String? viewId = element.nativeViewId;
+    
+    // Get a cached/detached node if same type
+    if (viewId == null && element.key != null) {
+      String cacheKey = '${element.type}-${element.key}';
+      VDomNode? detachedNode = _detachedNodes[cacheKey];
+      
+      if (detachedNode is VDomElement && detachedNode.type == element.type) {
+        // Reuse the detached node's ID
+        viewId = detachedNode.nativeViewId;
+        
+        // Clean up the detached node entry
+        _detachedNodes.remove(cacheKey);
+        
+        // Update node tracking (replace old node with new one)
+        if (viewId != null) {
+          _nodesByViewId.remove(viewId);
+          element.nativeViewId = viewId;
+          _nodesByViewId[viewId] = element;
+          
+          // Update props on the reused view
+          _performanceMonitor.startTimer('update_reused_view');
+          await _nativeBridge.updateView(viewId, element.props);
+          _performanceMonitor.endTimer('update_reused_view');
+          
+          // If parent is specified, reattach to parent
+          if (parentId != null) {
+            await attachView(viewId, parentId, index ?? 0);
+          }
+          
+          // Now reconcile children
+          await _reconcileChildrenForReusedView(detachedNode, element, viewId);
+          
+          // Register event listeners if needed
+          if (element.eventTypes.isNotEmpty) {
+            await _nativeBridge.addEventListeners(viewId, element.eventTypes);
+          }
+          
+          return viewId;
+        }
+      }
+    }
+
+    // Generate a new view ID if we couldn't reuse
+    viewId = element.nativeViewId ?? _generateViewId();
 
     // Store map from node to view ID
     _nodesByViewId[viewId] = element;
     element.nativeViewId = viewId;
-
-
 
     // Create the view
     _performanceMonitor.startTimer('create_native_view');
@@ -513,11 +558,47 @@ class VDom {
 
     return viewId;
   }
+  
+  /// Reconcile children for a reused view
+  Future<void> _reconcileChildrenForReusedView(
+      VDomElement oldElement, VDomElement newElement, String viewId) async {
+    // Process each child using the reconciler
+    final childIds = <String>[];
+    
+    for (var i = 0; i < newElement.children.length; i++) {
+      final newChild = newElement.children[i];
+      
+      // Find matching old child if possible
+      VDomNode? oldChild;
+      if (i < oldElement.children.length) {
+        oldChild = oldElement.children[i];
+      }
+      
+      if (oldChild != null) {
+        // Reconcile existing child
+        await _reconciler.reconcile(oldChild, newChild);
+        
+        // Add to child IDs if it has a native view
+        if (newChild.nativeViewId != null) {
+          childIds.add(newChild.nativeViewId!);
+        }
+      } else {
+        // Render new child
+        final childId = await renderToNative(newChild, parentId: viewId, index: i);
+        if (childId != null && childId.isNotEmpty) {
+          childIds.add(childId);
+        }
+      }
+    }
+    
+    // Set children order
+    if (childIds.isNotEmpty) {
+      await _nativeBridge.setChildren(viewId, childIds);
+    }
+  }
 
   /// Calculate and apply layout
   Future<void> calculateAndApplyLayout({double? width, double? height}) async {
-
-
     _performanceMonitor.startTimer('native_layout_calculation');
     final success = await _nativeBridge.calculateLayout();
     _performanceMonitor.endTimer('native_layout_calculation');
@@ -705,11 +786,26 @@ class VDom {
 
   /// Delete a view
   Future<bool> deleteView(String viewId) async {
-    final result = await _nativeBridge.deleteView(viewId);
-    if (result) {
-      _nodesByViewId.remove(viewId);
+    try {
+      // Get the node before deletion for potential caching
+      final node = _nodesByViewId[viewId];
+      
+      final result = await _nativeBridge.deleteView(viewId);
+      if (result) {
+        _nodesByViewId.remove(viewId);
+        
+        // Cache node for potential reuse if it has a key
+        if (node is VDomElement && node.key != null) {
+          String cacheKey = '${node.type}-${node.key}';
+          _detachedNodes[cacheKey] = node;
+          developer.log('Cached node $viewId with key ${node.key} for reuse', name: 'VDom');
+        }
+      }
+      return result;
+    } catch (e) {
+      developer.log('Error deleting view $viewId: $e', name: 'VDom');
+      return false;
     }
-    return result;
   }
 
   /// Set the children of a view
@@ -737,9 +833,29 @@ class VDom {
     return await _nativeBridge.attachView(childId, parentId, index);
   }
 
-  /// Detach a view from its parent
+  /// Detach a view from its parent (without deleting it)
   Future<bool> detachView(String viewId) async {
-    return await _nativeBridge.deleteView(viewId);
+    try {
+      // Get the node before detachment
+      final node = _nodesByViewId[viewId];
+      
+      // Use the native bridge to detach the view
+      final result = await _nativeBridge.detachView(viewId);
+      
+      // Cache the node for potential reuse if it has a key and detachment was successful
+      if (result && node is VDomElement && node.key != null) {
+        String cacheKey = '${node.type}-${node.key}';
+        _detachedNodes[cacheKey] = node;
+        developer.log('🔄 Detached and cached node $viewId with key ${node.key}', name: 'VDom');
+      } else if (result) {
+        developer.log('🔄 Detached node $viewId (no caching)', name: 'VDom');
+      }
+      
+      return result;
+    } catch (e) {
+      developer.log('❌ Error detaching view $viewId: $e', name: 'VDom');
+      return false;
+    }
   }
 
   /// Get performance data
@@ -756,5 +872,12 @@ class VDom {
   VDomNode? findNodeById(String id) {
     // Check direct mapping
     return _nodesByViewId[id];
+  }
+  
+  /// Purge all cached/detached nodes to force fresh rendering
+  void purgeDetachedNodes() {
+    int count = _detachedNodes.length;
+    _detachedNodes.clear();
+    developer.log('🧹 Purged $count detached nodes from cache', name: 'VDom');
   }
 }

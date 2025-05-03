@@ -133,6 +133,19 @@ class PlatformDispatcherIml implements PlatformDispatcher {
   }
 
   @override
+  Future<bool> detachView(String viewId) async {
+    try {
+      final result = await bridgeChannel.invokeMethod<bool>('detachView', {
+        'viewId': viewId,
+      });
+      return result ?? false;
+    } catch (e) {
+      debugPrint('Error detaching view: $e');
+      return false;
+    }
+  }
+
+  @override
   Future<bool> attachView(String childId, String parentId, int index) async {
     try {
       final result = await bridgeChannel.invokeMethod<bool>('attachView', {

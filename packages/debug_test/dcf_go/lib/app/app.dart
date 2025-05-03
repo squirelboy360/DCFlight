@@ -57,17 +57,23 @@ class DCFlightDemoApp extends StatefulComponent {
           style: StyleSheet(
             backgroundColor: accentColor,
           ),
-          layout: const LayoutProps(
+          layout:  LayoutProps(flexWrap: YogaWrap.wrap,
             width: '100%',
             height: 80,
             flexDirection: YogaFlexDirection.row,
             justifyContent: YogaJustifyContent.spaceBetween,
             alignItems: YogaAlign.center,
+            padding: ScreenUtilities.instance.statusBarHeight,
             paddingLeft: 20,
             paddingRight: 20,
           ),
           children: [
             text(
+              layout: const LayoutProps(
+                width: 200,
+                height: 40,
+
+              ),
               content: "DCFlight Demo",
               textProps: const TextProps(
                 fontSize: 24,
@@ -77,12 +83,12 @@ class DCFlightDemoApp extends StatefulComponent {
             ),
             button(
               buttonProps: ButtonProps(
-                title: isDarkTheme.value ? "Light Mode" : "Dark Mode",
+                title: isDarkTheme.value ? "☀️" : "🌙",
                 color: isDarkTheme.value ? const Color(0xFF000000) : const Color(0xFFFFFFFF),
                 backgroundColor: isDarkTheme.value ? const Color(0xFFFFFFFF) : const Color(0xFF222222),
               ),
               layout: const LayoutProps(
-                width: 120,
+                width: 50,
                 height: 40,
               ),
               onPress: () {
