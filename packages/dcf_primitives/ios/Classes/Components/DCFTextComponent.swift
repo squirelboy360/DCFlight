@@ -59,9 +59,10 @@ class DCFTextComponent: NSObject, DCFComponent, ComponentMethodHandler {
             label.font = UIFont(name: fontFamily, size: label.font.pointSize) ?? label.font
         }
         
-        // Set text color if specified
+        // Set text color if specified with enhanced error handling
         if let color = props["color"] as? String {
-            label.textColor = UIColor.colorFromHexString(color)
+            // Safely parse the color string - will use a default color if the string is invalid
+            label.textColor = safeColorFromString(color)
         }
         
         // Set text alignment if specified
@@ -84,6 +85,38 @@ class DCFTextComponent: NSObject, DCFComponent, ComponentMethodHandler {
         }
         
         return true
+    }
+    
+    // Enhanced color parser that handles RGBA formats
+    private func safeColorFromString(_ colorString: String) -> UIColor {
+        // Capture formats with potential alpha channel
+        if colorString.hasPrefix("#ff") && colorString.count >= 9 {
+            do {
+                // Try to extract RGBA components
+                let hexSanitized = colorString.replacingOccurrences(of: "#", with: "")
+                
+                // For #ffRRGGBB format (alpha is first byte after #)
+                if hexSanitized.count >= 8 {
+                    let alphaHex = String(hexSanitized.prefix(2))
+                    let colorHex = String(hexSanitized.dropFirst(2).prefix(6))
+                    
+                    // Get base color
+                    let baseColor = UIColor.colorFromHexString(colorHex)
+                    
+                    // Try to get alpha value
+                    var alphaInt: UInt64 = 0
+                    if Scanner(string: alphaHex).scanHexInt64(&alphaInt) {
+                        let alpha = CGFloat(alphaInt) / 255.0
+                        return baseColor.withAlphaComponent(alpha)
+                    }
+                }
+            } catch {
+                NSLog("⚠️ Error parsing RGBA color: \(colorString), falling back to default parser")
+            }
+        }
+        
+        // Fall back to standard color parser which now has error handling
+        return UIColor.colorFromHexString(colorString)
     }
     
     // Get intrinsic content size
