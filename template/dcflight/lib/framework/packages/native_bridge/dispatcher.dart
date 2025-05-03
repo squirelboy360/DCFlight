@@ -51,13 +51,13 @@ abstract class PlatformDispatcher {
       {required String rootId, required String nodeTree});
   Future<Map<String, dynamic>> getNodeHierarchy({required String nodeId});
 
-  // Text measurement
-  Future<Map<String, double>> measureText(
-      String viewId, String text, Map<String, dynamic> textAttributes);
-
   // Method invocation
   Future<dynamic> invokeMethod(String method,
       [Map<String, dynamic>? arguments]);
+
+  /// Calls a specific method on a native component instance.
+  Future<dynamic> callComponentMethod(
+      String viewId, String methodName, Map<String, dynamic> args);
 
   // Batch updates
   Future<bool> startBatchUpdate();
@@ -76,6 +76,9 @@ abstract class PlatformDispatcher {
     _eventCallbacks[viewId] ??= {};
     _eventCallbacks[viewId]![eventType] = callback;
   }
+
+  // Check if a view exists on the native side
+  Future<bool> viewExists(String viewId);
 }
 
 /// Factory for creating platform-specific native bridges

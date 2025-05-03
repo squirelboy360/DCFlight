@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'dispatcher.dart';
@@ -27,7 +26,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
   PlatformDispatcherIml() {
     // Set up method channels for events and layout
     _setupMethodChannelEventHandling();
-    print('Method channel bridge initialized');
+    debugPrint('Method channel bridge initialized');
   }
 
   // Set up method channel for event handling
@@ -47,12 +46,11 @@ class PlatformDispatcherIml implements PlatformDispatcher {
         debugPrint(
             'EVENT RECEIVED FROM NATIVE: $eventType for $viewId with data: $typedEventData');
 
-        // CRITICAL FIX: First try to find the callback in _eventCallbacks
+        // First try to find the callback in _eventCallbacks
         final callback = _eventCallbacks[viewId]?[eventType];
         if (callback != null) {
           try {
-            // CRITICAL FIX: Handle parameter count mismatch by checking function parameters
-            // Get the function's parameter count using reflection
+            // Handle parameter count mismatch by checking function parameters
             final Function func = callback;
             if (func is Function()) {
               // No parameters - just call it directly
@@ -123,17 +121,12 @@ class PlatformDispatcherIml implements PlatformDispatcher {
       // Preprocess props to handle special types before encoding to JSON
       final processedProps = _preprocessProps(props);
 
-      developer.log('PROCESSED PROPS BEING SENT: ${jsonEncode(processedProps)}',
-          name: 'BRIDGE_PROPS');
-
       final result = await bridgeChannel.invokeMethod<bool>('createView', {
         'viewId': viewId,
         'viewType': type,
         'props': processedProps,
       });
 
-      developer.log('Method channel createView result: $result',
-          name: 'BRIDGE');
       return result ?? false;
     } catch (e) {
       developer.log('Method channel createView error: $e', name: 'BRIDGE');
@@ -151,29 +144,19 @@ class PlatformDispatcherIml implements PlatformDispatcher {
         'viewId': viewId,
         'props': propPatches,
       });
-      print("executing diffed props to native side $propPatches for view id: $viewId");
+      debugPrint("executing diffed props to native side $propPatches for view id: $viewId");
       return true;
     }
-
-    developer.log(
-        'Method channel updateView: viewId=$viewId, props=$propPatches',
-        name: 'BRIDGE');
 
     try {
       // Process props for updates
       final processedProps = _preprocessProps(propPatches);
-
-      developer.log(
-          'PROCESSED UPDATE PROPS BEING SENT: ${jsonEncode(processedProps)}',
-          name: 'BRIDGE_PROPS');
 
       final result = await bridgeChannel.invokeMethod<bool>('updateView', {
         'viewId': viewId,
         'props': processedProps,
       });
 
-      developer.log('Method channel updateView result: $result',
-          name: 'BRIDGE');
       return result ?? false;
     } catch (e) {
       developer.log('Method channel updateView error: $e', name: 'BRIDGE');
@@ -225,7 +208,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
 
   @override
   Future<bool> addEventListeners(String viewId, List<String> eventTypes) async {
-    print('Registering for events: $viewId, $eventTypes');
+    debugPrint('Registering for events: $viewId, $eventTypes');
 
     // Using method channel for events
     try {
@@ -233,10 +216,10 @@ class PlatformDispatcherIml implements PlatformDispatcher {
         'viewId': viewId,
         'eventTypes': eventTypes,
       });
-      print('Successfully registered events for view $viewId: $eventTypes');
+      debugPrint('Successfully registered events for view $viewId: $eventTypes');
       return true;
     } catch (e) {
-      print('Error registering events: $e');
+      debugPrint('Error registering events: $e');
       return false;
     }
   }
@@ -270,10 +253,6 @@ class PlatformDispatcherIml implements PlatformDispatcher {
   Future<bool> updateViewLayout(String viewId, double left, double top,
       double width, double height) async {
     try {
-      developer.log(
-          '🔄 LAYOUT UPDATE VIA METHOD CHANNEL: $viewId - left=$left, top=$top, width=$width, height=$height',
-          name: 'LAYOUT');
-
       final result =
           await layoutChannel.invokeMethod<bool>('updateViewLayout', {
         'viewId': viewId,
@@ -284,9 +263,8 @@ class PlatformDispatcherIml implements PlatformDispatcher {
       });
 
       return result ?? false;
-    } catch (e, stack) {
-      developer.log('❌ Error updating view layout: $e',
-          name: 'MethodChannelBridge', error: e, stackTrace: stack);
+    } catch (e) {
+      developer.log('Error updating view layout: $e', name: 'BRIDGE');
       return false;
     }
   }
@@ -294,14 +272,11 @@ class PlatformDispatcherIml implements PlatformDispatcher {
   @override
   Future<bool> calculateLayout() async {
     try {
-      developer.log('🔄 Calculating layout via METHOD CHANNEL', name: 'LAYOUT');
-
       final result =
           await layoutChannel.invokeMethod<bool>('calculateLayout', {});
       return result ?? false;
-    } catch (e, stack) {
-      developer.log('❌ Error calculating layout: $e',
-          name: 'MethodChannelBridge', error: e, stackTrace: stack);
+    } catch (e) {
+      developer.log('Error calculating layout: $e', name: 'BRIDGE');
       return false;
     }
   }
@@ -320,7 +295,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
 
       return result ?? {'success': false, 'error': 'Invalid response'};
     } catch (e) {
-      print("[METHOD_CHANNEL] Error during node hierarchy sync: $e");
+      debugPrint("Error during node hierarchy sync: $e");
       return {'success': false, 'error': e.toString()};
     }
   }
@@ -336,36 +311,23 @@ class PlatformDispatcherIml implements PlatformDispatcher {
 
       return result ?? {'error': 'Invalid response'};
     } catch (e) {
-      print("[METHOD_CHANNEL] Error getting node hierarchy: $e");
+      debugPrint("Error getting node hierarchy: $e");
       return {'error': e.toString()};
     }
   }
 
+  
   @override
-  Future<Map<String, double>> measureText(
-      String viewId, String text, Map<String, dynamic> textAttributes) async {
+  Future<bool> viewExists(String viewId) async {
     try {
-      developer.log('Method channel measureText: viewId=$viewId, text=$text',
-          name: 'BRIDGE');
-
-      final result =
-          await layoutChannel.invokeMapMethod<String, dynamic>('measureText', {
+      final result = await bridgeChannel.invokeMethod<bool>('viewExists', {
         'viewId': viewId,
-        'text': text,
-        'attributes': textAttributes,
       });
-
-      if (result == null) {
-        return {'width': 0.0, 'height': 0.0};
-      }
-
-      return {
-        'width': (result['width'] as num).toDouble(),
-        'height': (result['height'] as num).toDouble(),
-      };
+      
+      return result ?? false;
     } catch (e) {
-      developer.log('Method channel measureText error: $e', name: 'BRIDGE');
-      return {'width': 0.0, 'height': 0.0};
+      developer.log('Error checking view existence: $e', name: 'BRIDGE');
+      return false;
     }
   }
 
@@ -373,37 +335,24 @@ class PlatformDispatcherIml implements PlatformDispatcher {
   Map<String, dynamic> _preprocessProps(Map<String, dynamic> props) {
     final processedProps = <String, dynamic>{};
 
-    // ADD THIS DETAILED LOGGING:
-    developer.log('PREPROCESSING PROPS: ${props.keys.join(", ")}',
-        name: 'BRIDGE_PROPS');
-
     props.forEach((key, value) {
       if (value is Function) {
         // Handle event handlers
         if (key.startsWith('on')) {
-          final eventType = key.substring(2).toLowerCase();
+          key.substring(2).toLowerCase();
           processedProps['_has${key.substring(2)}Handler'] = true;
-          developer.log('Found function handler for event: $eventType',
-              name: 'BRIDGE');
         }
       } else if (value is Color) {
         // Convert Color objects to hex strings with alpha
         processedProps[key] =
             '#${value.value.toRadixString(16).padLeft(8, '0')}';
-        developer.log('Converting color prop $key to: ${processedProps[key]}',
-            name: 'BRIDGE_PROPS');
       } else if (value == double.infinity) {
         // Convert infinity to 100% string for percentage sizing
         processedProps[key] = '100%';
-        developer.log(
-            'Converting infinity prop $key to: ${processedProps[key]}',
-            name: 'BRIDGE_PROPS');
       } else if (value is String &&
           (value.endsWith('%') || value.startsWith('#'))) {
         // Pass percentage strings and color strings through directly
         processedProps[key] = value;
-        developer.log('Passing through special value: $key=$value',
-            name: 'BRIDGE');
       } else if (key == 'width' ||
           key == 'height' ||
           key.startsWith('margin') ||
@@ -411,14 +360,8 @@ class PlatformDispatcherIml implements PlatformDispatcher {
         // Make sure numeric values go through as doubles for consistent handling
         if (value is num) {
           processedProps[key] = value.toDouble();
-          developer.log(
-              'Converting numeric layout prop $key to double: ${processedProps[key]}',
-              name: 'BRIDGE_PROPS');
         } else {
           processedProps[key] = value;
-          developer.log(
-              'Layout prop $key kept as is: $value (${value.runtimeType})',
-              name: 'BRIDGE_PROPS');
         }
       } else if (value != null) {
         processedProps[key] = value;
@@ -434,8 +377,27 @@ class PlatformDispatcherIml implements PlatformDispatcher {
     try {
       return await bridgeChannel.invokeMethod(method, arguments);
     } catch (e) {
-      print('Error invoking method $method: $e');
+      debugPrint('Error invoking method $method: $e');
       return null;
+    }
+  }
+
+  @override
+  Future<dynamic> callComponentMethod(
+      String viewId, String methodName, Map<String, dynamic> args) async {
+    try {
+      developer.log(
+          'Calling component method: $viewId.$methodName with args: $args',
+          name: 'BRIDGE');
+      return await bridgeChannel.invokeMethod('callComponentMethod', {
+        'viewId': viewId,
+        'methodName': methodName,
+        'args': args,
+      });
+    } catch (e) {
+      developer.log('Error calling component method $methodName on $viewId: $e',
+          name: 'BRIDGE');
+      return null; // Or throw an exception if preferred
     }
   }
 
@@ -483,16 +445,14 @@ class PlatformDispatcherIml implements PlatformDispatcher {
     return true;
   }
 
-  // Implement the new methods for debug features
   @override
   Future<bool> setVisualDebugEnabled(bool enabled) async {
     try {
-      // Use layoutChannel for debug features
       await layoutChannel
           .invokeMethod('setVisualDebugEnabled', {'enabled': enabled});
       return true;
     } catch (e) {
-      print("[METHOD_CHANNEL] Error enabling visual debugging: $e");
+      debugPrint("Error enabling visual debugging: $e");
       return false;
     }
   }
@@ -507,13 +467,11 @@ class PlatformDispatcherIml implements PlatformDispatcher {
   @override
   void handleNativeEvent(
       String viewId, String eventType, Map<String, dynamic> eventData) {
-    print(
-        'Native event received: $eventType for $viewId with data: $eventData');
     // Find registered callback for this view and event
     if (_eventHandler != null) {
       _eventHandler!(viewId, eventType, eventData);
     } else {
-      print('Warning: No event handler registered to process event');
+      debugPrint('Warning: No event handler registered to process event');
     }
   }
 }

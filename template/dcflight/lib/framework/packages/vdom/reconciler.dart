@@ -1,15 +1,15 @@
 import 'dart:developer' as developer;
 import 'dart:math' as math;
-
-import 'package:dcflight/framework/utilities/flutter.dart';
+import 'package:dcflight/framework/packages/native_bridge/dispatcher.dart';
+import 'package:dcflight/framework/packages/vdom/component/component_node.dart';
 
 import '../../constants/layout_properties.dart';
 
 import 'vdom_node.dart';
 import 'vdom_element.dart';
-import 'component/component_node.dart';
+
 import 'vdom.dart';
-import '../native_bridge/dispatcher.dart';
+
 
 /// Class responsible for reconciling differences between VDOM trees
 class Reconciler {
@@ -85,108 +85,49 @@ class Reconciler {
     if (oldElement.nativeViewId != null) {
       newElement.nativeViewId = oldElement.nativeViewId;
 
-      // Find changed props with generic diffing
+      // Find changed props with generic diffing - excluding layout props
       final changedProps = <String, dynamic>{};
-      
-      // Step 1: First copy all existing props from the old element
-      final mergedProps = Map<String, dynamic>.from(oldElement.props);
-      
-      // Step 2: Update or add new props from the new element
+
+      // Check for props that have changed or been added
       for (final entry in newElement.props.entries) {
         final key = entry.key;
         final value = entry.value;
-        
-        // ENHANCED: Create categories of props to handle differently
-        bool isContentProp = key == 'content' || key == 'text';
-      
-        // If value has changed or is new
-        if (!oldElement.props.containsKey(key) || oldElement.props[key] != value) {
+
+        // If prop has changed or is new
+        if (!oldElement.props.containsKey(key) ||
+            oldElement.props[key] != value) {
           changedProps[key] = value;
-          mergedProps[key] = value;
-          
-          // Debug logging for state transitions
-          if (isContentProp) {
-            print("📝 Content changing from: ${oldElement.props[key]} to: $value");
-          }
-        } else if (isContentProp) {
-          // CRITICAL FIX: Always include content props in changes to ensure update
-          // This addresses the case where content prop is incorrectly considered unchanged
-          changedProps[key] = value;
-          debugPrint("🔄 Forcing content update even though same value: $value");
         }
       }
-      
-      // Step 3: Check for props that have been removed in the new element
+
+      // Check for removed props
       for (final key in oldElement.props.keys) {
         if (!newElement.props.containsKey(key)) {
-          // Mark for removal in native bridge
+          // Set to null to indicate removal (handled by native bridge)
           changedProps[key] = null;
-          mergedProps.remove(key);
         }
       }
-      
-      // CRITICAL ENHANCEMENT: Always preserve style props when updating content
-      if (changedProps.containsKey('content') || changedProps.containsKey('text')) {
-        // Ensure style props are preserved by including them in the update even if unchanged
-        _preserveStyleProps(oldElement.props, changedProps);
-      }
-      
-      // Step 4: Update newElement.props with merged props for future reconciliations
-      newElement.props = mergedProps;
 
       // Update props directly if there are changes
       if (changedProps.isNotEmpty) {
-        // Debug logging for prop changes
-        debugPrint("🚀 Updating view ${oldElement.nativeViewId} with changes: ${changedProps.keys.join(", ")}");
-        
         // Preserve event handlers
-        oldElement.events?.forEach((key, value) {
-          if (value is Function) {
-            newElement.events ??= {};
-            newElement.events![key] = value;
+        oldElement.props.forEach((key, value) {
+          if (key.startsWith('on') &&
+              value is Function &&
+              !changedProps.containsKey(key)) {
+            changedProps[key] = value;
           }
         });
 
-        // CRITICAL FIX: Wait for update to complete to ensure native side has processed
-        bool updateSuccess = await vdom.updateView(oldElement.nativeViewId!, changedProps);
-        if (!updateSuccess) {
-          debugPrint("❌ Failed to update view ${oldElement.nativeViewId}");
-        }
+        await vdom.updateView(oldElement.nativeViewId!, changedProps);
 
         if (changedProps.keys.any((key) => _isLayoutProp(key))) {
-          await vdom.calculateAndApplyLayout();
+          vdom.calculateAndApplyLayout();
         }
       }
-    }
 
-    // Now reconcile children
-    await _reconcileChildren(oldElement, newElement);
-  }
-
-  // IMPROVED: Helper to preserve style props when updating content
-  // Dynamically preserves all non-layout, non-content props to avoid hardcoding
-  void _preserveStyleProps(Map<String, dynamic> oldProps, Map<String, dynamic> changedProps) {
-    // Iterate through all old props
-    for (final propKey in oldProps.keys) {
-      // Skip if this prop is already in changed props (was explicitly updated)
-      if (changedProps.containsKey(propKey)) {
-        continue;
-      }
-      
-      // Skip content props
-      if (propKey == 'content' || propKey == 'text') {
-        continue;
-      }
-      
-      // Skip layout props
-      if (_isLayoutProp(propKey)) {
-        continue;
-      }
-      
-      // This must be a non-layout, non-content prop that wasn't explicitly changed
-      // Added it to changed props to ensure it's preserved
-      changedProps[propKey] = oldProps[propKey];
-      print("🎨 Preserving prop $propKey: ${oldProps[propKey]}");
+      // Now reconcile children
+      await _reconcileChildren(oldElement, newElement);
     }
   }
 
@@ -455,8 +396,7 @@ class Reconciler {
       if (element.events != null && element.events!.isNotEmpty) {
         // Register event listeners with native side
         List<String> eventTypes = element.events!.keys.toList();
-        await PlatformDispatcher.instance
-            .addEventListeners(elementId, eventTypes);
+        await PlatformDispatcher.instance.addEventListeners(elementId, eventTypes);
 
         // Register callbacks for each event type
         element.events!.forEach((eventType, callback) {

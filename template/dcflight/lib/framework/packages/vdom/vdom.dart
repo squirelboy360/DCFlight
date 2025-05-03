@@ -2,21 +2,25 @@
 
 import 'dart:async';
 import 'dart:developer' as developer;
-import 'package:dcflight/framework/utilities/debug_tools.dart';
 
-import '../native_bridge/dispatcher.dart';
+
+import 'package:dcflight/framework/packages/native_bridge/dispatcher.dart' show NativeBridgeFactory, PlatformDispatcher;
+import 'package:dcflight/framework/packages/vdom/component/component.dart';
+import 'package:dcflight/framework/packages/vdom/component/component_node.dart';
+import 'package:dcflight/framework/packages/vdom/component/context.dart';
+import 'package:dcflight/framework/packages/vdom/component/error_boundary.dart';
+import 'package:dcflight/framework/packages/vdom/vdom_element.dart';
+import 'package:dcflight/framework/utilities/screen_utilities.dart';
+
 import '../../constants/yoga_enums.dart';
 import '../../constants/layout_properties.dart';
 import 'vdom_node.dart';
-import 'vdom_element.dart';
-import 'component/component.dart';
-import 'component/component_node.dart';
-import 'reconciler.dart';
-import 'component/context.dart';
-import 'fragment.dart';
-import 'component/error_boundary.dart';
-import 'vdom_node_sync.dart';
 
+import 'reconciler.dart';
+
+import 'fragment.dart';
+
+import 'vdom_node_sync.dart';
 
 /// Performance monitoring for VDOM operations
 class PerformanceMonitor {
@@ -173,8 +177,6 @@ class VDom {
   /// Node synchronization manager
   late final VDomNodeSync _nodeSync;
 
-  /// Debug tools for VDOM
-  late final VDomDebugTools debugTools;
 
   /// Create a new VDom instance
   VDom() {
@@ -205,8 +207,7 @@ class VDom {
       // Initialize node sync
       _nodeSync = VDomNodeSync(this, _nativeBridge);
 
-      // Initialize debug tools
-      debugTools = VDomDebugTools(this, _nativeBridge);
+  
 
       // Mark as ready
       _readyCompleter.complete();
@@ -256,6 +257,7 @@ class VDom {
 
     final node = _nodesByViewId[viewId];
     if (node == null) {
+      developer.log('⚠️ No node found for viewId: $viewId', name: 'VDom');
       _performanceMonitor.endTimer('handle_native_event');
       return;
     }
@@ -267,7 +269,27 @@ class VDom {
           node.events![eventType] is Function) {
         _performanceMonitor.startTimer('event_handler');
         final handler = node.events![eventType] as Function;
-        handler(eventData);
+        
+        // FIXED: Handle different function signatures
+        try {
+          if (handler is Function(Map<String, dynamic>)) {
+            // Function expects event data
+            handler(eventData);
+            developer.log('✅ Executed handler with event data for $eventType on $viewId', name: 'VDom');
+          } else if (handler is Function()) {
+            // Function takes no parameters
+            handler();
+            developer.log('✅ Executed handler with no parameters for $eventType on $viewId', name: 'VDom');
+          } else {
+            // Try a more general approach
+            Function.apply(handler, [], {});
+            developer.log('✅ Executed handler using Function.apply for $eventType on $viewId', name: 'VDom');
+          }
+        } catch (e, stack) {
+          developer.log('❌ Error executing event handler: $e', 
+              name: 'VDom', error: e, stackTrace: stack);
+        }
+        
         _performanceMonitor.endTimer('event_handler');
         _performanceMonitor.endTimer('handle_native_event');
         return;
@@ -283,8 +305,33 @@ class VDom {
           node.props[propName] is Function) {
         _performanceMonitor.startTimer('event_handler');
         final handler = node.props[propName] as Function;
-        handler(eventData);
+        
+        // FIXED: Handle different function signatures
+        try {
+          developer.log('🔔 Executing handler for $propName on $viewId with data: $eventData', name: 'VDom');
+          
+          if (handler is Function(Map<String, dynamic>)) {
+            // Function expects event data
+            handler(eventData);
+            developer.log('✅ Executed handler with event data', name: 'VDom');
+          } else if (handler is Function()) {
+            // Function takes no parameters
+            handler();
+            developer.log('✅ Executed handler with no parameters', name: 'VDom');
+          } else {
+            // Try a more general approach
+            Function.apply(handler, [], {});
+            developer.log('✅ Executed handler using Function.apply', name: 'VDom');
+          }
+        } catch (e, stack) {
+          developer.log('❌ Error executing event handler: $e', 
+              name: 'VDom', error: e, stackTrace: stack);
+        }
+        
         _performanceMonitor.endTimer('event_handler');
+      } else {
+        developer.log('⚠️ No handler found for event $eventType or $propName on $viewId',
+            name: 'VDom');
       }
     }
 
@@ -496,16 +543,6 @@ class VDom {
     if (eventTypes.isNotEmpty) {
       _performanceMonitor.startTimer('add_event_listeners');
       await _nativeBridge.addEventListeners(viewId, eventTypes);
-
-      // Also register callbacks with dispatcher
-      if (element.events != null) {
-        element.events!.forEach((eventName, callback) {
-          if (callback is Function) {
-            _nativeBridge.registerEventCallback(viewId, eventName, callback);
-          }
-        });
-      }
-
       _performanceMonitor.endTimer('add_event_listeners');
     }
 
@@ -537,9 +574,14 @@ class VDom {
   }
 
   /// Calculate and apply layout
-  Future<void> calculateAndApplyLayout() async {
-    developer.log('🔥 Starting layout calculation with dimensions',
+  Future<void> calculateAndApplyLayout({double? width, double? height}) async {
+    developer.log(
+        '🔥 Starting layout calculation with dimensions: ${width ?? '100%'} x ${height ?? '100%'}',
         name: 'VDom');
+
+    // Get screen dimensions if not provided
+    final screenWidth = width ?? ScreenUtilities.instance.screenWidth;
+    final screenHeight = height ?? ScreenUtilities.instance.screenHeight;
 
     _performanceMonitor.startTimer('native_layout_calculation');
 
@@ -628,10 +670,10 @@ class VDom {
 
     // Handle stateful components
     if (component is StatefulComponent) {
-      // Clean up old effects
-      component.componentWillUnmount();
-
-      // Reset hook state before render
+      // FIXED: Don't call componentWillUnmount during state updates
+      // This was previously causing all effects to be cleaned up prematurely
+      
+      // Reset hook state before render but preserve values
       component.prepareForRender();
     }
 
@@ -669,6 +711,9 @@ class VDom {
     // Update component lifecycle
     if (component is StatefulComponent) {
       component.componentDidUpdate({});
+      
+      // FIXED: Run effects after update to ensure state changes take effect
+      component.runEffectsAfterRender();
     }
   }
 
@@ -953,10 +998,100 @@ class VDom {
     return result;
   }
 
-  /// Update a view's properties
+  /// Update a view's properties with resilience to app restarts
   Future<bool> updateView(String viewId, Map<String, dynamic> props) async {
-   
-    return await _nativeBridge.updateView(viewId, props);
+    try {
+      // First check if this view actually exists - critical for app restarts
+      final exists = await _nativeBridge.viewExists(viewId);
+      
+      if (!exists) {
+        developer.log("⚠️ View $viewId doesn't exist anymore - likely due to app restart", name: 'VDom');
+        
+        // Find the node associated with this viewId
+        final node = _nodesByViewId[viewId];
+        if (node == null) {
+          developer.log("❌ No VDOM node found for viewId: $viewId", name: 'VDom');
+          return false;
+        }
+        
+        // Get the parent info for recreation
+        VDomNode? parentNode = node.parent;
+        String? parentId;
+        int index = 0;
+        
+        // Find first parent with a native view ID
+        while (parentNode != null) {
+          if (parentNode.nativeViewId != null) {
+            parentId = parentNode.nativeViewId;
+            
+            // Find index of node in parent's children
+            if (parentNode is VDomElement) {
+              index = parentNode.children.indexOf(node);
+              if (index < 0) index = 0;
+            }
+            break;
+          }
+          parentNode = parentNode.parent;
+        }
+        
+        // If we have parent info, try to recreate the view
+        if (parentId != null && node is VDomElement) {
+          developer.log("🔄 Recreating view $viewId of type ${node.type}", name: 'VDom');
+          
+          // Create the view with complete props
+          bool success = await _nativeBridge.createView(viewId, node.type, node.props);
+          
+          if (success) {
+            // Attach to parent
+            success = await _nativeBridge.attachView(viewId, parentId, index);
+            
+            if (success) {
+              // If the node has children, we need to recreate them too
+              if (node.children.isNotEmpty) {
+                developer.log("🔄 Recreating children for view $viewId", name: 'VDom');
+                
+                // Schedule a full subtree recreation by clearing native view IDs
+                for (final child in node.getDescendants()) {
+                  child.nativeViewId = null;
+                }
+                
+                // Render all children
+                final childIds = <String>[];
+                int childIndex = 0;
+                
+                for (final child in node.children) {
+                  final childId = await renderToNative(child, parentId: viewId, index: childIndex++);
+                  if (childId != null && childId.isNotEmpty) {
+                    childIds.add(childId);
+                  }
+                }
+                
+                // Update children order
+                if (childIds.isNotEmpty) {
+                  await _nativeBridge.setChildren(viewId, childIds);
+                }
+              }
+              
+              // Now apply the props update
+              success = await _nativeBridge.updateView(viewId, props);
+              return success;
+            }
+          }
+          
+          return false;
+        } else {
+          developer.log("❌ Cannot recreate view $viewId: No parent found", name: 'VDom');
+          return false;
+        }
+      }
+      
+      // Normal flow - view exists, just update it
+      return await _nativeBridge.updateView(viewId, props);
+    } catch (e, stack) {
+      developer.log("❌ Error updating view: $e", 
+                  name: 'VDom', error: e, stackTrace: stack);
+      return false;
+    }
   }
 
   /// Delete a view

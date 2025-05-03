@@ -1,10 +1,11 @@
 import 'dart:async';
 
-import 'package:dcflight/framework/packages/vdom/component/state_hook.dart';
+import 'package:dcflight/framework/packages/vdom/vdom_element.dart';
+import 'package:dcflight/framework/packages/vdom/vdom_node.dart';
 
-import '../vdom_node.dart';
+
 import 'component.dart';
-import '../vdom_element.dart';
+
 
 /// Resource for loading async data with suspense
 class Resource<T> {
@@ -91,7 +92,7 @@ class Suspense extends StatefulComponent {
   }
 
   @override
-  UIComponent build() {
+  VDomNode render() {
     return VDomElement(
       type: 'Suspense',
       props: {
