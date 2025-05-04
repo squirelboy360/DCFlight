@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
 import 'package:dcflight/framework/renderer/vdom/component/state_hook.dart';
+import 'package:dcflight/framework/utilities/flutter.dart';
 
 // Change from class to function that returns a VDomNode
 VDomNode CounterScreen({
@@ -19,6 +20,10 @@ VDomNode CounterScreen({
       padding: 20,
     ),
     children: [
+      dcfIcon(name: DCFIcons.folder,color: Colors.purpleAccent, size: 100),
+      dcfIcon(name: DCFIcons.edit,color: Colors.purpleAccent, size: 100),
+      dcfIcon(name: DCFIcons.error,color: Colors.amber, size: 100),
+
       text(
         content: "Counter: ${counterState.value}",
         textProps: TextProps(
