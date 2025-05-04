@@ -35,7 +35,11 @@ VDomNode CounterScreen({
       children: [
           dcfIcon(name: DCFIcons.folder,color: Colors.purpleAccent, size: 100),
       dcfIcon(name: DCFIcons.edit,color: Colors.purpleAccent, size: 100),
-      dcfIcon(name: DCFIcons.error,color: Colors.amber, size: 100),
+      dcfIcon(name:'assets/logo.svg', size: 100,layout: const LayoutProps(
+        margin: 20,
+        height: 100,
+        width: 100,
+      )),
       ]
     ),
 
