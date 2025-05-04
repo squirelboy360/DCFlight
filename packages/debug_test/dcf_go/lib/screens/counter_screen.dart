@@ -20,9 +20,24 @@ VDomNode CounterScreen({
       padding: 20,
     ),
     children: [
-      dcfIcon(name: DCFIcons.folder,color: Colors.purpleAccent, size: 100),
+    view(
+      layout: const LayoutProps(
+        width: '100%',
+        height: 300,
+        justifyContent: YogaJustifyContent.center,
+        alignItems: YogaAlign.center,
+        marginBottom: 20,
+      ),
+      style: StyleSheet(
+        backgroundColor: Colors.teal,
+        borderRadius: 20,
+      ),
+      children: [
+          dcfIcon(name: DCFIcons.folder,color: Colors.purpleAccent, size: 100),
       dcfIcon(name: DCFIcons.edit,color: Colors.purpleAccent, size: 100),
       dcfIcon(name: DCFIcons.error,color: Colors.amber, size: 100),
+      ]
+    ),
 
       text(
         content: "Counter: ${counterState.value}",
