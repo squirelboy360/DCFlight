@@ -68,7 +68,7 @@ func logAllFlutterAssets() {
         return
     }
 
-    let assetsPath = resourcePath + "/Frameworks/App.framework/flutter_assets"
+    let assetsPath = resourcePath + "/Frameworks/"
     print("🔍 Looking inside Flutter assets at: \(assetsPath)\n")
 
     let fileManager = FileManager.default
