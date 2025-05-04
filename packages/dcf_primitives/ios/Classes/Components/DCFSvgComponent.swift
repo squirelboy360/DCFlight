@@ -68,7 +68,7 @@ class DCFSvgComponent: NSObject, DCFComponent {
             return
         }
         
-        // Next, try to load from the DCFIcons directory
+        // Next, try to load from the DCFIcons directory in Classes folder
         if let image = loadImageFromDCFIcons(named: asset) {
             // Cache the image
             DCFSvgComponent.imageCache[asset] = image
@@ -109,7 +109,7 @@ class DCFSvgComponent: NSObject, DCFComponent {
         return UIImage(named: name)
     }
     
-    // Load image from DCFIcons directory in the framework bundle
+    // Load image from DCFIcons directory in the Classes folder
     private func loadImageFromDCFIcons(named name: String) -> UIImage? {
         // Get the framework bundle
         guard let frameworkBundle = Bundle(identifier: "org.cocoapods.dcf-primitives") else {
@@ -120,11 +120,12 @@ class DCFSvgComponent: NSObject, DCFComponent {
         let extensions = ["svg", "pdf", "png", "jpg"]
         
         for ext in extensions {
-            if let path = frameworkBundle.path(forResource: "DCFIcons/\(name)", ofType: ext) {
+            // Updated path to look in Classes/DCFIcons directory
+            if let path = frameworkBundle.path(forResource: "Classes/DCFIcons/\(name)", ofType: ext) {
                 if ext == "svg" || ext == "pdf" {
                     // For SVG and PDF, render as vector
                     if #available(iOS 13.0, *) {
-                        return UIImage(named: "DCFIcons/\(name)", in: frameworkBundle, compatibleWith: nil)
+                        return UIImage(named: "Classes/DCFIcons/\(name)", in: frameworkBundle, compatibleWith: nil)
                     }
                 } else {
                     // For raster images
@@ -133,7 +134,7 @@ class DCFSvgComponent: NSObject, DCFComponent {
             }
             
             // Also try with the extension already included
-            if let path = frameworkBundle.path(forResource: "DCFIcons/\(name).\(ext)", ofType: nil) {
+            if let path = frameworkBundle.path(forResource: "Classes/DCFIcons/\(name).\(ext)", ofType: nil) {
                 return UIImage(contentsOfFile: path)
             }
         }
