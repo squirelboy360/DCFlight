@@ -1,6 +1,5 @@
-import Flutter
 import UIKit
-import dcflight
+import dcflight // To access sharedFlutterViewController
 
 class DCFIconComponent: NSObject, DCFComponent {
     private let svgComponent = DCFSvgComponent()
@@ -19,17 +18,18 @@ class DCFIconComponent: NSObject, DCFComponent {
 
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let imageView = view as? UIImageView else { return false }
+        guard let iconName = props["name"] as? String else { return false }
 
-        if let iconName = props["name"] as? String {
-            // Look up the correct asset key from Flutter's asset system
-            let key = sharedFlutterViewController?.lookupKey(forAsset: "assets/icons/\(iconName)")
-            let path = Bundle.main.path(forResource: key, ofType: nil)
+        if let key = sharedFlutterViewController?.lookupKey(forAsset: "assets/icons/\(iconName)", fromPackage: "dcf_primitives"),
 
-            // Use the path for the asset
+           let path = Bundle.main.path(forResource: key, ofType: nil) {
+            
             var svgProps = props
             svgProps["asset"] = path
+            
             return svgComponent.updateView(imageView, withProps: svgProps)
         }
+
         return false
     }
 }

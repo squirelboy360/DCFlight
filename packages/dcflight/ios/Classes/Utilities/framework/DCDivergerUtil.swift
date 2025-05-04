@@ -46,6 +46,9 @@ import Flutter
             name: UIDevice.orientationDidChangeNotification,
             object: nil
         )
+        
+        logAllFlutterAssets()
+
     }
 
     @objc private func orientationChanged() {
@@ -54,5 +57,39 @@ import Flutter
             let screenHeight = UIScreen.main.bounds.height
             YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
         }
+    }
+}
+
+
+
+func logAllFlutterAssets() {
+    guard let resourcePath = Bundle.main.resourcePath else {
+        print("❌ Could not get resource path.")
+        return
+    }
+
+    let assetsPath = resourcePath + "/Frameworks/App.framework/flutter_assets"
+    print("🔍 Looking inside Flutter assets at: \(assetsPath)\n")
+
+    let fileManager = FileManager.default
+
+    do {
+        let files = try fileManager.subpathsOfDirectory(atPath: assetsPath)
+
+        if files.isEmpty {
+            print("📦 No Flutter assets found.")
+            return
+        }
+
+        print("📦 Flutter assets found (\(files.count) items):")
+        for file in files {
+            if file.contains("packages/") {
+                print(" - 📦 Package asset: \(file)")
+            } else {
+                print(" - \(file)")
+            }
+        }
+    } catch {
+        print("❌ Error reading flutter_assets directory: \(error)")
     }
 }
