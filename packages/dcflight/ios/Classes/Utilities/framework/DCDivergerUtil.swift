@@ -46,8 +46,6 @@ import Flutter
             name: UIDevice.orientationDidChangeNotification,
             object: nil
         )
-        
-        logAllFlutterAssets()
 
     }
 
@@ -61,35 +59,3 @@ import Flutter
 }
 
 
-
-func logAllFlutterAssets() {
-    guard let resourcePath = Bundle.main.resourcePath else {
-        print("❌ Could not get resource path.")
-        return
-    }
-
-    let assetsPath = resourcePath + "/Frameworks/"
-    print("🔍 Looking inside Flutter assets at: \(assetsPath)\n")
-
-    let fileManager = FileManager.default
-
-    do {
-        let files = try fileManager.subpathsOfDirectory(atPath: assetsPath)
-
-        if files.isEmpty {
-            print("📦 No Flutter assets found.")
-            return
-        }
-
-        print("📦 Flutter assets found (\(files.count) items):")
-        for file in files {
-            if file.contains("packages/") {
-                print(" - 📦 Package asset: \(file)")
-            } else {
-                print(" - \(file)")
-            }
-        }
-    } catch {
-        print("❌ Error reading flutter_assets directory: \(error)")
-    }
-}

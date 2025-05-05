@@ -1,10 +1,11 @@
 import UIKit
 import dcflight
+import SVGKit
 
 /// SVG component that renders SVG images from assets
 class DCFSvgComponent: NSObject, DCFComponent {
     // Dictionary to cache loaded SVG images
-    private static var imageCache = [String: UIImage]()
+    private static var imageCache = [String: SVGKImage]()
     
     required override init() {
         super.init()
@@ -27,7 +28,7 @@ class DCFSvgComponent: NSObject, DCFComponent {
         
         // Get SVG asset path
         if let asset = props["asset"] as? String {
-            print("final final asset \(asset)")
+            print("Loading SVG asset: \(asset)")
             loadSvgFromAsset(asset, into: imageView)
         }
         
@@ -49,97 +50,81 @@ class DCFSvgComponent: NSObject, DCFComponent {
     private func loadSvgFromAsset(_ asset: String, into imageView: UIImageView) {
         // Check cache first
         if let cachedImage = DCFSvgComponent.imageCache[asset] {
-            imageView.image = cachedImage
+            imageView.image = cachedImage.uiImage
             
             // Trigger onLoad event since we're using the cached image
             triggerEvent(on: imageView, eventType: "onLoad", eventData: [:])
             return
         }
         
-        // First try to load from app bundle
-        if let image = loadImageFromBundle(named: asset) {
+        // Load SVG using SVGKit
+        if let svgImage = loadSVGFromAssetPath(asset) {
             // Cache the image
-            DCFSvgComponent.imageCache[asset] = image
+            DCFSvgComponent.imageCache[asset] = svgImage
             
             // Set the image
-            imageView.image = image
+            imageView.image = svgImage.uiImage
             
             // Trigger onLoad event
             triggerEvent(on: imageView, eventType: "onLoad", eventData: [:])
-            return
+        } else {
+            // If we reach here, the image couldn't be loaded
+            print("❌ Failed to load SVG: \(asset)")
+            triggerEvent(on: imageView, eventType: "onError", eventData: ["error": "SVG not found: \(asset)"])
         }
-        
-        // Next, try to load from the DCFIcons directory in Classes folder
-        if let image = loadImageFromDCFIcons(named: asset) {
-            // Cache the image
-            DCFSvgComponent.imageCache[asset] = image
-            
-            // Set the image
-            imageView.image = image
-            
-            // Trigger onLoad event
-            triggerEvent(on: imageView, eventType: "onLoad", eventData: [:])
-            return
-        }
-        
-        // If we reach here, the image couldn't be loaded
-        print("❌ Failed to load SVG: \(asset)")
-        triggerEvent(on: imageView, eventType: "onError", eventData: ["error": "SVG not found: \(asset)"])
     }
     
-    // Load image from main bundle
-    private func loadImageFromBundle(named name: String) -> UIImage? {
-        // Try different file extensions
-        let extensions = ["svg", "pdf", "png", "jpg"]
-        
-        for ext in extensions {
-            if let path = Bundle.main.path(forResource: name, ofType: ext) {
-                if ext == "svg" || ext == "pdf" {
-                    // For SVG and PDF, render as vector
-                    if #available(iOS 13.0, *) {
-                        return UIImage(named: name)
-                    }
-                } else {
-                    // For raster images
-                    return UIImage(contentsOfFile: path)
-                }
-            }
+    // Load SVG from various possible sources using SVGKit
+    private func loadSVGFromAssetPath(_ asset: String) -> SVGKImage? {
+        // Method 1: Try loading from direct path if it looks like a file path
+        if (asset.hasPrefix("/") || asset.contains(".")) && FileManager.default.fileExists(atPath: asset) {
+            print("📂 Loading SVG from direct file path: \(asset)")
+            return SVGKImage(contentsOfFile: asset)
         }
         
-        // Try loading directly by name (in case the extension is included in the name)
-        return UIImage(named: name)
-    }
-    
-    // Load image from DCFIcons directory in the Classes folder
-    private func loadImageFromDCFIcons(named name: String) -> UIImage? {
-        // Get the framework bundle
-        guard let frameworkBundle = Bundle(identifier: "org.cocoapods.dcf-primitives") else {
-            return nil
-        }
-        
-        // Try different file extensions
-        let extensions = ["svg", "pdf", "png", "jpg"]
-        
+        // Method 2: Try to find in main bundle with extensions
+        let extensions = ["svg"]
         for ext in extensions {
-            // Updated path to look in Classes/DCFIcons directory
-            if let path = frameworkBundle.path(forResource: "Classes/DCFIcons/\(name)", ofType: ext) {
-                if ext == "svg" || ext == "pdf" {
-                    // For SVG and PDF, render as vector
-                    if #available(iOS 13.0, *) {
-                        return UIImage(named: "Classes/DCFIcons/\(name)", in: frameworkBundle, compatibleWith: nil)
-                    }
-                } else {
-                    // For raster images
-                    return UIImage(contentsOfFile: path)
-                }
+            if let path = Bundle.main.path(forResource: asset, ofType: ext) {
+                print("📦 Loading SVG from bundle path: \(path)")
+                return SVGKImage(contentsOfFile: path)
             }
             
             // Also try with the extension already included
-            if let path = frameworkBundle.path(forResource: "Classes/DCFIcons/\(name).\(ext)", ofType: nil) {
-                return UIImage(contentsOfFile: path)
+            if let path = Bundle.main.path(forResource: asset, ofType: nil) {
+                print("📦 Loading SVG from bundle path (with extension): \(path)")
+                return SVGKImage(contentsOfFile: path)
             }
         }
         
+        // Method 3: Try loading as a URL if it's a web URL
+        if asset.hasPrefix("http://") || asset.hasPrefix("https://") {
+            if let url = URL(string: asset) {
+                print("🌐 Loading SVG from URL: \(url)")
+                return SVGKImage(contentsOf: url)
+            }
+        }
+        
+        // Method 4: If it's an SVG string (starting with <?xml or <svg)
+        if asset.hasPrefix("<?xml") || asset.hasPrefix("<svg") {
+            print("🔤 Loading SVG from XML string")
+            return SVGKImage(data: asset.data(using: .utf8)!)
+        }
+        
+        // Method 5: Try DCFIcons directory in the framework bundle
+        if let frameworkBundle = Bundle(identifier: "org.cocoapods.dcf-primitives") {
+            if let path = frameworkBundle.path(forResource: "Classes/DCFIcons/\(asset)", ofType: "svg") {
+                print("🔣 Loading SVG from framework icons: \(path)")
+                return SVGKImage(contentsOfFile: path)
+            }
+            // Also try with the extension already included
+            if let path = frameworkBundle.path(forResource: "Classes/DCFIcons/\(asset)", ofType: nil) {
+                print("🔣 Loading SVG from framework icons (with extension): \(path)")
+                return SVGKImage(contentsOfFile: path)
+            }
+        }
+        
+        print("❌ Could not load SVG from any location: \(asset)")
         return nil
     }
 }
