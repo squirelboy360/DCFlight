@@ -29,7 +29,7 @@ flutter:
       ios:
         pluginClass: DcfPrimitives
 
-assets:
-  - assets/icons/
+  assets:
+    - assets/icons/
 
 

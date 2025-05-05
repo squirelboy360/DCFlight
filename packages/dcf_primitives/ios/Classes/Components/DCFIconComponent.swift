@@ -21,28 +21,18 @@ class DCFIconComponent: NSObject, DCFComponent {
         guard let iconName = props["name"] as? String else { return false }
 
         // Use Flutter lookupKey to resolve logical asset path
-        guard let key = sharedFlutterViewController?.lookupKey(forAsset: "assets/icons/\(iconName)", fromPackage: "dcf_primitives") else {
+        guard let key = sharedFlutterViewController?.lookupKey(forAsset: "assets/icons/\(iconName).svg", fromPackage: "dcf_primitives") else {
             print("❌ Could not resolve asset key for \(iconName)")
             return false
         }
+        print("key start \(key)")
+        let mainBundle = Bundle.main
+        let path = mainBundle.path(forResource: key, ofType: nil)
 
-        // Load the asset from the dcf_primitives bundle
-        guard let frameworkURL = Bundle.main.privateFrameworksURL?.appendingPathComponent("dcf_primitives.framework"),
-              let bundle = Bundle(url: frameworkURL) else {
-            print("❌ Could not load dcf_primitives framework bundle")
-            return false
-        }
-
-        let assetURL = bundle.url(forResource: key, withExtension: nil)
-
-        if let assetPath = assetURL?.path {
-            var svgProps = props
-            svgProps["asset"] = assetPath
-            return svgComponent.updateView(imageView, withProps: svgProps)
-        } else {
-            print("❌ Could not find asset at resolved path for \(iconName)")
-        }
-
-        return false
+     print("icon asset path yet to start: \(path)")
+        var svgProps = props
+        svgProps["asset"] = path
+        print("icon asset path last: \(path ?? "")")
+        return svgComponent.updateView(imageView, withProps: svgProps)
     }
 }

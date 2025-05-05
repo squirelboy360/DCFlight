@@ -27,6 +27,7 @@ class DCFSvgComponent: NSObject, DCFComponent {
         
         // Get SVG asset path
         if let asset = props["asset"] as? String {
+            print("final final asset \(asset)")
             loadSvgFromAsset(asset, into: imageView)
         }
         
