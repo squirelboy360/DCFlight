@@ -6,89 +6,149 @@ Its aim is to simplify cross-platform app development for personal future projec
 
 ## ⚠️ Important Notice
 
-If you want to test it, do not use the CLI as it currently does nothing. However, you can run the example to see how it works. The example serves as an experimental implementation and will eventually be broken down, optimized, and integrated into the complete CLI.
+Just move from experimental to modularization where the framework is now modularised into a package. Although cli is not complete to allow the app run independent from the flutter cli, with hot reload support etc, the main framework as a package is complete (More platforms can be ported over but fundamentally done)
+
 
 ## 📌 Key Points
-
-### 1️⃣ Flutter Engine Usage (Current branch uses C header file to communicates between native and dart, no more abstaction for UI rendering, the Vdom uses direct native communication for UI CRUD i short)
-
-Developers might notice that the framework is built on Flutter—but in actuality, it is not.  
+DCFlight can be used in any flutter app to diverge from the flutter framework and render native UI. This involves extra work with no guarantee of hot relaod/ restart support or any dev tools. The DCFlight Cli is therefopre advised to be used.
 It is almost impossible to decouple the Dart VM from Flutter. To work around this:
-
-- The framework is built parallel to Flutter Engine and not on top(This means we get Dart VM and the rest is handled by the native layer instead of Platform Views or any flutter abstraction while your usual flutter engine runs parallel for the dart runtime as its needed to start the the communication with native side and if flutter View is needed to be spawned for canvas rendering.
-- When abstracting the Flutter engine, I separate it into a dedicated package. Currenttly everything is handled as a package.
-- This allows communication with the Flutter engine in headless mode, letting the native side handle rendering.
-
-### 2️⃣ Current Syntax Needs Improvement 🤦‍♂️
-
-The current syntax is not great, but I will abstract over it later.
 
 ## 📝 Dart Example
 
 ```dart
 
 void main() {
-  initializeApplication(DCMauiDemoApp());
+  DCFlight.start(app: CounterScreen());
 }
 
-class DCMauiDemoApp extends StatefulComponent {
-  @override
-  UIComponent build() {
-    // State hooks
-    final counter = useState(0, 'counter');
-
-    final bg = useState(Color(Colors.indigoAccent.toARGB32()), 'bg');
-
-    // Use an effect to update the ScrollView background color every second
-    useEffect(() {
-      final rnd = math.Random();
-      Color color() => Color(rnd.nextInt(0xffffffff));
-      // Set up a timer to update the color every second
-      final timer = Timer.periodic(const Duration(seconds: 5), (timer) {
-        // Update the background color
-        bg.setValue(color());
-        counter.setValue(counter.value + 1);
-        print("use effect per 5 second ${timer.tick}");
-        
-        
-      });
-
-      // Clean up the timer when the component is unmounted
-      return () {
-        timer.cancel();
-        developer.log('Canceled background color animation timer',
-            name: 'ColorAnimation');
-      };
-    }, dependencies: []);
-
-    return DC.View(
-        layout: LayoutProps(
-            flex: 1,
-            alignContent: YogaAlign.center,
-            justifyContent: YogaJustifyContent.center),
-        style: StyleSheet(backgroundColor: bg.value),
+UIComponent CounterScreen({
+  required StateHook<int> counterState,
+  required Color textColor,
+  required Color accentColor,
+}) {
+  return view(
+    layout: const LayoutProps(
+      width: '100%',
+      height: 600,
+      justifyContent: YogaJustifyContent.center,
+      alignItems: YogaAlign.center,
+      flexWrap: YogaWrap.wrap,
+      padding: 20,
+    ),
+    children: [
+      view(
+        layout: const LayoutProps(
+          width: '100%',
+          height: 300,
+          justifyContent: YogaJustifyContent.center,
+          alignItems: YogaAlign.center,
+          marginBottom: 20,
+        ),
+        style: StyleSheet(backgroundColor: Colors.teal, borderRadius: 20),
         children: [
-          DC.Button(
-              onPress: () {
-                print(counter.value);
-                // counter.setValue(counter.value + 1);
-              },
-              layout: LayoutProps(padding: 10),
-              buttonProps: ButtonProps(
-                title: "increment",
-              )),
-          DC.Text(
-              textProps: TextProps(
-                  fontSize: 24,
-                  color: Colors.white,
-                  textAlign: 'center',
-              ),
-              content: counter.value.toString(),
-              layout: LayoutProps(paddingHorizontal: 50, width: '100%'),
-              style: StyleSheet(backgroundColor: Colors.teal)),
-        ]);
-  }
+          dcfIcon(
+            name: DCFIcons.folder,
+            color: Colors.purpleAccent,
+            size: 20,
+            style: StyleSheet(backgroundColor: Colors.white, borderRadius: 20),
+            layout: const LayoutProps(
+              padding: 5,
+              margin: 20,
+              height: 50,
+              width: 50,
+            ),
+          ),
+          dcfIcon(
+            name: DCFIcons.edit,
+            color: Colors.purpleAccent,
+            size: 50,
+            style: StyleSheet(backgroundColor: Colors.white, borderRadius: 20),
+            layout: const LayoutProps(
+                padding: 5,
+              margin: 20,
+              height: 50,
+              width: 50,
+            ),
+          ),
+          svg(
+            asset: 'assets/logo_bg.svg',
+            style: StyleSheet(backgroundColor: Colors.white, borderRadius: 20),
+            layout: const LayoutProps(
+              padding: 5,
+              margin: 20,
+              height: 50,
+              width: 50,
+            ),
+          ),
+        ],
+      ),
+
+      text(
+        content: "Counter: ${counterState.value}",
+        textProps: TextProps(
+          fontSize: 36,
+          color: textColor,
+          fontWeight: "bold",
+        ),
+        layout: const LayoutProps(marginBottom: 40),
+      ),
+      view(
+        layout: const LayoutProps(
+          width: '100%',
+          flexDirection: YogaFlexDirection.row,
+          justifyContent: YogaJustifyContent.spaceEvenly,
+          alignItems: YogaAlign.center,
+        ),
+        children: [
+          button(
+            buttonProps: ButtonProps(
+              title: "Decrement",
+              color: const Color(0xFFFFFFFF),
+              backgroundColor:
+                  counterState.value > 0
+                      ? accentColor
+                      : const Color(0xFFAAAAAA),
+            ),
+            layout: const LayoutProps(width: 120, height: 50),
+            onPress: () {
+              if (counterState.value > 0) {
+                counterState.setValue(counterState.value - 1);
+              }
+            },
+          ),
+          button(
+            buttonProps: ButtonProps(
+              title: "Reset",
+              color: const Color(0xFFFFFFFF),
+              backgroundColor:
+                  counterState.value != 0
+                      ? const Color(0xFFFF5722)
+                      : const Color(0xFFAAAAAA),
+            ),
+            layout: const LayoutProps(width: 120, height: 50),
+            onPress: () {
+              if (counterState.value != 0) {
+                counterState.setValue(0);
+              }
+            },
+          ),
+          button(
+            buttonProps: ButtonProps(
+              title: "Increment",
+              color: const Color(0xFFFFFFFF),
+              backgroundColor: accentColor,
+            ),
+            layout: const LayoutProps(width: 120, height: 50),
+            onPress: () {
+              counterState.setValue(counterState.value + 1);
+            },
+          ),
+        ],
+      ),
+    ],
+  );
 }
+
 
 ```
 
