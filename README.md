@@ -18,136 +18,181 @@ It is almost impossible to decouple the Dart VM from Flutter. To work around thi
 ```dart
 
 void main() {
-  DCFlight.start(app: CounterScreen());
+  DCFlight.start(app: DCFlightDemoApp());
 }
 
-UIComponent CounterScreen({
-  required StateHook<int> counterState,
-  required Color textColor,
-  required Color accentColor,
-}) {
-  return view(
-    layout: const LayoutProps(
-      width: '100%',
-      height: 600,
-      justifyContent: YogaJustifyContent.center,
-      alignItems: YogaAlign.center,
-      flexWrap: YogaWrap.wrap,
-      padding: 20,
-    ),
-    children: [
-      view(
-        layout: const LayoutProps(
-          width: '100%',
-          height: 300,
-          justifyContent: YogaJustifyContent.center,
-          alignItems: YogaAlign.center,
-          marginBottom: 20,
-        ),
-        style: StyleSheet(backgroundColor: Colors.teal, borderRadius: 20),
-        children: [
-          dcfIcon(
-            name: DCFIcons.folder,
-            color: Colors.purpleAccent,
-            size: 20,
-            style: StyleSheet(backgroundColor: Colors.white, borderRadius: 20),
-            layout: const LayoutProps(
-              padding: 5,
-              margin: 20,
-              height: 50,
-              width: 50,
-            ),
-          ),
-          dcfIcon(
-            name: DCFIcons.edit,
-            color: Colors.purpleAccent,
-            size: 50,
-            style: StyleSheet(backgroundColor: Colors.white, borderRadius: 20),
-            layout: const LayoutProps(
-                padding: 5,
-              margin: 20,
-              height: 50,
-              width: 50,
-            ),
-          ),
-          svg(
-            asset: 'assets/logo_bg.svg',
-            style: StyleSheet(backgroundColor: Colors.white, borderRadius: 20),
-            layout: const LayoutProps(
-              padding: 5,
-              margin: 20,
-              height: 50,
-              width: 50,
-            ),
-          ),
-        ],
+class DCFlightDemoApp extends StatefulComponent {
+  @override
+  UIComponent render() {
+    // State for theme
+    final isDarkTheme = useState(false);
+    
+    // State for active tab
+    final activeTabIndex = useState(0);
+    
+    // State for counter
+    final counterState = useState(0);
+    
+    // Derive theme colors based on isDarkTheme
+    final backgroundColor = isDarkTheme.value 
+        ? const Color(0xFF121212) 
+        : const Color(0xFFF5F5F5);
+    
+    final textColor = isDarkTheme.value 
+        ? const Color(0xFFFFFFFF) 
+        : const Color(0xFF000000);
+    
+    final accentColor = isDarkTheme.value 
+        ? const Color(0xFF536DFE) 
+        : const Color(0xFF3D5AFE);
+    
+    // Define tabs
+    final tabs = [
+      "Counter",
+      "Gallery",
+      "About",
+    ];
+    
+    return view(
+      style: StyleSheet(
+        backgroundColor: backgroundColor,
       ),
+      layout: const LayoutProps(
+        width: '100%',
+        height: '100%',
+        justifyContent: YogaJustifyContent.flexStart,
+        alignItems: YogaAlign.center,
+      ),
+      children: [
+        // Header
+        view(
+          style: StyleSheet(
+            backgroundColor: accentColor,
+          ),
+          layout:  LayoutProps(flexWrap: YogaWrap.wrap,
+            width: '100%',
+            height: 80,
+            flexDirection: YogaFlexDirection.row,
+            justifyContent: YogaJustifyContent.spaceBetween,
+            alignItems: YogaAlign.center,
+            padding: ScreenUtilities.instance.statusBarHeight,
+            paddingLeft: 20,
+            paddingRight: 20,
+          ),
+          children: [
+            text(
+              layout: const LayoutProps(
+                width: 200,
+                height: 40,
 
-      text(
-        content: "Counter: ${counterState.value}",
-        textProps: TextProps(
-          fontSize: 36,
-          color: textColor,
-          fontWeight: "bold",
+              ),
+              content: "DCFlight Demo",
+              textProps: const TextProps(
+                fontSize: 24,
+                color: Color(0xFFFFFFFF),
+                fontWeight: "bold",
+              ),
+            ),
+            button(
+              buttonProps: ButtonProps(
+                title: isDarkTheme.value ? "☀️" : "🌙",
+                color: isDarkTheme.value ? const Color(0xFF000000) : const Color(0xFFFFFFFF),
+                backgroundColor: isDarkTheme.value ? const Color(0xFFFFFFFF) : const Color(0xFF222222),
+              ),
+              layout: const LayoutProps(
+                width: 50,
+                height: 40,
+              ),
+              onPress: () {
+                isDarkTheme.setValue(!isDarkTheme.value);
+              },
+            ),
+          ],
         ),
-        layout: const LayoutProps(marginBottom: 40),
-      ),
-      view(
-        layout: const LayoutProps(
-          width: '100%',
-          flexDirection: YogaFlexDirection.row,
-          justifyContent: YogaJustifyContent.spaceEvenly,
-          alignItems: YogaAlign.center,
-        ),
-        children: [
-          button(
-            buttonProps: ButtonProps(
-              title: "Decrement",
-              color: const Color(0xFFFFFFFF),
-              backgroundColor:
-                  counterState.value > 0
+        
+        // Tabs
+        view(
+          style: StyleSheet(
+            backgroundColor: isDarkTheme.value ? const Color(0xFF1E1E1E) : const Color(0xFFE0E0E0),
+          ),
+          layout: const LayoutProps(
+            width: '100%',
+            height: 50,
+            flexDirection: YogaFlexDirection.row,
+            justifyContent: YogaJustifyContent.spaceEvenly,
+            alignItems: YogaAlign.center,
+          ),
+          children: [
+            for (int i = 0; i < tabs.length; i++)
+              button(
+                buttonProps: ButtonProps(
+                  title: tabs[i],
+                  color: i == activeTabIndex.value 
+                      ? const Color(0xFFFFFFFF) 
+                      : textColor,
+                  backgroundColor: i == activeTabIndex.value 
                       ? accentColor
-                      : const Color(0xFFAAAAAA),
-            ),
-            layout: const LayoutProps(width: 120, height: 50),
-            onPress: () {
-              if (counterState.value > 0) {
-                counterState.setValue(counterState.value - 1);
-              }
-            },
-          ),
-          button(
-            buttonProps: ButtonProps(
-              title: "Reset",
-              color: const Color(0xFFFFFFFF),
-              backgroundColor:
-                  counterState.value != 0
-                      ? const Color(0xFFFF5722)
-                      : const Color(0xFFAAAAAA),
-            ),
-            layout: const LayoutProps(width: 120, height: 50),
-            onPress: () {
-              if (counterState.value != 0) {
-                counterState.setValue(0);
-              }
-            },
-          ),
-          button(
-            buttonProps: ButtonProps(
-              title: "Increment",
-              color: const Color(0xFFFFFFFF),
-              backgroundColor: accentColor,
-            ),
-            layout: const LayoutProps(width: 120, height: 50),
-            onPress: () {
-              counterState.setValue(counterState.value + 1);
-            },
-          ),
-        ],
-      ),
-    ],
-  );
+                      : Colors.transparent,
+                ),
+                layout: const LayoutProps(
+                  width: 100,
+                  height: 40,
+                ),
+                onPress: () {
+                  activeTabIndex.setValue(i);
+                },
+              ),
+          ],
+        ),
+        
+        // Content based on active tab
+        renderTabContent(
+          activeTabIndex.value, 
+          counterState, 
+          textColor, 
+          accentColor,
+          backgroundColor,
+        ),
+      ],
+    );
+  }
+  
+  // Helper method to render the content of the active tab
+  UIComponent renderTabContent(
+    int activeTab, 
+    StateHook<int> counterState, 
+    Color textColor, 
+    Color accentColor,
+    Color backgroundColor,
+  ) {
+    switch (activeTab) {
+      case 0:
+        return CounterScreen(
+          counterState: counterState,
+          textColor: textColor,
+          accentColor: accentColor,
+        );
+      case 1:
+        return galleryScreen(
+          textColor: textColor,
+          accentColor: accentColor,
+          backgroundColor: backgroundColor,
+        );
+      case 2:
+        return aboutScreen(
+          textColor: textColor,
+          accentColor: accentColor,
+        );
+      default:
+        return view();
+    }
+  }
 }
+
+
+
+
+
 
 
 ```
