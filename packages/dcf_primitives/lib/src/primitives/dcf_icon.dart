@@ -32,6 +32,8 @@ VDomElement dcfIcon({
       if (color != null) 'color': color,
       ...layout.toMap(),
       ...style.toMap(),
+       // non-direct svgs, where the icons are in packages like scf_icon for example are not relative as the native side will lookup the assets from the package being used in the app bundle 
+      'isRelativePath': false,
     },
     children: [],
     events: eventMap.isEmpty ? null : eventMap,

@@ -25,14 +25,11 @@ class DCFIconComponent: NSObject, DCFComponent {
             print("❌ Could not resolve asset key for \(iconName)")
             return false
         }
-        print("key start \(key)")
         let mainBundle = Bundle.main
         let path = mainBundle.path(forResource: key, ofType: nil)
 
-     print("icon asset path yet to start: \(path)")
         var svgProps = props
         svgProps["asset"] = path
-        print("icon asset path last: \(path ?? "")")
         return svgComponent.updateView(imageView, withProps: svgProps)
     }
 }

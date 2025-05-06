@@ -29,7 +29,7 @@ class DCFSvgComponent: NSObject, DCFComponent {
         // Get SVG asset path
         if let asset = props["asset"] as? String {
             print("Loading SVG asset: \(asset)")
-            loadSvgFromAsset(asset, into: imageView)
+            loadSvgFromAsset(asset, into: imageView, isRel: (props["isRelativePath"] as? Bool ?? false))
         }
         
         // Apply tint color if specified
@@ -47,7 +47,7 @@ class DCFSvgComponent: NSObject, DCFComponent {
     
     // MARK: - SVG Loading Methods
     
-    private func loadSvgFromAsset(_ asset: String, into imageView: UIImageView) {
+    private func loadSvgFromAsset(_ asset: String, into imageView: UIImageView, isRel: Bool) {
         // Check cache first
         if let cachedImage = DCFSvgComponent.imageCache[asset] {
             imageView.image = cachedImage.uiImage
@@ -58,7 +58,7 @@ class DCFSvgComponent: NSObject, DCFComponent {
         }
         
         // Load SVG using SVGKit
-        if let svgImage = loadSVGFromAssetPath(asset) {
+        if let svgImage = loadSVGFromAssetPath(asset,isRelativePath: isRel) {
             // Cache the image
             DCFSvgComponent.imageCache[asset] = svgImage
             
@@ -75,55 +75,30 @@ class DCFSvgComponent: NSObject, DCFComponent {
     }
     
     // Load SVG from various possible sources using SVGKit
-    private func loadSVGFromAssetPath(_ asset: String) -> SVGKImage? {
+    private func loadSVGFromAssetPath(_ asset: String, isRelativePath: Bool) -> SVGKImage? {
+      
         // Method 1: Try loading from direct path if it looks like a file path
         if (asset.hasPrefix("/") || asset.contains(".")) && FileManager.default.fileExists(atPath: asset) {
             print("📂 Loading SVG from direct file path: \(asset)")
             return SVGKImage(contentsOfFile: asset)
-        }
-        
-        // Method 2: Try to find in main bundle with extensions
-        let extensions = ["svg"]
-        for ext in extensions {
-            if let path = Bundle.main.path(forResource: asset, ofType: ext) {
-                print("📦 Loading SVG from bundle path: \(path)")
-                return SVGKImage(contentsOfFile: path)
-            }
-            
-            // Also try with the extension already included
-            if let path = Bundle.main.path(forResource: asset, ofType: nil) {
-                print("📦 Loading SVG from bundle path (with extension): \(path)")
-                return SVGKImage(contentsOfFile: path)
-            }
-        }
-        
-        // Method 3: Try loading as a URL if it's a web URL
-        if asset.hasPrefix("http://") || asset.hasPrefix("https://") {
+        } else if asset.hasPrefix("http://") || asset.hasPrefix("https://") {
             if let url = URL(string: asset) {
                 print("🌐 Loading SVG from URL: \(url)")
                 return SVGKImage(contentsOf: url)
             }
-        }
-        
-        // Method 4: If it's an SVG string (starting with <?xml or <svg)
-        if asset.hasPrefix("<?xml") || asset.hasPrefix("<svg") {
-            print("🔤 Loading SVG from XML string")
-            return SVGKImage(data: asset.data(using: .utf8)!)
-        }
-        
-        // Method 5: Try DCFIcons directory in the framework bundle
-        if let frameworkBundle = Bundle(identifier: "org.cocoapods.dcf-primitives") {
-            if let path = frameworkBundle.path(forResource: "Classes/DCFIcons/\(asset)", ofType: "svg") {
-                print("🔣 Loading SVG from framework icons: \(path)")
+        }else if (isRelativePath == true){
+            print("executing due to svg hardcoded")
+      
+             let key = sharedFlutterViewController?.lookupKey(forAsset: asset)
+                let mainBundle = Bundle.main
+                let path = mainBundle.path(forResource: key, ofType: nil)
+            print("📦 Loading SVG from bundle path: \(String(describing: path))")
                 return SVGKImage(contentsOfFile: path)
-            }
-            // Also try with the extension already included
-            if let path = frameworkBundle.path(forResource: "Classes/DCFIcons/\(asset)", ofType: nil) {
-                print("🔣 Loading SVG from framework icons (with extension): \(path)")
-                return SVGKImage(contentsOfFile: path)
-            }
+            
+            
+   
+            
         }
-        
         print("❌ Could not load SVG from any location: \(asset)")
         return nil
     }

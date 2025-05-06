@@ -33,6 +33,8 @@ VDomElement svg({
       if (tintColor != null) 'tintColor': tintColor,
       ...layout.toMap(),
       ...style.toMap(),
+      // direct svgs are relative as the native side will lookup the assets from the app bundle 
+      'isRelativePath': true,
     },
     children: [],
     events: eventMap.isEmpty ? null : eventMap,
