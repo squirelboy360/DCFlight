@@ -2,6 +2,9 @@ import UIKit
 import dcflight
 
 class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
+    // Dictionary to cache loaded images
+    private static var imageCache = [String: UIImage]()
+    
     required override init() {
         super.init()
     }
@@ -25,7 +28,21 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
         
         // Set image source if specified
         if let source = props["source"] as? String {
-            loadImage(from: source, into: imageView, placeholder: props["placeholder"] as? String)
+            // Check if we should use relative path resolution (for local assets)
+            let isRelative = props["isRelativePath"] as? Bool ?? false
+            
+            if isRelative {
+                // Use Flutter asset resolution for relative paths
+                let key = sharedFlutterViewController?.lookupKey(forAsset: source)
+                let mainBundle = Bundle.main
+                let path = mainBundle.path(forResource: key, ofType: nil)
+                
+                print("🖼️ Image asset lookup - key: \(String(describing: key)), path: \(String(describing: path))")
+                loadImage(from: source, into: imageView, isRelative: true, path: path)
+            } else {
+                // Use direct loading for absolute paths or URLs
+                loadImage(from: source, into: imageView, isRelative: false, path: nil)
+            }
         }
         
         // Set resize mode if specified
@@ -48,60 +65,79 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
     }
     
     // Load image from URL or resource
-    private func loadImage(from source: String, into imageView: UIImageView, placeholder: String?) {
+    private func loadImage(from source: String, into imageView: UIImageView, isRelative: Bool, path: String?) {
+        // Check cache first
+        if let cachedImage = DCFImageComponent.imageCache[source] {
+            imageView.image = cachedImage
+            triggerEvent(on: imageView, eventType: "onLoad", eventData: [:])
+            return
+        }
+        
+        // If it's a relative path and we have a resolved path
+        if isRelative, let resolvedPath = path {
+            print("📦 Loading image from resolved path: \(resolvedPath)")
+            if let image = UIImage(contentsOfFile: resolvedPath) {
+                // Cache the image
+                DCFImageComponent.imageCache[source] = image
+                
+                // Set the image
+                imageView.image = image
+                
+                // Trigger onLoad event
+                triggerEvent(on: imageView, eventType: "onLoad", eventData: [:])
+                return
+            } else {
+                print("❌ Failed to load image from resolved path: \(resolvedPath)")
+                triggerEvent(on: imageView, eventType: "onError", eventData: ["error": "Image not found at resolved path"])
+                return
+            }
+        }
+        
         // Check if it's a URL
         if source.hasPrefix("http://") || source.hasPrefix("https://") {
             // Load from URL
             if let url = URL(string: source) {
-                // Set placeholder if available
-                if let placeholder = placeholder, let placeholderImage = UIImage(named: placeholder) {
-                    imageView.image = placeholderImage
-                }
-                
                 // Load image asynchronously
                 DispatchQueue.global().async {
                     if let data = try? Data(contentsOf: url), let image = UIImage(data: data) {
+                        // Cache the image
+                        DCFImageComponent.imageCache[source] = image
+                        
                         DispatchQueue.main.async {
                             UIView.transition(with: imageView, duration: 0.3, options: .transitionCrossDissolve, animations: {
                                 imageView.image = image
                             }, completion: { _ in
                                 // Trigger onLoad event
-                                if let viewId = objc_getAssociatedObject(imageView, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String,
-                                   let callback = objc_getAssociatedObject(imageView, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!) as? (String, String, [String: Any]) -> Void {
-                                    // Use direct callback for more reliable event delivery
-                                    callback(viewId, "onLoad", [:])
-                                } else {
-                                    // Fall back to generic event triggering
-                                    self.triggerEvent(on: imageView, eventType: "onLoad", eventData: [:])
-                                }
+                                self.triggerEvent(on: imageView, eventType: "onLoad", eventData: [:])
                             })
                         }
                     } else {
                         // Trigger onError event
                         DispatchQueue.main.async {
-                            self.triggerEvent(on: imageView, eventType: "onError", eventData: ["error": "Failed to load image"])
+                            self.triggerEvent(on: imageView, eventType: "onError", eventData: ["error": "Failed to load image from URL"])
                         }
                     }
                 }
+                return
             }
         } else {
-            // Load from local resource
+            // Try to load from bundle directly
             if let image = UIImage(named: source) {
+                // Cache the image
+                DCFImageComponent.imageCache[source] = image
+                
+                // Set the image
                 imageView.image = image
+                
                 // Trigger onLoad event
-                if let viewId = objc_getAssociatedObject(imageView, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String,
-                   let callback = objc_getAssociatedObject(imageView, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!) as? (String, String, [String: Any]) -> Void {
-                    // Use direct callback for more reliable event delivery
-                    callback(viewId, "onLoad", [:])
-                } else {
-                    // Fall back to generic event triggering
-                    self.triggerEvent(on: imageView, eventType: "onLoad", eventData: [:])
-                }
-            } else {
-                // Trigger onError event
-                self.triggerEvent(on: imageView, eventType: "onError", eventData: ["error": "Image not found"])
+                triggerEvent(on: imageView, eventType: "onLoad", eventData: [:])
+                return
             }
         }
+        
+        // If we reach here, the image couldn't be loaded
+        print("❌ Failed to load image: \(source)")
+        triggerEvent(on: imageView, eventType: "onError", eventData: ["error": "Image not found"])
     }
     
     // Handle component methods
@@ -111,12 +147,21 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
         switch methodName {
         case "setImage":
             if let uri = args["uri"] as? String {
-                loadImage(from: uri, into: imageView, placeholder: nil)
+                // Use the same loading logic
+                let isRelative = args["isRelativePath"] as? Bool ?? false
+                
+                if isRelative {
+                    let key = sharedFlutterViewController?.lookupKey(forAsset: uri)
+                    let path = Bundle.main.path(forResource: key, ofType: nil)
+                    loadImage(from: uri, into: imageView, isRelative: true, path: path)
+                } else {
+                    loadImage(from: uri, into: imageView, isRelative: false, path: nil)
+                }
                 return true
             }
         case "reload":
-            // Get the current source from associated object
-            if let source = imageView.image {
+            // Force reload the current image
+            if let image = imageView.image {
                 // Just trigger the onLoad event again
                 self.triggerEvent(on: imageView, eventType: "onLoad", eventData: [:])
                 return true

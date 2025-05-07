@@ -16,18 +16,23 @@ class ImageProps {
   /// Placeholder image to show while loading
   final String? placeholder;
   
+  /// Whether the source is a relative path (for local assets)
+  final bool isRelativePath;
+  
   /// Create image props
   const ImageProps({
     required this.source,
     this.resizeMode,
     this.fadeDuration,
     this.placeholder,
+    this.isRelativePath = false,
   });
   
   /// Convert to props map
   Map<String, dynamic> toMap() {
     return {
       'source': source,
+      'isRelativePath': isRelativePath,
       if (resizeMode != null) 'resizeMode': resizeMode,
       if (fadeDuration != null) 'fadeDuration': fadeDuration,
       if (placeholder != null) 'placeholder': placeholder,
@@ -81,6 +86,31 @@ VDomElement networkImage({
     imageProps: ImageProps(
       source: url,
       resizeMode: resizeMode,
+      isRelativePath: false,
+    ),
+    layout: layout,
+    style: style,
+    onLoad: onLoad,
+    onError: onError,
+    events: events,
+  );
+}
+
+/// Create an image from a local asset
+VDomElement assetImage({
+  required String asset,
+  String resizeMode = 'contain',
+  LayoutProps layout = const LayoutProps(),
+  StyleSheet style = const StyleSheet(),
+  Function? onLoad,
+  Function? onError,
+  Map<String, dynamic>? events,
+}) {
+  return image(
+    imageProps: ImageProps(
+      source: asset,
+      resizeMode: resizeMode,
+      isRelativePath: true, // Mark as relative path for asset lookup
     ),
     layout: layout,
     style: style,
