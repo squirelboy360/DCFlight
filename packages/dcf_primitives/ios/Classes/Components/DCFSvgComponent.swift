@@ -78,7 +78,7 @@ class DCFSvgComponent: NSObject, DCFComponent {
     private func loadSVGFromAssetPath(_ asset: String, isRelativePath: Bool) -> SVGKImage? {
       
         // Method 1: Try loading from direct path if it looks like a file path
-        if (asset.hasPrefix("/") || asset.contains(".")) && FileManager.default.fileExists(atPath: asset) {
+        if (asset.hasPrefix("/") || asset.contains(".")) && FileManager.default.fileExists(atPath: asset) && isRelativePath == false{
             print("📂 Loading SVG from direct file path: \(asset)")
             return SVGKImage(contentsOfFile: asset)
         } else if asset.hasPrefix("http://") || asset.hasPrefix("https://") {
@@ -89,15 +89,17 @@ class DCFSvgComponent: NSObject, DCFComponent {
         }else if (isRelativePath == true){
             print("executing due to svg hardcoded")
       
-             let key = sharedFlutterViewController?.lookupKey(forAsset: asset)
-                let mainBundle = Bundle.main
-                let path = mainBundle.path(forResource: key, ofType: nil)
-            print("📦 Loading SVG from bundle path: \(String(describing: path))")
+            guard let key = sharedFlutterViewController?.lookupKey(forAsset: asset)else{
+                print("some serious something is happening \(asset)")
+                return SVGKImage(contentsOfFile: "assets/dcf/broken_img.svg")
+            }
+            
+            let mainBundle = Bundle.main
+            let path = mainBundle.path(forResource: key, ofType: nil)
+              
+    print("this is key \(key) and path is \(String(describing: path))")
+          
                 return SVGKImage(contentsOfFile: path)
-            
-            
-   
-            
         }
         print("❌ Could not load SVG from any location: \(asset)")
         return nil
