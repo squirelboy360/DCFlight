@@ -28,8 +28,17 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
         
         // Set image source if specified
         if let source = props["source"] as? String {
-              
+            let key = sharedFlutterViewController?.lookupKey(forAsset: source)
+            let mainBundle = Bundle.main
+            let path = mainBundle.path(forResource: key, ofType: nil)
+            
+
+            if (source.hasPrefix("https://")==false){
+                print("this image path is local")
+                loadImage(from: path!, into: imageView)
+            }else{
                 loadImage(from: source, into: imageView)
+            }
             
         }
         
@@ -82,12 +91,8 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
                             })
                         }
                     } else if(source.hasPrefix("https://")==false){
-                        let key = sharedFlutterViewController?.lookupKey(forAsset: source)
-                        let mainBundle = Bundle.main
-                        let path = mainBundle.path(forResource: key, ofType: nil)
-                        
-            
-                        if let image = UIImage(contentsOfFile: path ?? "wrong path") {
+                 
+                        if let image = UIImage(contentsOfFile: source ?? "wrong path") {
                                 // Cache the image
                                 DCFImageComponent.imageCache[source] = image
                                 
@@ -98,7 +103,7 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
                             self.triggerEvent(on: imageView, eventType: "onLoad", eventData: [:])
                            
                             } else {
-                                print("❌ Failed to load image from resolved path: \(path)")
+                                print("❌ Failed to load image from resolved path: \(source)")
                                 self.triggerEvent(on: imageView, eventType: "onError", eventData: ["error": "Image not found at resolved path"])
                                 return
                             }
