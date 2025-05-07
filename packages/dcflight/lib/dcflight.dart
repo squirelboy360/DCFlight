@@ -1,6 +1,7 @@
 // Main entry point for the DCFlight framework
 library dcflight;
 
+export 'package:dcflight/framework/utilities/flutter.dart' hide PlatformDispatcher;
 // Core Infrastructure
 export 'framework/renderer/vdom/vdom.dart';
 export 'framework/renderer/vdom/vdom_node.dart';
@@ -10,7 +11,7 @@ export 'framework/renderer/vdom/fragment.dart';
 export 'framework/renderer/vdom/component/component.dart';
 export 'framework/renderer/vdom/component/state_hook.dart';
 // Native Bridge System
-export 'framework/renderer/native_bridge/dispatcher.dart';
+export 'framework/renderer/native_bridge/dispatcher.dart' ;
 export 'framework/renderer/native_bridge/dispatcher_imp.dart';
 
 // Core Constants and Properties - explicitly exported for component developers

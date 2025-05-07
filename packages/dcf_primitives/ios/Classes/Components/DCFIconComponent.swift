@@ -26,8 +26,8 @@ class DCFIconComponent: NSObject, DCFComponent {
             return false
         }
         let mainBundle = Bundle.main
-        let path = mainBundle.path(forResource: key, ofType: nil)
-     
+        let path = mainBundle.path(forResource: key, ofType: "svg")
+print("icon path: \(String(describing: path))")
         var svgProps = props
         svgProps["asset"] = path
         return svgComponent.updateView(imageView, withProps: svgProps)

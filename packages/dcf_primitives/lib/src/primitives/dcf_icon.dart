@@ -1,8 +1,8 @@
 import 'package:dcflight/dcflight.dart';
-import 'package:dcflight/framework/utilities/flutter.dart';
 
 /// DCFIcon - Similar to React Native's Ionicons
 /// Provides a simple way to use built-in icons by name
+// / module or packages that want to add more icons can do so by cloning the dcfIcon and changing the package prop to the name of your package and dont't forget to clone the native side of dcfPrimitives
 VDomElement dcfIcon({
   required String name,
   double size = 24.0,
@@ -28,6 +28,7 @@ VDomElement dcfIcon({
     type: 'DCFIcon',
     props: {
       'name': name,
+      'package': 'dcf_primitives',
       'size': size,
       if (color != null) 'color': color,
       ...layout.toMap(),
