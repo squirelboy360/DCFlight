@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DCFlight Framework Overview</title>
+  <style>
+    body { font-family: sans-serif; line-height: 1.6; padding: 2rem; background: #f9f9f9; color: #333; }
+    h1, h2, h3 { color: #222; }
+    pre { background: #eee; padding: 1rem; overflow: auto; }
+    code { background: #ddd; padding: 0.2rem 0.4rem; }
+  </style>
+</head>
+<body>
+  <h1>🚀 DCFlight + Voltron: Technical Architecture</h1>
+
+  <h2>1. Runtime Flow (main.dart)</h2>
+  <p>The main entrypoint for apps built with DCFlight looks like this:</p>
+  <pre><code>void main() {
+  DCFlight.start(
+    app: VoltronView(
+      entryPoint: 'https://cdn.voltron.dev/apps/flight_app/initial_release/',
+      fallback: () => const Text('Could not load layout'),
+    ),
+  );
+}</code></pre>
+
+  <h3>What VoltronView does:</h3>
+  <ul>
+    <li>Fetches the remote <code>app.json</code> that represents the full VDOM tree</li>
+    <li>Hydrates the tree using <code>fromMap()</code></li>
+    <li>Renders the UI using native views created via method channels</li>
+    <li>Fallback UI is shown if the JSON fetch fails and no cache is available</li>
+  </ul>
+
+  <h2>2. Development Flow (DCFlight run)</h2>
+  <p>During development, the CLI creates a <code>.voltron/debug</code> folder containing:</p>
+  <ul>
+    <li>The user app’s <code>lib/</code> directory, <code>main.dart</code>, and <code>assets/</code></li>
+    <li>A temporary <code>app.json</code> generated from the user's VDOM</li>
+    <li>A <strong>hotflow</strong> server that watches for changes and streams JSON updates live</li>
+  </ul>
+
+  <h3>Hot Reload Workflow:</h3>
+  <ol>
+    <li>Developer writes code in <code>lib/app.dart</code></li>
+    <li>The framework converts the VDOM tree to JSON via <code>toMap()</code></li>
+    <li>The JSON is streamed over localhost (e.g. <code>ws://localhost:9000/stream</code>)</li>
+    <li>The app receives and applies live patches via the VDOM diff engine</li>
+  </ol>
+  <p>If debug stops, the debug folder is deleted and rebuilt on the next run.</p>
+
+  <h2>3. Release Flow (DCFlight release)</h2>
+  <p>For production builds, the following occurs:</p>
+  <ul>
+    <li><code>.voltron/initial_release</code> is created with:</li>
+    <ul>
+      <li><code>app.json</code> — the complete tree generated from the VDOM</li>
+      <li><code>assets/</code> and fonts</li>
+      <li><code>pubspec.yaml</code></li>
+      <li>Optional: <code>version.manifest.json</code></li>
+    </ul>
+    <li><code>flutter build</code> runs a minimal host app with <code>main.dart</code> + Voltron packages only</li>
+    <li>The CLI uploads the folder to the CDN (<code>cdn.voltron.dev</code>)</li>
+  </ul>
+
+  <h3>Production Runtime:</h3>
+  <ul>
+    <li><code>VoltronView</code> fetches JSON at startup</li>
+    <li>Hydrates and renders from the <code>app.json</code></li>
+    <li>On new version, the app fetches a new JSON and caches it</li>
+  </ul>
+
+  <h2>4. Summary: Responsibilities by Layer</h2>
+  <table border="1" cellpadding="8">
+    <tr><th>Component</th><th>Responsibility</th></tr>
+    <tr><td><code>main.dart</code></td><td>Hosts VoltronView and starts the app</td></tr>
+    <tr><td><code>VoltronView</code></td><td>Fetches & hydrates VDOM from JSON</td></tr>
+    <tr><td>VDOM (Dart)</td><td>Defines UI tree, supports toMap/fromMap</td></tr>
+    <tr><td>Native Layer</td><td>Creates and updates native views via method channel</td></tr>
+    <tr><td>Hotflow</td><td>Watches Dart files and streams live JSON diffs</td></tr>
+    <tr><td>Voltron CLI</td><td>Handles debug/release setup, builds, CDN upload</td></tr>
+  </table>
+
+  <h2>5. Offline Support</h2>
+  <ul>
+    <li>The initial <code>app.json</code> is bundled in release</li>
+    <li>Fallbacks to local copy or cached version on failure</li>
+    <li>Supports full offline launch and delayed updates</li>
+  </ul>
+
+  <p><strong>Tip:</strong> The app is one giant component tree where <code>app.dart</code> is the root. Everything else is nested and included through the VDOM.</p>
+</body>
+</html>
