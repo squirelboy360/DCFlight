@@ -6,89 +6,194 @@ Its aim is to simplify cross-platform app development for personal future projec
 
 ## ⚠️ Important Notice
 
-If you want to test it, do not use the CLI as it currently does nothing. However, you can run the example to see how it works. The example serves as an experimental implementation and will eventually be broken down, optimized, and integrated into the complete CLI.
+Just move from experimental to modularization where the framework is now modularised into a package. Although cli is not complete to allow the app run independent from the flutter cli, with hot reload support etc, the main framework as a package is complete (More platforms can be ported over but fundamentally done)
+
 
 ## 📌 Key Points
-
-### 1️⃣ Flutter Engine Usage (Current branch uses C header file to communicates between native and dart, no more abstaction for UI rendering, the Vdom uses direct native communication for UI CRUD i short)
-
-Developers might notice that the framework is built on Flutter—but in actuality, it is not.  
+DCFlight can be used in any flutter app to diverge from the flutter framework and render native UI. This involves extra work with no guarantee of hot relaod/ restart support or any dev tools. The DCFlight Cli is therefopre advised to be used.
 It is almost impossible to decouple the Dart VM from Flutter. To work around this:
-
-- The framework is built parallel to Flutter Engine and not on top(This means we get Dart VM and the rest is handled by the native layer instead of Platform Views or any flutter abstraction while your usual flutter engine runs parallel for the dart runtime as its needed to start the the communication with native side and if flutter View is needed to be spawned for canvas rendering.
-- When abstracting the Flutter engine, I separate it into a dedicated package. Currenttly everything is handled as a package.
-- This allows communication with the Flutter engine in headless mode, letting the native side handle rendering.
-
-### 2️⃣ Current Syntax Needs Improvement 🤦‍♂️
-
-The current syntax is not great, but I will abstract over it later.
 
 ## 📝 Dart Example
 
 ```dart
 
 void main() {
-  initializeApplication(DCMauiDemoApp());
+  DCFlight.start(app: DCFlightDemoApp());
 }
 
-class DCMauiDemoApp extends StatefulComponent {
+class DCFlightDemoApp extends StatefulComponent {
   @override
-  UIComponent build() {
-    // State hooks
-    final counter = useState(0, 'counter');
+  UIComponent render() {
+    // State for theme
+    final isDarkTheme = useState(false);
+    
+    // State for active tab
+    final activeTabIndex = useState(0);
+    
+    // State for counter
+    final counterState = useState(0);
+    
+    // Derive theme colors based on isDarkTheme
+    final backgroundColor = isDarkTheme.value 
+        ? const Color(0xFF121212) 
+        : const Color(0xFFF5F5F5);
+    
+    final textColor = isDarkTheme.value 
+        ? const Color(0xFFFFFFFF) 
+        : const Color(0xFF000000);
+    
+    final accentColor = isDarkTheme.value 
+        ? const Color(0xFF536DFE) 
+        : const Color(0xFF3D5AFE);
+    
+    // Define tabs
+    final tabs = [
+      "Counter",
+      "Gallery",
+      "About",
+    ];
+    
+    return view(
+      style: StyleSheet(
+        backgroundColor: backgroundColor,
+      ),
+      layout: const LayoutProps(
+        width: '100%',
+        height: '100%',
+        justifyContent: YogaJustifyContent.flexStart,
+        alignItems: YogaAlign.center,
+      ),
+      children: [
+        // Header
+        view(
+          style: StyleSheet(
+            backgroundColor: accentColor,
+          ),
+          layout:  LayoutProps(flexWrap: YogaWrap.wrap,
+            width: '100%',
+            height: 80,
+            flexDirection: YogaFlexDirection.row,
+            justifyContent: YogaJustifyContent.spaceBetween,
+            alignItems: YogaAlign.center,
+            padding: ScreenUtilities.instance.statusBarHeight,
+            paddingLeft: 20,
+            paddingRight: 20,
+          ),
+          children: [
+            text(
+              layout: const LayoutProps(
+                width: 200,
+                height: 40,
 
-    final bg = useState(Color(Colors.indigoAccent.toARGB32()), 'bg');
-
-    // Use an effect to update the ScrollView background color every second
-    useEffect(() {
-      final rnd = math.Random();
-      Color color() => Color(rnd.nextInt(0xffffffff));
-      // Set up a timer to update the color every second
-      final timer = Timer.periodic(const Duration(seconds: 5), (timer) {
-        // Update the background color
-        bg.setValue(color());
-        counter.setValue(counter.value + 1);
-        print("use effect per 5 second ${timer.tick}");
-        
-        
-      });
-
-      // Clean up the timer when the component is unmounted
-      return () {
-        timer.cancel();
-        developer.log('Canceled background color animation timer',
-            name: 'ColorAnimation');
-      };
-    }, dependencies: []);
-
-    return DC.View(
-        layout: LayoutProps(
-            flex: 1,
-            alignContent: YogaAlign.center,
-            justifyContent: YogaJustifyContent.center),
-        style: StyleSheet(backgroundColor: bg.value),
-        children: [
-          DC.Button(
-              onPress: () {
-                print(counter.value);
-                // counter.setValue(counter.value + 1);
-              },
-              layout: LayoutProps(padding: 10),
-              buttonProps: ButtonProps(
-                title: "increment",
-              )),
-          DC.Text(
-              textProps: TextProps(
-                  fontSize: 24,
-                  color: Colors.white,
-                  textAlign: 'center',
               ),
-              content: counter.value.toString(),
-              layout: LayoutProps(paddingHorizontal: 50, width: '100%'),
-              style: StyleSheet(backgroundColor: Colors.teal)),
-        ]);
+              content: "DCFlight Demo",
+              textProps: const TextProps(
+                fontSize: 24,
+                color: Color(0xFFFFFFFF),
+                fontWeight: "bold",
+              ),
+            ),
+            button(
+              buttonProps: ButtonProps(
+                title: isDarkTheme.value ? "☀️" : "🌙",
+                color: isDarkTheme.value ? const Color(0xFF000000) : const Color(0xFFFFFFFF),
+                backgroundColor: isDarkTheme.value ? const Color(0xFFFFFFFF) : const Color(0xFF222222),
+              ),
+              layout: const LayoutProps(
+                width: 50,
+                height: 40,
+              ),
+              onPress: () {
+                isDarkTheme.setValue(!isDarkTheme.value);
+              },
+            ),
+          ],
+        ),
+        
+        // Tabs
+        view(
+          style: StyleSheet(
+            backgroundColor: isDarkTheme.value ? const Color(0xFF1E1E1E) : const Color(0xFFE0E0E0),
+          ),
+          layout: const LayoutProps(
+            width: '100%',
+            height: 50,
+            flexDirection: YogaFlexDirection.row,
+            justifyContent: YogaJustifyContent.spaceEvenly,
+            alignItems: YogaAlign.center,
+          ),
+          children: [
+            for (int i = 0; i < tabs.length; i++)
+              button(
+                buttonProps: ButtonProps(
+                  title: tabs[i],
+                  color: i == activeTabIndex.value 
+                      ? const Color(0xFFFFFFFF) 
+                      : textColor,
+                  backgroundColor: i == activeTabIndex.value 
+                      ? accentColor
+                      : Colors.transparent,
+                ),
+                layout: const LayoutProps(
+                  width: 100,
+                  height: 40,
+                ),
+                onPress: () {
+                  activeTabIndex.setValue(i);
+                },
+              ),
+          ],
+        ),
+        
+        // Content based on active tab
+        renderTabContent(
+          activeTabIndex.value, 
+          counterState, 
+          textColor, 
+          accentColor,
+          backgroundColor,
+        ),
+      ],
+    );
+  }
+  
+  // Helper method to render the content of the active tab
+  UIComponent renderTabContent(
+    int activeTab, 
+    StateHook<int> counterState, 
+    Color textColor, 
+    Color accentColor,
+    Color backgroundColor,
+  ) {
+    switch (activeTab) {
+      case 0:
+        return CounterScreen(
+          counterState: counterState,
+          textColor: textColor,
+          accentColor: accentColor,
+        );
+      case 1:
+        return galleryScreen(
+          textColor: textColor,
+          accentColor: accentColor,
+          backgroundColor: backgroundColor,
+        );
+      case 2:
+        return aboutScreen(
+          textColor: textColor,
+          accentColor: accentColor,
+        );
+      default:
+        return view();
+    }
   }
 }
+
+
+
+
+
+
 
 ```
 
