@@ -100,7 +100,7 @@ class DCFLayoutManager {
     
     /// Apply calculated layout to a view with optional animation
     @discardableResult
-    func applyLayout(to viewId: String, left: CGFloat, top: CGFloat, width: CGFloat, height: CGFloat, 
+    func applyLayout(to viewId: String, left: CGFloat, top: CGFloat, width: CGFloat, height: CGFloat,
                      animationDuration: TimeInterval = 0.0) -> Bool {
         guard let view = getView(withId: viewId) else {
             print("❌ Layout Error: View not found for ID \(viewId)")
@@ -235,7 +235,7 @@ extension DCFLayoutManager {
         // Associate the view with its Yoga node
         print("Associated view with node \(nodeId) of type \(componentType)")
         
-        // Let the component know it's registered - this allows each component 
+        // Let the component know it's registered - this allows each component
         // to handle its own specialized registration logic
         componentInstance.viewRegisteredWithShadowTree(view, nodeId: nodeId)
     }

@@ -1,4 +1,3 @@
-
 import 'package:dcflight/dcflight.dart';
 
 import 'primitives/button_definition.dart';
@@ -6,6 +5,8 @@ import 'primitives/text_definition.dart';
 import 'primitives/view_definition.dart';
 import 'primitives/image_definition.dart';
 import 'primitives/scroll_view_definition.dart';
+import 'primitives/svg_definition.dart';
+import 'primitives/dcf_icon_definition.dart';
 
 /// Plugin for DCFlight primitives
 class DCFPrimitivesPlugin extends DCFPlugin {
@@ -29,5 +30,9 @@ class DCFPrimitivesPlugin extends DCFPlugin {
     DCFlight.registerComponentDefinition(DCFTextDefinition());
     DCFlight.registerComponentDefinition(DCFImageDefinition());
     DCFlight.registerComponentDefinition(DCFScrollViewDefinition());
+    
+    // Register the new primitives
+    DCFlight.registerComponentDefinition(DCFSvgDefinition());
+    DCFlight.registerComponentDefinition(DCFIconDefinition());
   }
 }

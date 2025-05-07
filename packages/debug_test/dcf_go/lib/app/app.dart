@@ -1,8 +1,7 @@
-import 'dart:ui';
 
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
-import 'package:dcflight/framework/renderer/vdom/component/state_hook.dart';
+
 import 'package:dcflight/framework/utilities/flutter.dart';
 import '../screens/counter_screen.dart';
 import '../screens/gallery_screen.dart';
@@ -32,6 +31,8 @@ class DCFlightDemoApp extends StatefulComponent {
     final accentColor = isDarkTheme.value 
         ? const Color(0xFF536DFE) 
         : const Color(0xFF3D5AFE);
+    
+
     
     // Define tabs
     final tabs = [

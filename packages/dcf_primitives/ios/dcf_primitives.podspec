@@ -13,7 +13,8 @@ A crossplatform framework.
   s.platform = :ios, '13.5'
   s.dependency 'Flutter'
   s.dependency 'dcflight'
-
+  s.dependency 'SVGKit', '~> 3.0.0'  # Add SVGKit dependency
+  
   s.swift_version = '5.0'
 
   # CRITICAL CHANGE: Set to false - use dynamic framework instead of static

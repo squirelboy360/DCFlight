@@ -19,6 +19,10 @@ import dcflight
         DCFComponentRegistry.shared.registerComponent("Image", componentClass: DCFImageComponent.self)
         DCFComponentRegistry.shared.registerComponent("ScrollView", componentClass: DCFScrollViewComponent.self)
         
+        // Register new primitives
+        DCFComponentRegistry.shared.registerComponent("Svg", componentClass: DCFSvgComponent.self)
+        DCFComponentRegistry.shared.registerComponent("DCFIcon", componentClass: DCFIconComponent.self)
+        
         print("✅ DCF Primitives: All components registered successfully")
     }
 }
