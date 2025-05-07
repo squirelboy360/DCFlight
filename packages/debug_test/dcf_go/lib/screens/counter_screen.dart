@@ -54,7 +54,7 @@ UIComponent CounterScreen({
             ),
           ),
           svg(
-            asset: 'logo_bg.svg',
+            asset: 'assets/logo_bg.svg',
             style: StyleSheet(backgroundColor: Colors.white, borderRadius: 20),
             layout: const LayoutProps(
               padding: 5,
