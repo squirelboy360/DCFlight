@@ -1,7 +1,5 @@
-
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
-
 
 // Change from class to function that returns a VDomNode
 UIComponent CounterScreen({
@@ -19,49 +17,82 @@ UIComponent CounterScreen({
       padding: 20,
     ),
     children: [
-      scrollView(
+      view(
+        style: StyleSheet(backgroundColor: Colors.teal, borderRadius: 20),
         layout: const LayoutProps(
           width: '100%',
           height: 300,
-          justifyContent: YogaJustifyContent.center,
-          alignItems: YogaAlign.center,
-          marginBottom: 20,
+         
         ),
-        style: StyleSheet(backgroundColor: Colors.teal, borderRadius: 20),
         children: [
-          dcfIcon(
-            name: DCFIcons.folder,
-            color: Colors.purpleAccent,
-            size: 20,
-            style: StyleSheet(backgroundColor: Colors.white, borderRadius: 20),
+          scrollView(
             layout: const LayoutProps(
-              padding: 5,
-              margin: 20,
-              height: 50,
-              width: 50,
+              width: '100%',
+              height: 300,
+              justifyContent: YogaJustifyContent.center,
+              alignItems: YogaAlign.center,
+              marginBottom: 20,
             ),
-          ),
-          dcfIcon(
-            name: DCFIcons.edit,
-            color: Colors.purpleAccent,
-            size: 50,
-            style: StyleSheet(backgroundColor: Colors.white, borderRadius: 20),
-            layout: const LayoutProps(
-                padding: 5,
-              margin: 20,
-              height: 50,
-              width: 50,
-            ),
-          ),
-          svg(
-            asset: 'assets/logo_bg.svg',
-            style: StyleSheet(backgroundColor: Colors.white, borderRadius: 20),
-            layout: const LayoutProps(
-              padding: 5,
-              margin: 20,
-              height: 50,
-              width: 50,
-            ),
+
+            children: [
+              dcfIcon(
+                name: DCFIcons.folder,
+                color: Colors.purpleAccent,
+                size: 20,
+                style: StyleSheet(
+                  backgroundColor: Colors.white,
+                  borderRadius: 20,
+                ),
+                layout: const LayoutProps(
+                  padding: 5,
+                  margin: 20,
+                  height: 50,
+                  width: 50,
+                ),
+              ),
+              dcfIcon(
+                name: DCFIcons.edit,
+                color: Colors.purpleAccent,
+                size: 50,
+                style: StyleSheet(
+                  backgroundColor: Colors.white,
+                  borderRadius: 20,
+                ),
+                layout: const LayoutProps(
+                  padding: 5,
+                  margin: 20,
+                  height: 50,
+                  width: 50,
+                ),
+              ),
+              svg(
+                asset: 'assets/logo_bg.svg',
+                style: StyleSheet(
+                  backgroundColor: Colors.white,
+                  borderRadius: 20,
+                ),
+                layout: const LayoutProps(
+                  padding: 5,
+                  margin: 20,
+                  height: 50,
+                  width: 50,
+                ),
+              ),
+              text(content: "Image or png files test"),
+              image(
+                imageProps: ImageProps(source: 'assets/logo_bg.png'),
+                style: StyleSheet(
+                  backgroundColor: Colors.white,
+                  borderRadius: 20,
+                ),
+                layout: const LayoutProps(
+                  padding: 5,
+                  margin: 20,
+                  height: 50,
+                  width: 50,
+                ),
+              ),
+            ],
           ),
         ],
       ),
