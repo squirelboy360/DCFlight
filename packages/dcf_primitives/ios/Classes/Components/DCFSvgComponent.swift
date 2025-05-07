@@ -32,7 +32,7 @@ class DCFSvgComponent: NSObject, DCFComponent {
             
             let key = sharedFlutterViewController?.lookupKey(forAsset: asset)
             let mainBundle = Bundle.main
-            let path = mainBundle.path(forResource: key, ofType: "svg")
+            let path = mainBundle.path(forResource: key, ofType: nil)
             
             print("this is key \(key) and path is \(String(describing: path))")
             loadSvgFromAsset(asset, into: imageView, isRel: (props["isRelativePath"] as? Bool ?? false),path: path ?? "no path")
