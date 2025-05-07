@@ -28,21 +28,9 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
         
         // Set image source if specified
         if let source = props["source"] as? String {
-            // Check if we should use relative path resolution (for local assets)
-            let isRelative = props["isRelativePath"] as? Bool ?? false
+              
+                loadImage(from: source, into: imageView)
             
-            if isRelative {
-                // Use Flutter asset resolution for relative paths
-                let key = sharedFlutterViewController?.lookupKey(forAsset: source)
-                let mainBundle = Bundle.main
-                let path = mainBundle.path(forResource: key, ofType: nil)
-                
-                print("🖼️ Image asset lookup - key: \(String(describing: key)), path: \(String(describing: path))")
-                loadImage(from: source, into: imageView, isRelative: true, path: path)
-            } else {
-                // Use direct loading for absolute paths or URLs
-                loadImage(from: source, into: imageView, isRelative: false, path: nil)
-            }
         }
         
         // Set resize mode if specified
@@ -65,7 +53,7 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
     }
     
     // Load image from URL or resource
-    private func loadImage(from source: String, into imageView: UIImageView, isRelative: Bool, path: String?) {
+    private func loadImage(from source: String, into imageView: UIImageView) {
         // Check cache first
         if let cachedImage = DCFImageComponent.imageCache[source] {
             imageView.image = cachedImage
@@ -73,25 +61,7 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
             return
         }
         
-        // If it's a relative path and we have a resolved path
-        if isRelative, let resolvedPath = path {
-            print("📦 Loading image from resolved path: \(resolvedPath)")
-            if let image = UIImage(contentsOfFile: resolvedPath) {
-                // Cache the image
-                DCFImageComponent.imageCache[source] = image
-                
-                // Set the image
-                imageView.image = image
-                
-                // Trigger onLoad event
-                triggerEvent(on: imageView, eventType: "onLoad", eventData: [:])
-                return
-            } else {
-                print("❌ Failed to load image from resolved path: \(resolvedPath)")
-                triggerEvent(on: imageView, eventType: "onError", eventData: ["error": "Image not found at resolved path"])
-                return
-            }
-        }
+        
         
         // Check if it's a URL
         if source.hasPrefix("http://") || source.hasPrefix("https://") {
@@ -111,7 +81,28 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
                                 self.triggerEvent(on: imageView, eventType: "onLoad", eventData: [:])
                             })
                         }
-                    } else {
+                    } else if(source.hasPrefix("https://")==false){
+                        let key = sharedFlutterViewController?.lookupKey(forAsset: source)
+                        let mainBundle = Bundle.main
+                        let path = mainBundle.path(forResource: key, ofType: nil)
+                        
+            
+                        if let image = UIImage(contentsOfFile: path ?? "wrong path") {
+                                // Cache the image
+                                DCFImageComponent.imageCache[source] = image
+                                
+                                // Set the image
+                                imageView.image = image
+                                
+                                // Trigger onLoad event
+                            self.triggerEvent(on: imageView, eventType: "onLoad", eventData: [:])
+                           
+                            } else {
+                                print("❌ Failed to load image from resolved path: \(path)")
+                                self.triggerEvent(on: imageView, eventType: "onError", eventData: ["error": "Image not found at resolved path"])
+                                return
+                            }
+                    }else {
                         // Trigger onError event
                         DispatchQueue.main.async {
                             self.triggerEvent(on: imageView, eventType: "onError", eventData: ["error": "Failed to load image from URL"])
@@ -148,15 +139,7 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
         case "setImage":
             if let uri = args["uri"] as? String {
                 // Use the same loading logic
-                let isRelative = args["isRelativePath"] as? Bool ?? false
-                
-                if isRelative {
-                    let key = sharedFlutterViewController?.lookupKey(forAsset: uri)
-                    let path = Bundle.main.path(forResource: key, ofType: nil)
-                    loadImage(from: uri, into: imageView, isRelative: true, path: path)
-                } else {
-                    loadImage(from: uri, into: imageView, isRelative: false, path: nil)
-                }
+                loadImage(from: uri, into: imageView)
                 return true
             }
         case "reload":

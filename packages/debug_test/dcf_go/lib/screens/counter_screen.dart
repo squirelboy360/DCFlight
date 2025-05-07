@@ -80,7 +80,8 @@ UIComponent CounterScreen({
               ),
               text(content: "Image or png files test"),
               image(
-                imageProps: ImageProps(source: 'assets/logo_bg.png'),
+              
+                imageProps: ImageProps(source: 'assets/logo_bg.png',),
                 style: StyleSheet(
                   backgroundColor: Colors.white,
                   borderRadius: 20,

@@ -1,7 +1,4 @@
 import 'package:dcflight/dcflight.dart';
-import 'package:dcflight/framework/constants/layout_properties.dart';
-import 'package:dcflight/framework/constants/style_properties.dart';
-
 /// Image properties
 class ImageProps {
   /// The image source URI (can be a network URL or local resource)
@@ -16,8 +13,6 @@ class ImageProps {
   /// Placeholder image to show while loading
   final String? placeholder;
   
-  /// Whether the source is a relative path (for local assets)
-  final bool isRelativePath;
   
   /// Create image props
   const ImageProps({
@@ -25,14 +20,14 @@ class ImageProps {
     this.resizeMode,
     this.fadeDuration,
     this.placeholder,
-    this.isRelativePath = false,
+
   });
   
   /// Convert to props map
   Map<String, dynamic> toMap() {
     return {
       'source': source,
-      'isRelativePath': isRelativePath,
+      'isRelativePath': false,
       if (resizeMode != null) 'resizeMode': resizeMode,
       if (fadeDuration != null) 'fadeDuration': fadeDuration,
       if (placeholder != null) 'placeholder': placeholder,
@@ -86,7 +81,7 @@ VDomElement networkImage({
     imageProps: ImageProps(
       source: url,
       resizeMode: resizeMode,
-      isRelativePath: false,
+
     ),
     layout: layout,
     style: style,
@@ -110,7 +105,7 @@ VDomElement assetImage({
     imageProps: ImageProps(
       source: asset,
       resizeMode: resizeMode,
-      isRelativePath: true, // Mark as relative path for asset lookup
+    
     ),
     layout: layout,
     style: style,
