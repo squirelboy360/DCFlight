@@ -17,29 +17,18 @@ UIComponent CounterScreen({
       padding: 20,
     ),
     children: [
-      view(
-        style: StyleSheet(backgroundColor: Colors.teal, borderRadius: 20),
+    
+          scrollView(
+            style: StyleSheet(backgroundColor: Colors.teal, borderRadius: 20),
         layout: const LayoutProps(
           width: '100%',
           height: 300,
          
         ),
-        children: [
-          scrollView(
-             style: StyleSheet(
-                  backgroundColor: Colors.pink,
-                  borderRadius: 20,
-                ),
-            layout: const LayoutProps(
-              paddingTop: 50,
-              margin: 20,
-              width: '80%',
-              height: 200,
-              justifyContent: YogaJustifyContent.center,
-              alignItems: YogaAlign.center,
-              marginBottom: 20,
+            scrollViewProps: ScrollViewProps(
+             
+             
             ),
-
             children: [
               dcfIcon(
                 name: DCFIcons.folder,
@@ -101,8 +90,8 @@ UIComponent CounterScreen({
               ),
             ],
           ),
-        ],
-      ),
+        
+      
 
       text(
         content: "Counter: ${counterState.value}",

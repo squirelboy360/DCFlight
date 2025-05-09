@@ -20,14 +20,11 @@ class ScrollViewProps {
   /// Whether content should be clipped to bounds
   final bool clipsToBounds;
   
-  /// Content insets to apply to the scroll view content
-  final EdgeInsets? contentInset;
+  /// Additional padding at the top of the content area to ensure first items are visible
+  final double contentPaddingTop;
   
-  /// Additional content offset at the beginning
-  final double? contentOffsetStart;
-  
-  /// Adjust insets that automatically apply to scrollViews
-  final bool automaticallyAdjustContentInsets;
+  /// Additional padding at the start of the content area (left for horizontal, top for vertical)
+  final double contentOffsetStart;
   
   /// Create scroll view props
   const ScrollViewProps({
@@ -37,32 +34,22 @@ class ScrollViewProps {
     this.pagingEnabled = false,
     this.scrollEnabled = true,
     this.clipsToBounds = true,
-    this.contentInset,
-    this.contentOffsetStart,
-    this.automaticallyAdjustContentInsets = true,
+    this.contentPaddingTop = 0,
+    this.contentOffsetStart = 0,
   });
   
   /// Convert to props map
   Map<String, dynamic> toMap() {
-    final map = {
+    return {
       'showsIndicator': showsIndicator,
       'bounces': bounces,
       'horizontal': horizontal,
       'pagingEnabled': pagingEnabled,
       'scrollEnabled': scrollEnabled,
       'clipsToBounds': clipsToBounds,
-      'automaticallyAdjustContentInsets': automaticallyAdjustContentInsets,
+      'contentPaddingTop': contentPaddingTop,
+      'contentOffsetStart': contentOffsetStart,
     };
-    
-    if (contentInset != null) {
-      map['contentInset'] = contentInset!.toMap();
-    }
-    
-    if (contentOffsetStart != null) {
-      map['contentOffsetStart'] = contentOffsetStart;
-    }
-    
-    return map;
   }
 }
 
@@ -97,7 +84,7 @@ class EdgeInsets {
         right = horizontal;
         
   /// Convert to map for serialization
-  Map<String, dynamic> toMap() {
+  Map<String, double> toMap() {
     return {
       'top': top,
       'left': left,
@@ -152,9 +139,8 @@ VDomElement horizontalScrollView({
   bool pagingEnabled = false,
   bool scrollEnabled = true,
   bool clipsToBounds = true,
-  EdgeInsets? contentInset,
-  double? contentOffsetStart,
-  bool automaticallyAdjustContentInsets = true,
+  double contentPaddingTop = 0,
+  double contentOffsetStart = 0,
   LayoutProps layout = const LayoutProps(),
   StyleSheet style = const StyleSheet(),
   List<VDomNode> children = const [],
@@ -171,9 +157,8 @@ VDomElement horizontalScrollView({
       pagingEnabled: pagingEnabled,
       scrollEnabled: scrollEnabled,
       clipsToBounds: clipsToBounds,
-      contentInset: contentInset,
+      contentPaddingTop: contentPaddingTop,
       contentOffsetStart: contentOffsetStart,
-      automaticallyAdjustContentInsets: automaticallyAdjustContentInsets,
     ),
     layout: layout,
     style: style,
