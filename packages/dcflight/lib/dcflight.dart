@@ -1,7 +1,8 @@
 // Main entry point for the DCFlight framework
 library dcflight;
 
-export 'package:dcflight/framework/utilities/flutter.dart' hide PlatformDispatcher;
+export 'package:dcflight/framework/utilities/flutter_framework.dart' hide PlatformDispatcher,
+   Widget,View,StatefulWidget,State,BuildContext,MethodChannel,MethodCall,MethodCodec,PlatformException,AssetBundle,AssetBundleImageKey,AssetBundleImageProvider,ImageConfiguration,ImageStreamListener,ImageStream,ImageStreamCompleter,ImageInfo,ImageProvider,ImageErrorListener,ImageCache,Text,TextStyle,TextPainter,TextSpan,TextHeightBehavior,RenderBox,RenderObject,RenderObjectElement,RenderObjectWidget,StatefulElement,Element,ElementVisitor,WidgetInspectorService;
 // Core Infrastructure
 export 'framework/renderer/vdom/vdom.dart';
 export 'framework/renderer/vdom/vdom_node.dart';

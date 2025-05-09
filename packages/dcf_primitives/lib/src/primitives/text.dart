@@ -1,5 +1,4 @@
 import 'package:dcflight/dcflight.dart';
-import 'package:dcflight/framework/utilities/flutter.dart' show Color;
 
 /// Text style properties
 class TextProps {
