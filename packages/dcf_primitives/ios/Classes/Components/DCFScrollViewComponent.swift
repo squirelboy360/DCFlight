@@ -62,6 +62,34 @@ class DCFScrollViewComponent: NSObject, DCFComponent, ComponentMethodHandler, UI
             scrollView.isScrollEnabled = scrollEnabled
         }
         
+        // Set clipping if specified (default is true)
+        if let clipsToBounds = props["clipsToBounds"] as? Bool {
+            scrollView.clipsToBounds = clipsToBounds
+        }
+        
+        // Handle background color through StyleSheet
+        if let backgroundColor = props["backgroundColor"] as? String {
+            scrollView.backgroundColor = ColorUtilities.color(fromHexString: backgroundColor)
+        }
+        
+        // Set content inset if specified
+        if let contentInset = props["contentInset"] as? [String: Any] {
+            let top = (contentInset["top"] as? CGFloat) ?? 0
+            let left = (contentInset["left"] as? CGFloat) ?? 0
+            let bottom = (contentInset["bottom"] as? CGFloat) ?? 0
+            let right = (contentInset["right"] as? CGFloat) ?? 0
+            scrollView.contentInset = UIEdgeInsets(top: top, left: left, bottom: bottom, right: right)
+        }
+        
+        // Set scroll indicator insets if specified
+        if let scrollIndicatorInsets = props["scrollIndicatorInsets"] as? [String: Any] {
+            let top = (scrollIndicatorInsets["top"] as? CGFloat) ?? 0
+            let left = (scrollIndicatorInsets["left"] as? CGFloat) ?? 0
+            let bottom = (scrollIndicatorInsets["bottom"] as? CGFloat) ?? 0
+            let right = (scrollIndicatorInsets["right"] as? CGFloat) ?? 0
+            scrollView.scrollIndicatorInsets = UIEdgeInsets(top: top, left: left, bottom: bottom, right: right)
+        }
+        
         // After updating properties, recalculate content size if it's our custom scroll view
         if let customScrollView = scrollView as? DCFAutoContentScrollView {
             customScrollView.recalculateContentSize()
@@ -118,10 +146,8 @@ class DCFScrollViewComponent: NSObject, DCFComponent, ComponentMethodHandler, UI
         // Set different content sizes based on orientation
         if isHorizontal {
             scrollView.contentSize = CGSize(width: maxWidth, height: scrollView.bounds.height)
-            print("📏 Set horizontal content size: \(maxWidth) x \(scrollView.bounds.height)")
         } else {
             scrollView.contentSize = CGSize(width: scrollView.bounds.width, height: maxHeight)
-            print("📏 Set vertical content size: \(scrollView.bounds.width) x \(maxHeight)")
         }
     }
     
@@ -171,6 +197,17 @@ class DCFScrollViewComponent: NSObject, DCFComponent, ComponentMethodHandler, UI
         ])
     }
     
+    // Handle scroll events for continuous updates
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        // This can be expensive, so we might want to throttle this in production
+        triggerEvent(on: scrollView, eventType: "onScroll", eventData: [
+            "contentOffset": [
+                "x": scrollView.contentOffset.x,
+                "y": scrollView.contentOffset.y
+            ]
+        ])
+    }
+    
     // Handle component methods
     func handleMethod(methodName: String, args: [String: Any], view: UIView) -> Bool {
         guard let scrollView = view as? UIScrollView else { return false }
@@ -191,6 +228,9 @@ class DCFScrollViewComponent: NSObject, DCFComponent, ComponentMethodHandler, UI
             let bottomOffset = CGPoint(x: scrollView.contentOffset.x, 
                                      y: scrollView.contentSize.height - scrollView.bounds.height)
             scrollView.setContentOffset(bottomOffset, animated: animated)
+            return true
+        case "flashScrollIndicators":
+            scrollView.flashScrollIndicators()
             return true
         default:
             return false
@@ -221,8 +261,6 @@ class DCFAutoContentScrollView: UIScrollView {
     
     // Called when the scroll view is registered with a node ID
     func didRegisterWithNodeId(_ nodeId: String) {
-        print("📜 ScrollView registered with node ID: \(nodeId)")
-        
         // Force an initial content size calculation
         DispatchQueue.main.async { [weak self] in
             self?.recalculateContentSize()
@@ -270,7 +308,6 @@ class DCFAutoContentScrollView: UIScrollView {
             contentSize = CGSize(width: bounds.width, height: maxHeight)
         }
         
-        print("📐 Auto-calculated content size: \(contentSize.width) x \(contentSize.height) for frame \(frame.width) x \(frame.height)")
         isUpdatingContentSize = false
     }
     
@@ -281,15 +318,6 @@ class DCFAutoContentScrollView: UIScrollView {
         // Recalculate after layout completes
         DispatchQueue.main.async { [weak self] in
             self?.recalculateContentSize()
-        }
-    }
-    
-    // Override content size setter for debugging
-    override var contentSize: CGSize {
-        didSet {
-            if contentSize.width == 0 || contentSize.height == 0 {
-                print("⚠️ Zero contentSize detected, dimensions: \(contentSize.width) x \(contentSize.height)")
-            }
         }
     }
     

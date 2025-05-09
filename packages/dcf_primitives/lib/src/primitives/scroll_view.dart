@@ -1,6 +1,4 @@
 import 'package:dcflight/dcflight.dart';
-import 'package:dcflight/framework/constants/layout_properties.dart';
-import 'package:dcflight/framework/constants/style_properties.dart';
 
 /// ScrollView properties
 class ScrollViewProps {
@@ -19,6 +17,9 @@ class ScrollViewProps {
   /// Whether scrolling is enabled
   final bool scrollEnabled;
   
+  /// Whether content should be clipped to bounds
+  final bool clipsToBounds;
+  
   /// Create scroll view props
   const ScrollViewProps({
     this.showsIndicator = true,
@@ -26,6 +27,7 @@ class ScrollViewProps {
     this.horizontal = false,
     this.pagingEnabled = false,
     this.scrollEnabled = true,
+    this.clipsToBounds = true,
   });
   
   /// Convert to props map
@@ -36,6 +38,7 @@ class ScrollViewProps {
       'horizontal': horizontal,
       'pagingEnabled': pagingEnabled,
       'scrollEnabled': scrollEnabled,
+      'clipsToBounds': clipsToBounds,
     };
   }
 }
@@ -48,6 +51,7 @@ VDomElement scrollView({
   List<VDomNode> children = const [],
   Function? onScrollBegin,
   Function? onScrollEnd,
+  Function? onScroll,
   Map<String, dynamic>? events,
 }) {
   // Create events map if callbacks are provided
@@ -59,6 +63,10 @@ VDomElement scrollView({
   
   if (onScrollEnd != null) {
     eventMap['onScrollEnd'] = onScrollEnd;
+  }
+  
+  if (onScroll != null) {
+    eventMap['onScroll'] = onScroll;
   }
   
   return VDomElement(
@@ -76,23 +84,33 @@ VDomElement scrollView({
 /// Create a horizontal scrolling view
 VDomElement horizontalScrollView({
   bool showsIndicator = true,
+  bool bounces = true,
+  bool pagingEnabled = false,
+  bool scrollEnabled = true,
+  bool clipsToBounds = true,
   LayoutProps layout = const LayoutProps(),
   StyleSheet style = const StyleSheet(),
   List<VDomNode> children = const [],
   Function? onScrollBegin,
   Function? onScrollEnd,
+  Function? onScroll,
   Map<String, dynamic>? events,
 }) {
   return scrollView(
     scrollViewProps: ScrollViewProps(
       horizontal: true,
       showsIndicator: showsIndicator,
+      bounces: bounces,
+      pagingEnabled: pagingEnabled,
+      scrollEnabled: scrollEnabled,
+      clipsToBounds: clipsToBounds,
     ),
     layout: layout,
     style: style,
     children: children,
     onScrollBegin: onScrollBegin,
     onScrollEnd: onScrollEnd,
+    onScroll: onScroll,
     events: events,
   );
 }

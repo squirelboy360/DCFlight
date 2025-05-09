@@ -1,5 +1,4 @@
 import 'package:dcflight/dcflight.dart';
-import 'package:dcflight/framework/utilities/flutter.dart';
 
 /// A component that displays SVG images from assets
 VDomElement svg({

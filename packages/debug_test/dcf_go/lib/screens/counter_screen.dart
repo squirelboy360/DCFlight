@@ -26,6 +26,10 @@ UIComponent CounterScreen({
         ),
         children: [
           scrollView(
+             style: StyleSheet(
+                  backgroundColor: Colors.pink,
+                  borderRadius: 20,
+                ),
             layout: const LayoutProps(
               width: '100%',
               height: 300,
