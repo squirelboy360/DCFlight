@@ -14,6 +14,8 @@ class DCFGo extends StatefulComponent {
         flex: 1,
         padding: 8,
         paddingVertical: ScreenUtilities.instance.statusBarHeight,
+        alignContent: YogaAlign.center,
+        alignItems: YogaAlign.center
       ),
       children: [
         image(imageProps: ImageProps(source: 'assets/logo_bg.png'),layout: LayoutProps(
@@ -21,7 +23,6 @@ class DCFGo extends StatefulComponent {
           height: 150,
           padding: 8,
           marginBottom: 16,
-         alignSelf: YogaAlign.center,
         ),style: StyleSheet(
           borderRadius:50,
         )),
