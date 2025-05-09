@@ -81,13 +81,26 @@ class DCFScrollViewComponent: NSObject, DCFComponent, ComponentMethodHandler, UI
             scrollView.contentInset = UIEdgeInsets(top: top, left: left, bottom: bottom, right: right)
         }
         
-        // Set scroll indicator insets if specified
-        if let scrollIndicatorInsets = props["scrollIndicatorInsets"] as? [String: Any] {
-            let top = (scrollIndicatorInsets["top"] as? CGFloat) ?? 0
-            let left = (scrollIndicatorInsets["left"] as? CGFloat) ?? 0
-            let bottom = (scrollIndicatorInsets["bottom"] as? CGFloat) ?? 0
-            let right = (scrollIndicatorInsets["right"] as? CGFloat) ?? 0
-            scrollView.scrollIndicatorInsets = UIEdgeInsets(top: top, left: left, bottom: bottom, right: right)
+        // Automatically adjust content insets
+        if let adjustAutomatically = props["automaticallyAdjustContentInsets"] as? Bool {
+            if #available(iOS 11.0, *) {
+                scrollView.contentInsetAdjustmentBehavior = adjustAutomatically ? .automatic : .never
+            }
+        }
+        
+        // Store content offset start value for later application
+        if let offsetStart = props["contentOffsetStart"] as? CGFloat {
+            objc_setAssociatedObject(
+                scrollView,
+                UnsafeRawPointer(bitPattern: "contentOffsetStart".hashValue)!,
+                offsetStart,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+            
+            // Set initial offset after short delay to ensure content size is properly calculated
+            if let customScrollView = scrollView as? DCFAutoContentScrollView {
+                customScrollView.initialOffsetStart = offsetStart
+            }
         }
         
         // After updating properties, recalculate content size if it's our custom scroll view
@@ -123,7 +136,7 @@ class DCFScrollViewComponent: NSObject, DCFComponent, ComponentMethodHandler, UI
         var maxWidth: CGFloat = 0
         var maxHeight: CGFloat = 0
         
-        // Get the farthest right and bottom edges
+        // Get the farthest right and bottom edges of all subviews
         for subview in scrollView.subviews {
             let right = subview.frame.origin.x + subview.frame.size.width
             let bottom = subview.frame.origin.y + subview.frame.size.height
@@ -133,8 +146,8 @@ class DCFScrollViewComponent: NSObject, DCFComponent, ComponentMethodHandler, UI
         }
         
         // Add some padding to ensure content is fully scrollable
-        maxWidth += 20
-        maxHeight += 20
+        maxWidth += 40 // Increased padding for better visibility of first item
+        maxHeight += 40
         
         // Ensure content size is at least as large as the scroll view bounds
         maxWidth = max(maxWidth, scrollView.bounds.width)
@@ -148,6 +161,20 @@ class DCFScrollViewComponent: NSObject, DCFComponent, ComponentMethodHandler, UI
             scrollView.contentSize = CGSize(width: maxWidth, height: scrollView.bounds.height)
         } else {
             scrollView.contentSize = CGSize(width: scrollView.bounds.width, height: maxHeight)
+        }
+        
+        // Apply initial offset from contentOffsetStart if available
+        if let offsetStart = objc_getAssociatedObject(
+                scrollView,
+                UnsafeRawPointer(bitPattern: "contentOffsetStart".hashValue)!
+             ) as? CGFloat {
+            // Apply with small delay to ensure content size is set
+            DispatchQueue.main.async {
+                let offset = isHorizontal ? 
+                    CGPoint(x: offsetStart, y: 0) : 
+                    CGPoint(x: 0, y: offsetStart)
+                scrollView.setContentOffset(offset, animated: false)
+            }
         }
     }
     
@@ -243,6 +270,7 @@ class DCFScrollViewComponent: NSObject, DCFComponent, ComponentMethodHandler, UI
 // Custom scroll view that automatically manages its content size
 class DCFAutoContentScrollView: UIScrollView {
     private var isUpdatingContentSize = false
+    var initialOffsetStart: CGFloat?
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -257,6 +285,11 @@ class DCFAutoContentScrollView: UIScrollView {
     private func setupScrollView() {
         clipsToBounds = true
         backgroundColor = .clear
+        
+        // Fix for safe area handling
+        if #available(iOS 11.0, *) {
+            contentInsetAdjustmentBehavior = .automatic
+        }
     }
     
     // Called when the scroll view is registered with a node ID
@@ -284,9 +317,10 @@ class DCFAutoContentScrollView: UIScrollView {
             maxHeight = max(maxHeight, bottom)
         }
         
-        // Add some padding
-        maxWidth += 20
-        maxHeight += 20
+        // Add increased padding to ensure content is fully scrollable
+        // This is essential for first item visibility - especially for the first items at the beginning
+        maxWidth += 40  // Increased padding
+        maxHeight += 40 // Increased padding
         
         // Set minimum content size to the scroll view's frame
         maxWidth = max(maxWidth, bounds.width)
@@ -309,15 +343,70 @@ class DCFAutoContentScrollView: UIScrollView {
         }
         
         isUpdatingContentSize = false
+        
+        // Apply initial content offset if specified
+        if let offsetStart = initialOffsetStart {
+            let offset = isHorizontal ? 
+                CGPoint(x: offsetStart, y: 0) : 
+                CGPoint(x: 0, y: offsetStart)
+            
+            // Apply with a short delay to ensure content size is properly set
+            DispatchQueue.main.async { [weak self] in
+                self?.setContentOffset(offset, animated: false)
+                self?.initialOffsetStart = nil  // Apply only once
+            }
+        }
     }
     
-    // Override layout methods to ensure content size is updated after layout
+    // IMPORTANT: Add inset padding to avoid the issue with first items
+    override var contentOffset: CGPoint {
+        didSet {
+            // For debugging - uncomment if needed
+            // print("💠 Content offset changed: \(contentOffset)")
+        }
+    }
+    
     override func layoutSubviews() {
+        super.layoutSubviews()
+        
+        // When layout happens, ensure content offset is maintained
+        // This is critical for preserving scroll position during layout changes
+        let wasAtStart = (alwaysBounceHorizontal && contentOffset.x <= 0) || 
+                        (!alwaysBounceHorizontal && contentOffset.y <= 0)
+                        
         super.layoutSubviews()
         
         // Recalculate after layout completes
         DispatchQueue.main.async { [weak self] in
             self?.recalculateContentSize()
+            
+            // If we were at the start, ensure we can see the first item
+            if wasAtStart, let self = self {
+                // Fix issue where first item is not visible by adding a small offset
+                let isHorizontal = self.alwaysBounceHorizontal
+                
+                // Ensure we can always see the beginning
+                if isHorizontal && self.contentOffset.x > 0 {
+                    self.contentOffset = CGPoint(x: 0, y: self.contentOffset.y)
+                } else if !isHorizontal && self.contentOffset.y > 0 {
+                    self.contentOffset = CGPoint(x: self.contentOffset.x, y: 0)
+                }
+            }
+        }
+    }
+    
+    // Override content size setter for fixing edge cases
+    override var contentSize: CGSize {
+        didSet {
+            if contentSize.width == 0 || contentSize.height == 0 {
+                // Prevent zero content size
+                if contentSize.width == 0 {
+                    contentSize.width = max(1, bounds.width)
+                }
+                if contentSize.height == 0 {
+                    contentSize.height = max(1, bounds.height)
+                }
+            }
         }
     }
     
@@ -338,6 +427,27 @@ class DCFAutoContentScrollView: UIScrollView {
                 DispatchQueue.main.async { [weak self] in
                     self?.recalculateContentSize()
                 }
+            }
+        }
+    }
+    
+    // Add a slight offset at the beginning to ensure first item visibility
+    func ensureFirstItemVisible() {
+        let isHorizontal = alwaysBounceHorizontal
+        
+        if isHorizontal {
+            // For horizontal scrolling, ensure contentInset has left padding
+            if contentInset.left < 10 {
+                var insets = contentInset
+                insets.left = 10
+                contentInset = insets
+            }
+        } else {
+            // For vertical scrolling, ensure contentInset has top padding
+            if contentInset.top < 10 {
+                var insets = contentInset
+                insets.top = 10
+                contentInset = insets
             }
         }
     }

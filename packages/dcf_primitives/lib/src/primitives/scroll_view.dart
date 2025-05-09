@@ -20,6 +20,15 @@ class ScrollViewProps {
   /// Whether content should be clipped to bounds
   final bool clipsToBounds;
   
+  /// Content insets to apply to the scroll view content
+  final EdgeInsets? contentInset;
+  
+  /// Additional content offset at the beginning
+  final double? contentOffsetStart;
+  
+  /// Adjust insets that automatically apply to scrollViews
+  final bool automaticallyAdjustContentInsets;
+  
   /// Create scroll view props
   const ScrollViewProps({
     this.showsIndicator = true,
@@ -28,17 +37,72 @@ class ScrollViewProps {
     this.pagingEnabled = false,
     this.scrollEnabled = true,
     this.clipsToBounds = true,
+    this.contentInset,
+    this.contentOffsetStart,
+    this.automaticallyAdjustContentInsets = true,
   });
   
   /// Convert to props map
   Map<String, dynamic> toMap() {
-    return {
+    final map = {
       'showsIndicator': showsIndicator,
       'bounces': bounces,
       'horizontal': horizontal,
       'pagingEnabled': pagingEnabled,
       'scrollEnabled': scrollEnabled,
       'clipsToBounds': clipsToBounds,
+      'automaticallyAdjustContentInsets': automaticallyAdjustContentInsets,
+    };
+    
+    if (contentInset != null) {
+      map['contentInset'] = contentInset!.toMap();
+    }
+    
+    if (contentOffsetStart != null) {
+      map['contentOffsetStart'] = contentOffsetStart;
+    }
+    
+    return map;
+  }
+}
+
+/// Edge insets for content positioning
+class EdgeInsets {
+  final double top;
+  final double left;
+  final double bottom;
+  final double right;
+  
+  const EdgeInsets({
+    this.top = 0,
+    this.left = 0,
+    this.bottom = 0,
+    this.right = 0,
+  });
+  
+  /// Create edge insets with all sides equal
+  const EdgeInsets.all(double value)
+      : top = value,
+        left = value,
+        bottom = value,
+        right = value;
+        
+  /// Create edge insets with horizontal and vertical values
+  const EdgeInsets.symmetric({
+    double vertical = 0,
+    double horizontal = 0,
+  })  : top = vertical,
+        left = horizontal,
+        bottom = vertical,
+        right = horizontal;
+        
+  /// Convert to map for serialization
+  Map<String, dynamic> toMap() {
+    return {
+      'top': top,
+      'left': left,
+      'bottom': bottom,
+      'right': right,
     };
   }
 }
@@ -88,6 +152,9 @@ VDomElement horizontalScrollView({
   bool pagingEnabled = false,
   bool scrollEnabled = true,
   bool clipsToBounds = true,
+  EdgeInsets? contentInset,
+  double? contentOffsetStart,
+  bool automaticallyAdjustContentInsets = true,
   LayoutProps layout = const LayoutProps(),
   StyleSheet style = const StyleSheet(),
   List<VDomNode> children = const [],
@@ -104,6 +171,9 @@ VDomElement horizontalScrollView({
       pagingEnabled: pagingEnabled,
       scrollEnabled: scrollEnabled,
       clipsToBounds: clipsToBounds,
+      contentInset: contentInset,
+      contentOffsetStart: contentOffsetStart,
+      automaticallyAdjustContentInsets: automaticallyAdjustContentInsets,
     ),
     layout: layout,
     style: style,

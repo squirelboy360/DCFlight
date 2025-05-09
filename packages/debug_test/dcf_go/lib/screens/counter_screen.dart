@@ -31,8 +31,10 @@ UIComponent CounterScreen({
                   borderRadius: 20,
                 ),
             layout: const LayoutProps(
-              width: '100%',
-              height: 300,
+              paddingTop: 50,
+              margin: 20,
+              width: '80%',
+              height: 200,
               justifyContent: YogaJustifyContent.center,
               alignItems: YogaAlign.center,
               marginBottom: 20,
@@ -51,7 +53,7 @@ UIComponent CounterScreen({
                   padding: 5,
                   margin: 20,
                   height: 50,
-                  width: 50,
+                  width: '50%',
                 ),
               ),
               dcfIcon(
@@ -59,14 +61,14 @@ UIComponent CounterScreen({
                 color: Colors.purpleAccent,
                 size: 50,
                 style: StyleSheet(
-                  backgroundColor: Colors.white,
+                  backgroundColor: Colors.orange,
                   borderRadius: 20,
                 ),
                 layout: const LayoutProps(
                   padding: 5,
                   margin: 20,
                   height: 50,
-                  width: 50,
+                 width: '50%',
                 ),
               ),
               svg(
@@ -78,8 +80,8 @@ UIComponent CounterScreen({
                 layout: const LayoutProps(
                   padding: 5,
                   margin: 20,
-                  height: 50,
-                  width: 50,
+                  height: '50%',
+                 width: '50%',
                 ),
               ),
               text(content: "Image or png files test"),
