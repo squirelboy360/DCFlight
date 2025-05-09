@@ -28,6 +28,7 @@ class DCFGo extends StatefulComponent {
         )),
         text(
           content: 'Hello, DCF Go!',
+          layout: LayoutProps(width: 200),
           textProps: TextProps(fontSize: 24, color: Colors.black),
         ),
         button(
