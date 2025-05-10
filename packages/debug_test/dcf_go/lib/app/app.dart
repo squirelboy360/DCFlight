@@ -2,10 +2,19 @@ import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
 
 class DCFGo extends StatefulComponent {
+  // Define stackRef at the component level so it persists across renders
+  late final StackNavigatorRef _stackRef;
+  
+  // Constructor to initialize the stackRef
+  DCFGo() {
+    _stackRef = StackNavigatorRef('homeStack');
+  }
+  
   @override
   VDomNode render() {
     // Create reference to control navigation
-    final homeStackRef = useRef<StackNavigatorRef?>(null);
+    // This is a ref hook that will hold our StackNavigatorRef
+    final homeStackRef = useRef<StackNavigatorRef?>(_stackRef);
     
     return view(
       style: StyleSheet(
@@ -28,16 +37,22 @@ class DCFGo extends StatefulComponent {
   
   // Create Home tab with Stack Navigator
   VDomNode createHomeTab(RefObject<StackNavigatorRef?> homeStackRef) {
-    final ref = StackNavigatorRef('homeStack');
-    homeStackRef.value = ref; // Using .current instead of .setValue()
-    
-    return view(
-      style: StyleSheet(backgroundColor: Colors.white),
-      layout: LayoutProps(flex: 1),
-      children: [
-        createHomeMainScreen(homeStackRef),
+    return StackNavigator(
+      ref: _stackRef,  // Use the component-level stackRef
+      initialRouteId: 'homeMain',
+      routes: [
+        StackRoute(
+          id: 'homeMain',
+          title: 'Home',
+          component: createHomeMainScreen(homeStackRef),
+        ),
+        StackRoute(
+          id: 'homeDetails',
+          title: 'Details',
+          component: createDetailsScreen(homeStackRef),
+        ),
       ],
-    );
+    ).render();
   }
   
   // Create Home Main Screen
