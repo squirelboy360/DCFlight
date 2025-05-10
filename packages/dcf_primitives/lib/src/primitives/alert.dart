@@ -1,3 +1,4 @@
+import 'package:dcf_primitives/src/primitives/alert_definition.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// Alert action style
@@ -94,7 +95,7 @@ class AlertRef {
   
   /// Show the alert
   Future<void> show() async {
-    await PlatformDispatcher.instance.callComponentMethod(
+    await DCFAlertDefinition().callMethod(
       _viewId,
       'show',
       {},
@@ -103,7 +104,7 @@ class AlertRef {
   
   /// Dismiss the alert
   Future<void> dismiss() async {
-    await PlatformDispatcher.instance.callComponentMethod(
+    await DCFAlertDefinition().callMethod(
       _viewId,
       'dismiss',
       {},
@@ -112,7 +113,7 @@ class AlertRef {
   
   /// Add an action to the alert
   Future<void> addAction(AlertAction action) async {
-    await PlatformDispatcher.instance.callComponentMethod(
+    await DCFAlertDefinition().callMethod(
       _viewId,
       'addAction',
       action.toMap(),

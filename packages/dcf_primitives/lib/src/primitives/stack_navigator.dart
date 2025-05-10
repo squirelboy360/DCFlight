@@ -1,3 +1,4 @@
+import 'package:dcf_primitives/src/primitives/stack_navigator_definition.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// Stack navigation bar style
@@ -86,7 +87,7 @@ class StackNavigatorRef {
   
   /// Push a screen onto the navigation stack
   Future<void> push(String screenId, {bool animated = true}) async {
-    await PlatformDispatcher.instance.callComponentMethod(
+    await DCFStackNavigatorDefinition().callMethod(
       _viewId,
       'push',
       {
@@ -98,7 +99,7 @@ class StackNavigatorRef {
   
   /// Pop the top screen from the navigation stack
   Future<void> pop({bool animated = true}) async {
-    await PlatformDispatcher.instance.callComponentMethod(
+    await DCFStackNavigatorDefinition().callMethod(
       _viewId,
       'pop',
       {'animated': animated},
@@ -107,7 +108,7 @@ class StackNavigatorRef {
   
   /// Pop to the root screen
   Future<void> popToRoot({bool animated = true}) async {
-    await PlatformDispatcher.instance.callComponentMethod(
+    await DCFStackNavigatorDefinition().callMethod(
       _viewId,
       'popToRoot',
       {'animated': animated},
@@ -116,7 +117,7 @@ class StackNavigatorRef {
   
   /// Set whether the navigation bar is hidden
   Future<void> setNavigationBarHidden(bool hidden, {bool animated = true}) async {
-    await PlatformDispatcher.instance.callComponentMethod(
+    await DCFStackNavigatorDefinition().callMethod(
       _viewId,
       'setNavigationBarHidden',
       {
@@ -128,7 +129,7 @@ class StackNavigatorRef {
   
   /// Set the title of the current screen
   Future<void> setTitle(String title) async {
-    await PlatformDispatcher.instance.callComponentMethod(
+    await DCFStackNavigatorDefinition().callMethod(
       _viewId,
       'setTitle',
       {'title': title},

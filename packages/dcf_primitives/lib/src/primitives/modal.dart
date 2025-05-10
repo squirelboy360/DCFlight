@@ -1,3 +1,4 @@
+import 'package:dcf_primitives/src/primitives/modal_definition.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// Modal presentation style
@@ -82,7 +83,7 @@ class ModalRef {
   
   /// Present the modal
   Future<void> present({bool animated = true}) async {
-    await PlatformDispatcher.instance.callComponentMethod(
+    await DCFModalDefinition().callMethod(
       _viewId,
       'present',
       {'animated': animated},
@@ -91,7 +92,7 @@ class ModalRef {
   
   /// Dismiss the modal
   Future<void> dismiss({bool animated = true}) async {
-    await PlatformDispatcher.instance.callComponentMethod(
+    await DCFModalDefinition().callMethod(
       _viewId,
       'dismiss',
       {'animated': animated},
@@ -100,7 +101,7 @@ class ModalRef {
   
   /// Set the backdrop opacity
   Future<void> setBackdropOpacity(double opacity) async {
-    await PlatformDispatcher.instance.callComponentMethod(
+    await DCFModalDefinition().callMethod(
       _viewId,
       'setBackdropOpacity',
       {'opacity': opacity},

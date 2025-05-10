@@ -1,3 +1,4 @@
+import 'package:dcf_primitives/src/primitives/tab_navigator_definition.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// Tab navigator tab item
@@ -84,7 +85,7 @@ class TabNavigatorRef {
   
   /// Switch to a tab by index
   Future<void> switchToTab(int index) async {
-    await PlatformDispatcher.instance.callComponentMethod(
+    await DCFTabNavigatorDefinition().callMethod(
       _viewId,
       'switchToTab',
       {'index': index},
@@ -93,7 +94,7 @@ class TabNavigatorRef {
   
   /// Switch to a tab by ID
   Future<void> switchToTabWithId(String tabId) async {
-    await PlatformDispatcher.instance.callComponentMethod(
+    await DCFTabNavigatorDefinition().callMethod(
       _viewId,
       'switchToTabWithId',
       {'tabId': tabId},
@@ -102,7 +103,7 @@ class TabNavigatorRef {
   
   /// Set badge for a tab by index
   Future<void> setBadge(int index, String? badge) async {
-    await PlatformDispatcher.instance.callComponentMethod(
+    await DCFTabNavigatorDefinition().callMethod(
       _viewId,
       'setBadge',
       {
@@ -114,7 +115,7 @@ class TabNavigatorRef {
   
   /// Set whether the tab bar is hidden
   Future<void> setTabBarHidden(bool hidden, {bool animated = true}) async {
-    await PlatformDispatcher.instance.callComponentMethod(
+    await DCFTabNavigatorDefinition().callMethod(
       _viewId,
       'setTabBarHidden',
       {
