@@ -20,11 +20,8 @@ class DCFStackNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler
         let navigationController = UINavigationController()
         navigationController.delegate = self
         
-        // Fix for the navigation bar layout issues
-        if let navBar = navigationController.navigationBar as? UINavigationBar {
-            // Disable the auto-resizing mask to prevent constraint conflicts
-            navBar.translatesAutoresizingMaskIntoConstraints = false
-        }
+        // Do NOT modify the navigation bar's translatesAutoresizingMaskIntoConstraints
+        // UIKit manages the navigation bar's layout internally
         
         // Extract route configurations
         if let routes = props["routes"] as? [[String: Any]] {
@@ -46,7 +43,23 @@ class DCFStackNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler
         // Apply props
         updateView(navigationController.view, withProps: props)
         
-        return navigationController.view
+        // Create a container view to hold the navigation controller's view
+        let containerView = UIView(frame: navigationController.view.bounds)
+        containerView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        containerView.backgroundColor = UIColor.clear
+        
+        // Store the navigation controller with this container view
+        objc_setAssociatedObject(containerView, 
+                               UnsafeRawPointer(bitPattern: "navController".hashValue)!, 
+                               navigationController, 
+                               .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        
+        // Add navigation controller's view as a subview
+        containerView.addSubview(navigationController.view)
+        navigationController.view.frame = containerView.bounds
+        navigationController.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        
+        return containerView
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
@@ -220,9 +233,9 @@ class DCFStackNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler
     
     // Find the navigation controller for a view
     private func findNavigationController(for view: UIView) -> UINavigationController? {
-        // First, check if this view belongs directly to a navigation controller
-        if let navigationController = view.next as? UINavigationController {
-            return navigationController
+        // Check if this is our container view with an associated navigation controller
+        if let navController = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "navController".hashValue)!) as? UINavigationController {
+            return navController
         }
         
         // Otherwise, look through active navigation controllers
@@ -247,8 +260,8 @@ class DCFStackNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler
                                nodeId, 
                                .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         
-        // Find the navigation controller
-        if let navigationController = view.next as? UINavigationController {
+        // Check if this is our container view with an associated navigation controller
+        if let navigationController = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "navController".hashValue)!) as? UINavigationController {
             // Store in active navigation controllers
             DCFStackNavigatorComponent.activeNavigationControllers[nodeId] = navigationController
         }

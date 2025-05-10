@@ -16,21 +16,16 @@ class DCFGo extends StatefulComponent {
     // This is a ref hook that will hold our StackNavigatorRef
     final homeStackRef = useRef<StackNavigatorRef?>(_stackRef);
     
+    // Root container - similar to React Native's SafeAreaView pattern
     return view(
       style: StyleSheet(
-        backgroundColor: Colors.grey[100],
+        backgroundColor: Colors.white,
       ),
       layout: LayoutProps(
         flex: 1,
       ),
       children: [
-        // Use regular views for navigation instead
-        view(
-          layout: LayoutProps(flex: 1),
-          children: [
-            createHomeTab(homeStackRef),
-          ],
-        ),
+        createHomeTab(homeStackRef),
       ],
     );
   }
