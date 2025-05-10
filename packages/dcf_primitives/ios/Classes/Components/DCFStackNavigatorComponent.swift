@@ -20,6 +20,12 @@ class DCFStackNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler
         let navigationController = UINavigationController()
         navigationController.delegate = self
         
+        // Fix for the navigation bar layout issues
+        if let navBar = navigationController.navigationBar as? UINavigationBar {
+            // Disable the auto-resizing mask to prevent constraint conflicts
+            navBar.translatesAutoresizingMaskIntoConstraints = false
+        }
+        
         // Extract route configurations
         if let routes = props["routes"] as? [[String: Any]] {
             // Process initial route ID
@@ -272,6 +278,9 @@ class DCFRouteViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        // Make sure the view extends under the navigation bar for a cleaner look
+        self.edgesForExtendedLayout = .all
+        
         // Set up content view
         contentView.backgroundColor = UIColor.white
         contentView.translatesAutoresizingMaskIntoConstraints = false
@@ -279,7 +288,7 @@ class DCFRouteViewController: UIViewController {
         
         // Set up constraints
         NSLayoutConstraint.activate([
-            contentView.topAnchor.constraint(equalTo: view.topAnchor),
+            contentView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             contentView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             contentView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             contentView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
