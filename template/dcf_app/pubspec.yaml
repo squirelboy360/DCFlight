@@ -1,0 +1,31 @@
+name: dcf_app
+description: "A new DCFlight project."
+publish_to: 'none' 
+
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.2
+
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  dcflight:
+    path: ../../packages/dcflight
+
+  dcf_primitives:
+    path: ../../packages/dcf_primitives
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+
+
+# Assets go here
+flutter:
+  assets:
+    - assets/
