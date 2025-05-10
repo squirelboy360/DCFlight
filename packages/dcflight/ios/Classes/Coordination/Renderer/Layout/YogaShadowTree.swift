@@ -96,7 +96,7 @@ class YogaShadowTree {
         
         // Clean up children
         let childCount = YGNodeGetChildCount(node)
-        for i in 0..<childCount {
+        for _ in 0..<childCount {
             let childNode = YGNodeGetChild(node, 0) // Always remove the first one
             YGNodeRemoveChild(node, childNode)
         }
@@ -504,7 +504,7 @@ class YogaShadowTree {
     // Apply layout to a view
     private func applyLayoutToView(viewId: String, frame: CGRect) {
         // Get the view from the layout manager
-        guard let view = DCFLayoutManager.shared.getView(withId: viewId) else {
+        guard DCFLayoutManager.shared.getView(withId: viewId) != nil else {
             return
         }
         

@@ -13,7 +13,7 @@ class DCFIconComponent: NSObject, DCFComponent {
         let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFit
         imageView.clipsToBounds = true
-        updateView(imageView, withProps: props)
+        _ = updateView(imageView, withProps: props)
         return imageView
     }
 

@@ -114,7 +114,7 @@ extension UIFont {
                         let descriptor = font.fontDescriptor.addingAttributes([
                             .traits: [UIFontDescriptor.TraitKey.weight: weight]
                         ])
-                        finalFont = UIFont(descriptor: descriptor, size: fontSize) ?? font
+                        finalFont = UIFont(descriptor: descriptor, size: fontSize)
                     } else {
                         finalFont = font
                     }

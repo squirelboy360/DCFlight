@@ -35,7 +35,7 @@ class DCFScreenUtilities {
         guard let methodChannel = methodChannel else { return }
         
         methodChannel.setMethodCallHandler { [weak self] (call, result) in
-            guard let self = self else { 
+            guard let _ = self else { 
                 result(FlutterError(code: "UNAVAILABLE", 
                                    message: "Screen utilities not available", 
                                    details: nil))
@@ -49,7 +49,7 @@ class DCFScreenUtilities {
                     "width": bounds.width,
                     "height": bounds.height,
                     "scale": UIScreen.main.scale,
-                    "statusBarHeight": UIApplication.shared.statusBarFrame.height
+                    "statusBarHeight": self!.getStatusBarHeight()
                 ])
             } else {
                 result(FlutterMethodNotImplemented)
@@ -70,7 +70,7 @@ class DCFScreenUtilities {
                 "width": bounds.width,
                 "height": bounds.height,
                 "scale": UIScreen.main.scale,
-                "statusBarHeight": UIApplication.shared.statusBarFrame.height
+                "statusBarHeight": self.getStatusBarHeight()
             ])
             
             print("📱 Notified Flutter of screen dimension change: \(bounds.width)x\(bounds.height)")
@@ -85,5 +85,18 @@ class DCFScreenUtilities {
     // Get current screen height
     var screenHeight: CGFloat {
         return UIScreen.main.bounds.height
+    }
+    
+    // Get status bar height in a way that works on iOS 13 and newer
+    private func getStatusBarHeight() -> CGFloat {
+        if #available(iOS 13.0, *) {
+            let scenes = UIApplication.shared.connectedScenes
+            let windowScene = scenes.first as? UIWindowScene
+            let window = windowScene?.windows.first
+            return window?.windowScene?.statusBarManager?.statusBarFrame.height ?? 0
+        } else {
+            // Fall back to older API for iOS 12 and earlier
+            return UIApplication.shared.statusBarFrame.height
+        }
     }
 }

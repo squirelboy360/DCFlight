@@ -94,9 +94,22 @@ class DCMauiLayoutMethodHandler: NSObject {
             "width": bounds.width,
             "height": bounds.height,
             "scale": UIScreen.main.scale,
-            "statusBarHeight": UIApplication.shared.statusBarFrame.height
+            "statusBarHeight": getStatusBarHeight()
         ]
         
         result(dimensions)
+    }
+    
+    // Get status bar height in a way that works on iOS 13 and newer
+    private func getStatusBarHeight() -> CGFloat {
+        if #available(iOS 13.0, *) {
+            let scenes = UIApplication.shared.connectedScenes
+            let windowScene = scenes.first as? UIWindowScene
+            let window = windowScene?.windows.first
+            return window?.windowScene?.statusBarManager?.statusBarFrame.height ?? 0
+        } else {
+            // Fall back to older API for iOS 12 and earlier
+            return UIApplication.shared.statusBarFrame.height
+        }
     }
 }

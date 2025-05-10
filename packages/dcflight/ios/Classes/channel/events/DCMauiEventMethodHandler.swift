@@ -70,7 +70,7 @@ class DCMauiEventMethodHandler: NSObject {
             // Use the stored callback if available
             print("🎯 Using direct callback for event dispatch")
             callback(viewId, normalizedEventName, eventData)
-        } else if let channel = methodChannel {
+        } else if methodChannel != nil {
             // Fall back to method channel
             print("📤 Using method channel for event dispatch")
             DispatchQueue.main.async {
@@ -194,7 +194,7 @@ class DCMauiEventMethodHandler: NSObject {
         print("🔄 Normalizing event types: \(eventTypes) -> \(normalizedEventTypes)")
         
         // First try to find the component by looking at UI class type
-        for (componentType, componentClass) in DCFComponentRegistry.shared.componentTypes {
+        for (_, componentClass) in DCFComponentRegistry.shared.componentTypes {
             let tempInstance = componentClass.init()
             let tempView = tempInstance.createView(props: [:])
             

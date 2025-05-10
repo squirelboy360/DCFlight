@@ -18,7 +18,7 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
         imageView.clipsToBounds = true
         
         // Apply props
-        updateView(imageView, withProps: props)
+        _ = updateView(imageView, withProps: props)
         
         return imageView
     }
@@ -92,7 +92,7 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
                         }
                     } else if(source.hasPrefix("https://")==false){
                  
-                        if let image = UIImage(contentsOfFile: source ?? "wrong path") {
+                        if let image = UIImage(contentsOfFile: source) {
                                 // Cache the image
                                 DCFImageComponent.imageCache[source] = image
                                 
@@ -149,7 +149,7 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
             }
         case "reload":
             // Force reload the current image
-            if let image = imageView.image {
+            if imageView.image != nil {
                 // Just trigger the onLoad event again
                 self.triggerEvent(on: imageView, eventType: "onLoad", eventData: [:])
                 return true

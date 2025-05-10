@@ -19,7 +19,7 @@ class DCFTextComponent: NSObject, DCFComponent, ComponentMethodHandler {
         label.textColor = UIColor.black
         
         // Apply props
-        updateView(label, withProps: props)
+        _ = updateView(label, withProps: props)
         
         return label
     }

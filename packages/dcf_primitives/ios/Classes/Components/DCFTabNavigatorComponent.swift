@@ -50,9 +50,31 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler, 
         }
         
         // Apply props
-        updateView(tabBarController.view, withProps: props)
+        _ = updateView(tabBarController.view, withProps: props)
         
-        return tabBarController.view
+        // Create a container view
+        let containerView = UIView(frame: tabBarController.view.bounds)
+        containerView.backgroundColor = UIColor.clear
+        
+        // Store the tab controller with this container view
+        objc_setAssociatedObject(containerView, 
+                               UnsafeRawPointer(bitPattern: "tabController".hashValue)!, 
+                               tabBarController, 
+                               .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        
+        // Add tab controller's view as a subview
+        containerView.addSubview(tabBarController.view)
+        
+        // Set up proper constraints instead of autoresizing mask
+        tabBarController.view.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            tabBarController.view.topAnchor.constraint(equalTo: containerView.topAnchor),
+            tabBarController.view.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+            tabBarController.view.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            tabBarController.view.trailingAnchor.constraint(equalTo: containerView.trailingAnchor)
+        ])
+        
+        return containerView
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
@@ -168,12 +190,17 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler, 
     
     // Find the tab controller for a view
     private func findTabController(for view: UIView) -> UITabBarController? {
-        // First, check if this view belongs directly to a tab controller
+        // First, check if this view has an associated tab controller
+        if let tabBarController = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "tabController".hashValue)!) as? UITabBarController {
+            return tabBarController
+        }
+        
+        // Otherwise, check if this view belongs directly to a tab controller
         if let tabBarController = view.next as? UITabBarController {
             return tabBarController
         }
         
-        // Otherwise, look through active tab controllers
+        // Finally, look through active tab controllers
         if let viewId = getViewId(for: view), 
            let tabBarController = DCFTabNavigatorComponent.activeTabControllers[viewId] {
             return tabBarController

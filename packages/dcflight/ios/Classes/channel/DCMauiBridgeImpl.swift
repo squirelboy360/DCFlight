@@ -413,7 +413,7 @@ import Foundation
         NSLog("DCMauiFFIBridge: calculateLayout called with dimensions: \(screenWidth)x\(screenHeight)")
         
         // Make sure root view exists
-        guard let rootView = self.views["root"] else {
+        guard self.views["root"] != nil else {
             print("Root view is not registered! Cannot perform layout.")
             return false
         }

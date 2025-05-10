@@ -18,7 +18,7 @@ class DCFSvgComponent: NSObject, DCFComponent {
         imageView.clipsToBounds = true
         
         // Apply props
-        updateView(imageView, withProps: props)
+        _ = updateView(imageView, withProps: props)
         
         return imageView
     }

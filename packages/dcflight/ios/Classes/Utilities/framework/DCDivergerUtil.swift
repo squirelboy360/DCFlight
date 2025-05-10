@@ -53,7 +53,7 @@ import Flutter
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             let screenWidth = UIScreen.main.bounds.width
             let screenHeight = UIScreen.main.bounds.height
-            YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
+            _ = YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
         }
     }
 }

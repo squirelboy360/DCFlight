@@ -41,11 +41,10 @@ class DCFStackNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler
         }
         
         // Apply props
-        updateView(navigationController.view, withProps: props)
+        _ = updateView(navigationController.view, withProps: props)
         
         // Create a container view to hold the navigation controller's view
         let containerView = UIView(frame: navigationController.view.bounds)
-        containerView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         containerView.backgroundColor = UIColor.clear
         
         // Store the navigation controller with this container view
@@ -56,8 +55,15 @@ class DCFStackNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler
         
         // Add navigation controller's view as a subview
         containerView.addSubview(navigationController.view)
-        navigationController.view.frame = containerView.bounds
-        navigationController.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        
+        // Set up proper constraints instead of autoresizing mask
+        navigationController.view.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            navigationController.view.topAnchor.constraint(equalTo: containerView.topAnchor),
+            navigationController.view.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+            navigationController.view.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            navigationController.view.trailingAnchor.constraint(equalTo: containerView.trailingAnchor)
+        ])
         
         return containerView
     }
@@ -291,17 +297,14 @@ class DCFRouteViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        // Make sure the view extends under the navigation bar for a cleaner look
-        self.edgesForExtendedLayout = .all
-        
         // Set up content view
         contentView.backgroundColor = UIColor.white
         contentView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(contentView)
         
-        // Set up constraints
+        // Set up constraints - use edges instead of safeArea to avoid constraint conflicts
         NSLayoutConstraint.activate([
-            contentView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            contentView.topAnchor.constraint(equalTo: view.topAnchor),
             contentView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             contentView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             contentView.trailingAnchor.constraint(equalTo: view.trailingAnchor)

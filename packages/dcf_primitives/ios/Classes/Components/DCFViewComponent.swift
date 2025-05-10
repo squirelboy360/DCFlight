@@ -14,13 +14,13 @@ class DCFViewComponent: NSObject, DCFComponent {
         view.backgroundColor = UIColor.clear
         
         // Apply any props that were passed
-        updateView(view, withProps: props)
+        _ = updateView(view, withProps: props)
         
         return view
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        guard let view = view as? UIView else { return false }
+        // No need to check if it's a UIView since it already is
         
         // Apply background color if specified
         if let backgroundColor = props["backgroundColor"] as? String {

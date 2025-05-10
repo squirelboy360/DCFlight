@@ -15,7 +15,7 @@ class DCFAlertComponent: NSObject, DCFComponent, ComponentMethodHandler {
         containerView.backgroundColor = UIColor.clear
         
         // Apply props
-        updateView(containerView, withProps: props)
+        _ = _ = updateView(containerView, withProps: props)
         
         return containerView
     }
@@ -31,7 +31,7 @@ class DCFAlertComponent: NSObject, DCFComponent, ComponentMethodHandler {
         if let visible = props["visible"] as? Bool, visible {
             // Get the view ID
             if let viewId = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String {
-                showAlert(viewId: viewId, containerView: view, props: props)
+                _ = showAlert(viewId: viewId, containerView: view, props: props)
             }
         }
         
@@ -96,14 +96,26 @@ class DCFAlertComponent: NSObject, DCFComponent, ComponentMethodHandler {
     
     // Show the alert
     private func showAlert(viewId: String, containerView: UIView, props: [String: Any]) -> Bool {
-        // Get root view controller
-        guard let rootVC = UIApplication.shared.keyWindow?.rootViewController else {
+        // Get root view controller - iOS 13 compatible way
+        let rootVC: UIViewController?
+        if #available(iOS 13.0, *) {
+            // Use the scene-based approach for iOS 13+
+            rootVC = UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .flatMap { $0.windows }
+                .first { $0.isKeyWindow }?.rootViewController
+        } else {
+            // Use the old approach for iOS 12 and earlier
+            rootVC = UIApplication.shared.keyWindow?.rootViewController
+        }
+        
+        guard let rootViewController = rootVC else {
             print("❌ Cannot show alert: no root view controller")
             return false
         }
         
         // Get the top-most presented view controller
-        var topVC = rootVC
+        var topVC = rootViewController
         while let presentedVC = topVC.presentedViewController {
             topVC = presentedVC
         }
@@ -118,7 +130,7 @@ class DCFAlertComponent: NSObject, DCFComponent, ComponentMethodHandler {
         // Add actions if provided in props
         if let actions = props["actions"] as? [[String: Any]] {
             for action in actions {
-                addActionToAlert(viewId: viewId, controller: alertController, action: action)
+                _ = addActionToAlert(viewId: viewId, controller: alertController, action: action)
             }
         }
         

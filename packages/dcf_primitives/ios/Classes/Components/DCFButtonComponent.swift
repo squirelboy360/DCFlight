@@ -29,7 +29,7 @@ class DCFButtonComponent: NSObject, DCFComponent, ComponentMethodHandler {
         button.setTitleColor(UIColor.white, for: .normal)
         
         // Apply props
-        updateView(button, withProps: props)
+        _ = updateView(button, withProps: props)
         
         // Enable debug mode for this button in development
         #if DEBUG

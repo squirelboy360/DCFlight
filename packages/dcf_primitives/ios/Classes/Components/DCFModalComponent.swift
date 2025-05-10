@@ -15,7 +15,7 @@ class DCFModalComponent: NSObject, DCFComponent, ComponentMethodHandler {
         containerView.backgroundColor = UIColor.clear
         
         // Apply props
-        updateView(containerView, withProps: props)
+        _ = updateView(containerView, withProps: props)
         
         return containerView
     }
@@ -99,14 +99,26 @@ class DCFModalComponent: NSObject, DCFComponent, ComponentMethodHandler {
         // Get the animated flag
         let animated = args["animated"] as? Bool ?? true
         
-        // Get root view controller
-        guard let rootVC = UIApplication.shared.keyWindow?.rootViewController else {
+        // Get root view controller - iOS 13 compatible way
+        let rootVC: UIViewController?
+        if #available(iOS 13.0, *) {
+            // Use the scene-based approach for iOS 13+
+            rootVC = UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .flatMap { $0.windows }
+                .first { $0.isKeyWindow }?.rootViewController
+        } else {
+            // Use the old approach for iOS 12 and earlier
+            rootVC = UIApplication.shared.keyWindow?.rootViewController
+        }
+        
+        guard let rootViewController = rootVC else {
             print("❌ Cannot present modal: no root view controller")
             return false
         }
         
         // Get the top-most presented view controller
-        var topVC = rootVC
+        var topVC = rootViewController
         while let presentedVC = topVC.presentedViewController {
             topVC = presentedVC
         }
@@ -128,16 +140,7 @@ class DCFModalComponent: NSObject, DCFComponent, ComponentMethodHandler {
         // Copy subviews to the modal content view
         for subview in subviews {
             subview.removeFromSuperview()
-            modalVC.contentView.addSubview(subview)
-            
-            // Make the subview fill the content view
-            subview.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([
-                subview.topAnchor.constraint(equalTo: modalVC.contentView.topAnchor),
-                subview.bottomAnchor.constraint(equalTo: modalVC.contentView.bottomAnchor),
-                subview.leadingAnchor.constraint(equalTo: modalVC.contentView.leadingAnchor),
-                subview.trailingAnchor.constraint(equalTo: modalVC.contentView.trailingAnchor)
-            ])
+            modalVC.addContent(subview)
         }
         
         // Set up dismiss callback
@@ -211,7 +214,7 @@ class DCFModalComponent: NSObject, DCFComponent, ComponentMethodHandler {
         // Check if we should present initially
         if let props = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "initialProps".hashValue)!) as? [String: Any],
            let visible = props["visible"] as? Bool, visible {
-            presentModal(viewId: nodeId, containerView: view, args: props)
+            _ = presentModal(viewId: nodeId, containerView: view, args: props)
         }
     }
 }
@@ -289,5 +292,25 @@ class DCFModalViewController: UIViewController {
         if isBeingDismissed {
             onDismiss?()
         }
+    }
+    
+    // Add content to the modal
+    func addContent(_ contentSubview: UIView) {
+        // Remove existing content
+        for subview in contentView.subviews {
+            subview.removeFromSuperview()
+        }
+        
+        // Add the content
+        contentSubview.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(contentSubview)
+        
+        // Set up constraints to fill the content view
+        NSLayoutConstraint.activate([
+            contentSubview.topAnchor.constraint(equalTo: contentView.topAnchor),
+            contentSubview.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            contentSubview.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            contentSubview.trailingAnchor.constraint(equalTo: contentView.trailingAnchor)
+        ])
     }
 }

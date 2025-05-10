@@ -17,7 +17,7 @@ class DCFScrollViewComponent: NSObject, DCFComponent, ComponentMethodHandler, UI
         scrollView.bounces = true
         
         // Apply props
-        updateView(scrollView, withProps: props)
+        _ = updateView(scrollView, withProps: props)
         
         return scrollView
     }
