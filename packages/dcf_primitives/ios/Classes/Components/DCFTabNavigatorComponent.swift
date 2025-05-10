@@ -1,0 +1,285 @@
+import UIKit
+import dcflight
+
+class DCFTabNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler, UITabBarControllerDelegate {
+    // Keep track of active tab controllers
+    private static var activeTabControllers = [String: UITabBarController]()
+    
+    // Keep track of tab configurations by tab controller
+    private static var tabConfigsByNavigator = [String: [[String: Any]]]()
+    
+    required override init() {
+        super.init()
+    }
+    
+    func createView(props: [String: Any]) -> UIView {
+        // Create a tab bar controller
+        let tabBarController = UITabBarController()
+        tabBarController.delegate = self
+        
+        // Extract tab configurations
+        if let tabs = props["tabs"] as? [[String: Any]] {
+            // Create view controllers for tabs
+            var viewControllers: [UIViewController] = []
+            
+            for (index, tabConfig) in tabs.enumerated() {
+                // Create a placeholder view controller for the tab
+                let tabViewController = DCFTabViewController()
+                tabViewController.title = tabConfig["title"] as? String
+                tabViewController.tabId = tabConfig["id"] as? String
+                
+                // Create tab bar item
+                let tabBarItem = UITabBarItem(
+                    title: tabConfig["title"] as? String,
+                    image: getImage(from: tabConfig["icon"] as? String),
+                    selectedImage: getImage(from: tabConfig["selectedIcon"] as? String)
+                )
+                tabViewController.tabBarItem = tabBarItem
+                
+                viewControllers.append(tabViewController)
+            }
+            
+            // Set the view controllers
+            tabBarController.viewControllers = viewControllers
+            
+            // Set initial selected index
+            if let initialIndex = props["initialIndex"] as? Int, 
+               initialIndex < viewControllers.count {
+                tabBarController.selectedIndex = initialIndex
+            }
+        }
+        
+        // Apply props
+        updateView(tabBarController.view, withProps: props)
+        
+        return tabBarController.view
+    }
+    
+    func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
+        // Find the tab controller for this view
+        guard let tabBarController = findTabController(for: view) else {
+            return false
+        }
+        
+        // Store initial props for potential use later
+        objc_setAssociatedObject(view, 
+                               UnsafeRawPointer(bitPattern: "initialProps".hashValue)!, 
+                               props, 
+                               .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        
+        // Apply tab bar visibility
+        if let tabBarHidden = props["tabBarHidden"] as? Bool {
+            tabBarController.tabBar.isHidden = tabBarHidden
+        }
+        
+        // Apply tint color
+        if let tintColor = props["tintColor"] as? String {
+            tabBarController.tabBar.tintColor = ColorUtilities.color(fromHexString: tintColor)
+        }
+        
+        // Apply unselected tint color
+        if let unselectedTintColor = props["unselectedTintColor"] as? String {
+            tabBarController.tabBar.unselectedItemTintColor = ColorUtilities.color(fromHexString: unselectedTintColor)
+        }
+        
+        // Store tab configurations
+        if let tabs = props["tabs"] as? [[String: Any]], let viewId = getViewId(for: view) {
+            DCFTabNavigatorComponent.tabConfigsByNavigator[viewId] = tabs
+        }
+        
+        return true
+    }
+    
+    // Get an image from an image name
+    private func getImage(from imageName: String?) -> UIImage? {
+        guard let imageName = imageName else {
+            return nil
+        }
+        
+        // Check for system images first (SF Symbols)
+        if #available(iOS 13.0, *), imageName.hasPrefix("system:") {
+            let systemName = imageName.replacingOccurrences(of: "system:", with: "")
+            return UIImage(systemName: systemName)
+        }
+        
+        // Try to get an image from the bundle
+        return UIImage(named: imageName)
+    }
+    
+    // Handle TabNavigator-specific methods
+    func handleMethod(methodName: String, args: [String: Any], view: UIView) -> Bool {
+        // Get the view ID associated with this view
+        guard let viewId = getViewId(for: view),
+              let tabBarController = DCFTabNavigatorComponent.activeTabControllers[viewId] else {
+            print("❌ Cannot handle method for tab navigator: missing viewId or tab controller")
+            return false
+        }
+        
+        switch methodName {
+        case "switchToTab":
+            if let index = args["index"] as? Int, 
+               index < tabBarController.viewControllers?.count ?? 0 {
+                tabBarController.selectedIndex = index
+                return true
+            }
+            return false
+            
+        case "switchToTabWithId":
+            if let tabId = args["tabId"] as? String,
+               let viewControllers = tabBarController.viewControllers as? [DCFTabViewController] {
+                // Find the view controller with the matching tab ID
+                for (index, vc) in viewControllers.enumerated() {
+                    if vc.tabId == tabId {
+                        tabBarController.selectedIndex = index
+                        return true
+                    }
+                }
+            }
+            return false
+            
+        case "setBadge":
+            if let index = args["index"] as? Int,
+               let viewControllers = tabBarController.viewControllers,
+               index < viewControllers.count {
+                // Set badge string
+                let badge = args["badge"] as? String
+                viewControllers[index].tabBarItem.badgeValue = badge
+                return true
+            }
+            return false
+            
+        case "setTabBarHidden":
+            let hidden = args["hidden"] as? Bool ?? false
+            let animated = args["animated"] as? Bool ?? true
+            
+            if animated {
+                UIView.animate(withDuration: 0.3) {
+                    tabBarController.tabBar.isHidden = hidden
+                }
+            } else {
+                tabBarController.tabBar.isHidden = hidden
+            }
+            return true
+            
+        default:
+            return false
+        }
+    }
+    
+    // Find the tab controller for a view
+    private func findTabController(for view: UIView) -> UITabBarController? {
+        // First, check if this view belongs directly to a tab controller
+        if let tabBarController = view.next as? UITabBarController {
+            return tabBarController
+        }
+        
+        // Otherwise, look through active tab controllers
+        if let viewId = getViewId(for: view), 
+           let tabBarController = DCFTabNavigatorComponent.activeTabControllers[viewId] {
+            return tabBarController
+        }
+        
+        return nil
+    }
+    
+    // Get the view ID for a view
+    private func getViewId(for view: UIView) -> String? {
+        return objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String
+    }
+    
+    // Add a custom view hook for when the view is registered with the shadow tree
+    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+        // Store node ID on the view
+        objc_setAssociatedObject(view, 
+                               UnsafeRawPointer(bitPattern: "viewId".hashValue)!, 
+                               nodeId, 
+                               .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        
+        // Find the tab controller
+        if let tabBarController = view.next as? UITabBarController {
+            // Store in active tab controllers
+            DCFTabNavigatorComponent.activeTabControllers[nodeId] = tabBarController
+        }
+    }
+    
+    // MARK: - Tab Bar Controller Delegate
+    
+    func tabBarController(_ tabBarController: UITabBarController, 
+                        didSelect viewController: UIViewController) {
+        // Get the selected tab ID and index
+        let selectedIndex = tabBarController.selectedIndex
+        var selectedTabId = ""
+        
+        if let tabVC = viewController as? DCFTabViewController, let tabId = tabVC.tabId {
+            selectedTabId = tabId
+        }
+        
+        // Find the view and view ID for this tab controller
+        var navigatorView: UIView? = tabBarController.view
+        var navigatorViewId: String? = nil
+        
+        // Search through active tab controllers to find the matching view ID
+        for (viewId, controller) in DCFTabNavigatorComponent.activeTabControllers {
+            if controller === tabBarController {
+                navigatorViewId = viewId
+                break
+            }
+        }
+        
+        // Trigger tab change event
+        if let navigatorView = navigatorView, let navigatorViewId = navigatorViewId {
+            triggerEvent(on: navigatorView, eventType: "onTabChange", eventData: [
+                "index": selectedIndex,
+                "tabId": selectedTabId
+            ])
+            
+            print("✅ Tab changed: index=\(selectedIndex), tabId=\(selectedTabId), viewId=\(navigatorViewId)")
+        }
+    }
+}
+
+// Custom view controller for tab screens
+class DCFTabViewController: UIViewController {
+    // Tab identifier
+    var tabId: String?
+    
+    // Content view for tab content
+    let contentView = UIView()
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        // Set up content view
+        contentView.backgroundColor = UIColor.white
+        contentView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(contentView)
+        
+        // Set up constraints
+        NSLayoutConstraint.activate([
+            contentView.topAnchor.constraint(equalTo: view.topAnchor),
+            contentView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            contentView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            contentView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+        ])
+    }
+    
+    // Add content to the tab
+    func addContent(_ contentView: UIView) {
+        // Remove existing content
+        for subview in self.contentView.subviews {
+            subview.removeFromSuperview()
+        }
+        
+        // Add new content
+        self.contentView.addSubview(contentView)
+        
+        // Set up constraints
+        contentView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            contentView.topAnchor.constraint(equalTo: self.contentView.topAnchor),
+            contentView.bottomAnchor.constraint(equalTo: self.contentView.bottomAnchor),
+            contentView.leadingAnchor.constraint(equalTo: self.contentView.leadingAnchor),
+            contentView.trailingAnchor.constraint(equalTo: self.contentView.trailingAnchor)
+        ])
+    }
+}

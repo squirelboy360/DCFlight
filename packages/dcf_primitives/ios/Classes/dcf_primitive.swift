@@ -18,9 +18,16 @@ import dcflight
         DCFComponentRegistry.shared.registerComponent("Text", componentClass: DCFTextComponent.self)
         DCFComponentRegistry.shared.registerComponent("Image", componentClass: DCFImageComponent.self)
         DCFComponentRegistry.shared.registerComponent("ScrollView", componentClass: DCFScrollViewComponent.self)
+        
         // Register new primitives
         DCFComponentRegistry.shared.registerComponent("Svg", componentClass: DCFSvgComponent.self)
         DCFComponentRegistry.shared.registerComponent("DCFIcon", componentClass: DCFIconComponent.self)
+        
+        // Register navigation primitives
+        DCFComponentRegistry.shared.registerComponent("Modal", componentClass: DCFModalComponent.self)
+        DCFComponentRegistry.shared.registerComponent("Alert", componentClass: DCFAlertComponent.self)
+        DCFComponentRegistry.shared.registerComponent("StackNavigator", componentClass: DCFStackNavigatorComponent.self)
+        DCFComponentRegistry.shared.registerComponent("TabNavigator", componentClass: DCFTabNavigatorComponent.self)
         
         print("✅ DCF Primitives: All components registered successfully")
     }
