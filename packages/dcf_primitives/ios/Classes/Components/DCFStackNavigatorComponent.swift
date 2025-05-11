@@ -17,11 +17,8 @@ class DCFStackNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler
     
     func createView(props: [String: Any]) -> UIView {
         // Create a navigation controller
-        let navigationController = UINavigationController()
+        let navigationController = DCFSafeNavigationController()
         navigationController.delegate = self
-        
-        // Do NOT modify the navigation bar's translatesAutoresizingMaskIntoConstraints
-        // UIKit manages the navigation bar's layout internally
         
         // Extract route configurations
         if let routes = props["routes"] as? [[String: Any]] {
@@ -43,8 +40,8 @@ class DCFStackNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler
         // Apply props
         _ = updateView(navigationController.view, withProps: props)
         
-        // Create a container view to hold the navigation controller's view
-        let containerView = UIView(frame: navigationController.view.bounds)
+        // Create a simple container view for the navigation controller
+        let containerView = SafeContainerView(frame: CGRect(x: 0, y: 0, width: 100, height: 100))
         containerView.backgroundColor = UIColor.clear
         
         // Store the navigation controller with this container view
@@ -53,17 +50,10 @@ class DCFStackNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler
                                navigationController, 
                                .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         
-        // Add navigation controller's view as a subview
+        // CRITICAL FIX: Use autoresizing mask instead of constraints
+        navigationController.view.frame = containerView.bounds
+        navigationController.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         containerView.addSubview(navigationController.view)
-        
-        // Set up proper constraints instead of autoresizing mask
-        navigationController.view.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            navigationController.view.topAnchor.constraint(equalTo: containerView.topAnchor),
-            navigationController.view.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
-            navigationController.view.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
-            navigationController.view.trailingAnchor.constraint(equalTo: containerView.trailingAnchor)
-        ])
         
         return containerView
     }
@@ -284,7 +274,27 @@ class DCFStackNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler
             print("✅ Navigated to route: \(routeId)")
         }
     }
+    
+    // MARK: - Layout Management
+    
+    func applyLayout(_ view: UIView, layout: YGNodeLayout) {
+        // Apply frame to the container view
+        view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
+        
+        // If this is a navigation container, make sure internal view fills it
+        if let navigationController = findNavigationController(for: view) {
+            navigationController.view.frame = view.bounds
+            
+            // CRITICAL FIX: Reset any internal constraints that might be causing conflicts
+            for subview in navigationController.view.subviews {
+                if let navBar = subview as? UINavigationBar {
+                    navBar.setNeedsLayout()
+                }
+            }
+        }
+    }
 }
+
 
 // Custom view controller for route screens
 class DCFRouteViewController: UIViewController {
@@ -329,5 +339,35 @@ class DCFRouteViewController: UIViewController {
             contentView.leadingAnchor.constraint(equalTo: self.contentView.leadingAnchor),
             contentView.trailingAnchor.constraint(equalTo: self.contentView.trailingAnchor)
         ])
+    }
+}
+
+// Custom navigation controller that avoids constraint conflicts
+class DCFSafeNavigationController: UINavigationController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        // Disable translatesAutoresizingMaskIntoConstraints for the root view
+        view.translatesAutoresizingMaskIntoConstraints = true
+    }
+    
+    // Override updateViewConstraints to prevent conflicts
+    override func updateViewConstraints() {
+        // Find and remove the problematic constraint between navigation bar and focus guide
+        for constraint in view.constraints {
+            if let firstItem = constraint.firstItem as? NSObject, 
+               let secondItem = constraint.secondItem as? NSObject {
+                if firstItem.isKind(of: UINavigationBar.self) && 
+                   secondItem.description.contains("UINavigationControllerContentFocusContainerGuide") {
+                    constraint.isActive = false
+                    break
+                }
+                if secondItem.isKind(of: UINavigationBar.self) && 
+                   firstItem.description.contains("UINavigationControllerContentFocusContainerGuide") {
+                    constraint.isActive = false
+                    break
+                }
+            }
+        }
+        super.updateViewConstraints()
     }
 }

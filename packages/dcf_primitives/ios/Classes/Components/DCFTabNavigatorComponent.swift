@@ -13,8 +13,8 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler, 
     }
     
     func createView(props: [String: Any]) -> UIView {
-        // Create a tab bar controller
-        let tabBarController = UITabBarController()
+        // Create a tab bar controller with our custom safe implementation
+        let tabBarController = DCFSafeTabBarController()
         tabBarController.delegate = self
         
         // Extract tab configurations
@@ -52,8 +52,8 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler, 
         // Apply props
         _ = updateView(tabBarController.view, withProps: props)
         
-        // Create a container view
-        let containerView = UIView(frame: tabBarController.view.bounds)
+        // Create a simple container view for the tab controller
+        let containerView = SafeContainerView(frame: CGRect(x: 0, y: 0, width: 100, height: 100))
         containerView.backgroundColor = UIColor.clear
         
         // Store the tab controller with this container view
@@ -62,17 +62,10 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler, 
                                tabBarController, 
                                .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         
-        // Add tab controller's view as a subview
+        // CRITICAL FIX: Use autoresizing mask instead of constraints
+        tabBarController.view.frame = containerView.bounds
+        tabBarController.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         containerView.addSubview(tabBarController.view)
-        
-        // Set up proper constraints instead of autoresizing mask
-        tabBarController.view.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            tabBarController.view.topAnchor.constraint(equalTo: containerView.topAnchor),
-            tabBarController.view.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
-            tabBarController.view.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
-            tabBarController.view.trailingAnchor.constraint(equalTo: containerView.trailingAnchor)
-        ])
         
         return containerView
     }
@@ -263,7 +256,27 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler, 
             print("✅ Tab changed: index=\(selectedIndex), tabId=\(selectedTabId), viewId=\(navigatorViewId)")
         }
     }
+    
+    // MARK: - Layout Management
+    
+    func applyLayout(_ view: UIView, layout: YGNodeLayout) {
+        // Apply frame to the container view
+        view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
+        
+        // If this is a tab container, make sure internal view fills it
+        if let tabBarController = findTabController(for: view) {
+            tabBarController.view.frame = view.bounds
+            
+            // CRITICAL FIX: Reset any internal constraints that might be causing conflicts
+            for subview in tabBarController.view.subviews {
+                if let tabBar = subview as? UITabBar {
+                    tabBar.setNeedsLayout()
+                }
+            }
+        }
+    }
 }
+
 
 // Custom view controller for tab screens
 class DCFTabViewController: UIViewController {
