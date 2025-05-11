@@ -17,7 +17,7 @@ class DCFStackNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler
     
     func createView(props: [String: Any]) -> UIView {
         // Create a navigation controller
-        let navigationController = DCFSafeNavigationController()
+        let navigationController = UINavigationController()
         navigationController.delegate = self
         
         // Extract route configurations
@@ -41,7 +41,7 @@ class DCFStackNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler
         _ = updateView(navigationController.view, withProps: props)
         
         // Create a simple container view for the navigation controller
-        let containerView = SafeContainerView(frame: CGRect(x: 0, y: 0, width: 100, height: 100))
+        let containerView = UIView(frame: CGRect(x: 0, y: 0, width: 100, height: 100))
         containerView.backgroundColor = UIColor.clear
         
         // Store the navigation controller with this container view
@@ -339,35 +339,5 @@ class DCFRouteViewController: UIViewController {
             contentView.leadingAnchor.constraint(equalTo: self.contentView.leadingAnchor),
             contentView.trailingAnchor.constraint(equalTo: self.contentView.trailingAnchor)
         ])
-    }
-}
-
-// Custom navigation controller that avoids constraint conflicts
-class DCFSafeNavigationController: UINavigationController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        // Disable translatesAutoresizingMaskIntoConstraints for the root view
-        view.translatesAutoresizingMaskIntoConstraints = true
-    }
-    
-    // Override updateViewConstraints to prevent conflicts
-    override func updateViewConstraints() {
-        // Find and remove the problematic constraint between navigation bar and focus guide
-        for constraint in view.constraints {
-            if let firstItem = constraint.firstItem as? NSObject, 
-               let secondItem = constraint.secondItem as? NSObject {
-                if firstItem.isKind(of: UINavigationBar.self) && 
-                   secondItem.description.contains("UINavigationControllerContentFocusContainerGuide") {
-                    constraint.isActive = false
-                    break
-                }
-                if secondItem.isKind(of: UINavigationBar.self) && 
-                   firstItem.description.contains("UINavigationControllerContentFocusContainerGuide") {
-                    constraint.isActive = false
-                    break
-                }
-            }
-        }
-        super.updateViewConstraints()
     }
 }
