@@ -35,6 +35,11 @@ class DCFSafeNavigationController: UINavigationController {
         super.viewDidLoad()
         // Critical: force autoresizing mask for the view
         view.translatesAutoresizingMaskIntoConstraints = true
+        
+        // Set up to fix constraints after a short delay to ensure they're all created
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            self?.fixNavigationBarConstraints()
+        }
     }
     
     override func viewWillLayoutSubviews() {
@@ -57,17 +62,20 @@ class DCFSafeNavigationController: UINavigationController {
         // Find the conflicting constraint exactly matching the error description
         var constraintToFix: NSLayoutConstraint? = nil
         
+        // The specific constraint identified in the error is between 
+        // UINavigationBar and UIFocusContainerGuide
         for constraint in view.constraints {
+            // Check both directions of the constraint
             if let firstItem = constraint.firstItem as? UINavigationBar,
                let secondItem = constraint.secondItem as? UILayoutGuide,
-               secondItem.identifier == "UINavigationControllerContentFocusContainerGuide" {
+               String(describing: secondItem).contains("FocusContainerGuide") {
                 constraintToFix = constraint
                 break
             }
             
             if let secondItem = constraint.secondItem as? UINavigationBar,
                let firstItem = constraint.firstItem as? UILayoutGuide,
-               firstItem.identifier == "UINavigationControllerContentFocusContainerGuide" {
+               String(describing: firstItem).contains("FocusContainerGuide") {
                 constraintToFix = constraint
                 break
             }

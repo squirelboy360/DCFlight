@@ -29,6 +29,10 @@ import dcflight
         DCFComponentRegistry.shared.registerComponent("StackNavigator", componentClass: DCFStackNavigatorComponent.self)
         DCFComponentRegistry.shared.registerComponent("TabNavigator", componentClass: DCFTabNavigatorComponent.self)
         
+        // Register internal navigation components
+        DCFComponentRegistry.shared.registerComponent("_RouteComponent", componentClass: DCFRouteComponent.self)
+        DCFComponentRegistry.shared.registerComponent("_TabComponent", componentClass: DCFTabComponent.self)
+        
         print("✅ DCF Primitives: All components registered successfully")
     }
 }

@@ -1,12 +1,54 @@
 import UIKit
 import dcflight
 
+// MARK: - Internal Tab Component
+
+/// Component implementation for _TabComponent - used internally by TabNavigator
+class DCFTabComponent: NSObject, DCFComponent {
+    required override init() {
+        super.init()
+    }
+    
+    func createView(props: [String: Any]) -> UIView {
+        // Create a container view for tab content
+        let containerView = UIView()
+        containerView.backgroundColor = UIColor.clear
+        
+        // Store tab ID with the view
+        if let tabId = props["id"] as? String {
+            print("⚙️ Creating _TabComponent view for tab: \(tabId)")
+            objc_setAssociatedObject(containerView, 
+                                   UnsafeRawPointer(bitPattern: "tabId".hashValue)!, 
+                                   tabId, 
+                                   .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            
+            // Store the view in the tab views dictionary
+            DCFTabNavigatorComponent.tabViewsByTabId[tabId] = containerView
+            print("✅ Stored tab view for tabId: \(tabId)")
+        } else {
+            print("⚠️ _TabComponent created without tab ID")
+        }
+        
+        return containerView
+    }
+    
+    func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
+        // Not much to update here as this is mostly a container
+        return true
+    }
+}
+
+// MARK: - Tab Navigator Component
+
 class DCFTabNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler, UITabBarControllerDelegate {
     // Keep track of active tab controllers
     private static var activeTabControllers = [String: UITabBarController]()
     
     // Keep track of tab configurations by tab controller
     private static var tabConfigsByNavigator = [String: [[String: Any]]]()
+    
+    // Keep track of tab views by tab ID
+    static var tabViewsByTabId = [String: UIView]()
     
     required override init() {
         super.init()
@@ -35,6 +77,15 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler, 
                     selectedImage: getImage(from: tabConfig["selectedIcon"] as? String)
                 )
                 tabViewController.tabBarItem = tabBarItem
+                
+                // Find the tab's content view
+                if let tabId = tabConfig["id"] as? String, 
+                   let tabView = DCFTabNavigatorComponent.tabViewsByTabId[tabId] {
+                    print("✅ Found tab view for \(tabId), adding to tab controller")
+                    tabViewController.addContent(tabView)
+                } else if let tabId = tabConfig["id"] as? String {
+                    print("⚠️ Tab view not found for \(tabId) - tab will be empty")
+                }
                 
                 viewControllers.append(tabViewController)
             }

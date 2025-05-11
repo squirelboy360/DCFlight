@@ -1,6 +1,45 @@
 import UIKit
 import dcflight
 
+// MARK: - Internal Route Component
+
+/// Component implementation for _RouteComponent - used internally by StackNavigator
+class DCFRouteComponent: NSObject, DCFComponent {
+    required override init() {
+        super.init()
+    }
+    
+    func createView(props: [String: Any]) -> UIView {
+        // Create a container view for route content
+        let containerView = UIView()
+        containerView.backgroundColor = UIColor.clear
+        
+        // Store route ID with the view
+        if let routeId = props["id"] as? String {
+            print("⚙️ Creating _RouteComponent view for route: \(routeId)")
+            objc_setAssociatedObject(containerView, 
+                                   UnsafeRawPointer(bitPattern: "routeId".hashValue)!, 
+                                   routeId, 
+                                   .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            
+            // Store the view in the route views dictionary
+            DCFStackNavigatorComponent.routeViewsByRouteId[routeId] = containerView
+            print("✅ Stored route view for routeId: \(routeId)")
+        } else {
+            print("⚠️ _RouteComponent created without route ID")
+        }
+        
+        return containerView
+    }
+    
+    func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
+        // Not much to update here as this is mostly a container
+        return true
+    }
+}
+
+// MARK: - Stack Navigator Component
+
 class DCFStackNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler, UINavigationControllerDelegate {
     // Keep track of active navigation controllers
     private static var activeNavigationControllers = [String: UINavigationController]()
@@ -9,7 +48,7 @@ class DCFStackNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler
     private static var routeConfigsByNavigator = [String: [[String: Any]]]()
     
     // Keep track of route views by route ID
-    private static var routeViewsByRouteId = [String: UIView]()
+    static var routeViewsByRouteId = [String: UIView]()
     
     required override init() {
         super.init()
@@ -161,6 +200,14 @@ class DCFStackNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler
         let viewController = DCFRouteViewController()
         viewController.title = routeConfig["title"] as? String
         viewController.routeId = screenId
+        
+        // Find the route's content view
+        if let routeView = DCFStackNavigatorComponent.routeViewsByRouteId[screenId] {
+            print("✅ Found route view for \(screenId), adding to route controller")
+            viewController.addContent(routeView)
+        } else {
+            print("⚠️ Route view not found for \(screenId) - screen will be empty")
+        }
         
         // Push the view controller
         navigationController.pushViewController(viewController, animated: animated)
