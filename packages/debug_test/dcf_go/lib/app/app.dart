@@ -11,6 +11,8 @@ class DCFGo extends StatefulComponent {
     final sharedRoutes = {
       'details': detailsScreen,
     };
+
+    final tabState = useState(0);
     
     // Create tabs with their own stack navigators
     final tabs = [
@@ -79,30 +81,26 @@ class DCFGo extends StatefulComponent {
       ),
     ];
     
-    // Setup tab change callback
-    void onTabChange(int index) {
-      print('Switched to tab: $index');
-    }
-    
+
     return view(
       layout: LayoutProps(
         flex: 1,
-        // // Apply safe area insets
-        // paddingTop: ScreenUtilities.instance.statusBarHeight,
-        // paddingBottom: ScreenUtilities.instance.statusBarHeight,
       ),
       children: [
         // Tab-based navigation with stack navigation in each tab
         tabNavigator(
           tabs: tabs,
-          initialTabIndex: 2,
-          tabBarBackgroundColor: Colors.white,
-          tabTextColor: Colors.grey,
-          selectedTabTextColor: Colors.pink,
+          initialTabIndex: tabState.value,
+          tabBarBackgroundColor: Colors.amber,
+          showTabBar: true,
+
           layout: LayoutProps(
             flex: 1,
           ),
-          onTabChange: onTabChange,
+          onTabChange: (v){
+              tabState.setValue(v);
+      print('Switched to tab: $v');
+          },
         ),
       ],
     );
