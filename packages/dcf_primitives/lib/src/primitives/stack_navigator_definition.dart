@@ -1,5 +1,4 @@
 import 'package:dcflight/dcflight.dart';
-import 'package:flutter/foundation.dart';
 
 /// Definition for the StackNavigator component
 class StackNavigatorDefinition extends ComponentDefinition {

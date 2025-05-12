@@ -96,11 +96,10 @@ VDomElement stackNavigator({
 
 /// Represents a navigation reference that can be used to control the navigator
 class StackNavigatorRef {
-  final String _viewId;
   final NavigationController _controller;
   
   /// Create a new stack navigator reference
-  StackNavigatorRef(this._viewId, this._controller);
+  StackNavigatorRef(this._controller);
   
   /// Push a new route onto the stack
   Future<T?> push<T>(Route<T> route, {RouteTransition? transition}) {

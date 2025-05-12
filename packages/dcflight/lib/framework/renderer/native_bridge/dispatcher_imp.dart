@@ -257,6 +257,78 @@ class PlatformDispatcherIml implements PlatformDispatcher {
       return false;
     }
   }
+  
+  @override
+  Future<bool> pushRoute(String navigatorId, Map<String, dynamic> routeInfo, Map<String, dynamic>? transition) async {
+    try {
+      final result = await bridgeChannel.invokeMethod<bool>('pushRoute', {
+        'navigatorId': navigatorId,
+        'routeInfo': routeInfo,
+        'transition': transition,
+      });
+      return result ?? false;
+    } catch (e) {
+      debugPrint('Error pushing route: $e');
+      return false;
+    }
+  }
+  
+  @override
+  Future<bool> popRoute(String navigatorId, {dynamic result}) async {
+    try {
+      final success = await bridgeChannel.invokeMethod<bool>('popRoute', {
+        'navigatorId': navigatorId,
+        'result': result,
+      });
+      return success ?? false;
+    } catch (e) {
+      debugPrint('Error popping route: $e');
+      return false;
+    }
+  }
+  
+  @override
+  Future<bool> replaceRoute(String navigatorId, Map<String, dynamic> routeInfo, Map<String, dynamic>? transition) async {
+    try {
+      final success = await bridgeChannel.invokeMethod<bool>('replaceRoute', {
+        'navigatorId': navigatorId,
+        'routeInfo': routeInfo,
+        'transition': transition,
+      });
+      return success ?? false;
+    } catch (e) {
+      debugPrint('Error replacing route: $e');
+      return false;
+    }
+  }
+  
+  @override
+  Future<bool> popToRootRoute(String navigatorId, {bool animated = true}) async {
+    try {
+      final success = await bridgeChannel.invokeMethod<bool>('popToRootRoute', {
+        'navigatorId': navigatorId,
+        'animated': animated,
+      });
+      return success ?? false;
+    } catch (e) {
+      debugPrint('Error popping to root route: $e');
+      return false;
+    }
+  }
+  
+  @override
+  Future<bool> switchTab(String tabNavigatorId, int tabIndex) async {
+    try {
+      final success = await bridgeChannel.invokeMethod<bool>('switchTab', {
+        'tabNavigatorId': tabNavigatorId,
+        'index': tabIndex,
+      });
+      return success ?? false;
+    } catch (e) {
+      debugPrint('Error switching tab: $e');
+      return false;
+    }
+  }
 
   // Helper method to preprocess props for JSON serialization
   Map<String, dynamic> _preprocessProps(Map<String, dynamic> props) {

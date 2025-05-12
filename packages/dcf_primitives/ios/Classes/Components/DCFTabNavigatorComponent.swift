@@ -116,7 +116,7 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler, 
             return false
             
         case "getSelectedIndex":
-            return tabBarController.selectedIndex
+            return (tabBarController.selectedIndex != 0)
             
         default:
             return false
@@ -137,7 +137,7 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler, 
     
     func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
         // Notify Dart side of tab change
-        DCFLogger.info(message: "Tab selected: \(tabBarController.selectedIndex)")
+        print("Tab selected: \(tabBarController.selectedIndex)")
         
         // Send event to DCFlight
         let eventData: [String: Any] = ["index": tabBarController.selectedIndex]

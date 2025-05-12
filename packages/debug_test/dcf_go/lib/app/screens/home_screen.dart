@@ -3,7 +3,6 @@ import 'package:dcflight/dcflight.dart';
 
 /// Home screen
 VDomNode homeScreen(RouteContext context) {
-  final navigator = context.navigator;
   
   return view(
     layout: LayoutProps(
