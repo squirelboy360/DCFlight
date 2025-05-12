@@ -22,6 +22,10 @@ import dcflight
         DCFComponentRegistry.shared.registerComponent("Svg", componentClass: DCFSvgComponent.self)
         DCFComponentRegistry.shared.registerComponent("DCFIcon", componentClass: DCFIconComponent.self)
         
+        // Register navigation components
+        DCFComponentRegistry.shared.registerComponent("StackNavigator", componentClass: DCFStackNavigatorComponent.self)
+        DCFComponentRegistry.shared.registerComponent("TabNavigator", componentClass: DCFTabNavigatorComponent.self)
+        
         print("✅ DCF Primitives: All components registered successfully")
     }
 }
