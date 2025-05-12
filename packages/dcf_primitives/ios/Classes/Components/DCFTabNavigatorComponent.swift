@@ -22,10 +22,19 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler, 
     }
     
     func createView(props: [String: Any]) -> UIView {
-        // Configure tab bar controller with initial props
-        updateView(tabBarController.view, withProps: props)
+        // Create a container view that will hold the tab bar controller's view
+        let containerView = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        containerView.backgroundColor = .clear
         
-        return tabBarController.view
+        // Add the tab bar controller's view to the container
+        tabBarController.view.frame = containerView.bounds
+        tabBarController.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        containerView.addSubview(tabBarController.view)
+        
+        // Configure tab bar controller with initial props
+        updateView(containerView, withProps: props)
+        
+        return containerView
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
@@ -65,6 +74,13 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler, 
             if initialTabIndex >= 0 && initialTabIndex < tabBarController.viewControllers?.count ?? 0 {
                 tabBarController.selectedIndex = initialTabIndex
             }
+        }
+        
+        // Force layout update to handle orientation changes
+        if let containerView = view as? UIView {
+            tabBarController.view.frame = containerView.bounds
+            tabBarController.view.setNeedsLayout()
+            tabBarController.view.layoutIfNeeded()
         }
         
         return true
@@ -155,12 +171,25 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler, 
 extension DCFTabNavigatorComponent {
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
         // Apply the layout to the view
-        view.frame = CGRect(
+        let newFrame = CGRect(
             x: CGFloat(layout.left),
             y: CGFloat(layout.top),
             width: CGFloat(layout.width),
             height: CGFloat(layout.height)
         )
+        
+        // Update frame and force layout for the entire tab bar controller
+        view.frame = newFrame
+        tabBarController.view.frame = view.bounds
+        tabBarController.view.setNeedsLayout()
+        tabBarController.view.layoutIfNeeded()
+        
+        // Update safe area insets if needed for proper layout
+        if #available(iOS 11.0, *) {
+            for viewController in tabBarController.viewControllers ?? [] {
+                viewController.additionalSafeAreaInsets = .zero
+            }
+        }
     }
     
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
@@ -215,20 +244,43 @@ class TabViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = .white
         
-        // Create a container view for tab content
-        let containerView = UIView(frame: view.bounds)
-        containerView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        // Create a container view for tab content with proper constraints
+        let containerView = UIView()
+        containerView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(containerView)
-        contentView = containerView
         
-        // Tab content will be set by DCFlight framework
+        // Add proper constraints
+        NSLayoutConstraint.activate([
+            containerView.topAnchor.constraint(equalTo: view.topAnchor),
+            containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        
+        contentView = containerView
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // Ensure content view fills the available space
+        contentView?.frame = view.bounds
     }
     
     func getContentView() -> UIView {
         if contentView == nil {
-            contentView = UIView(frame: view.bounds)
-            contentView!.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-            view.addSubview(contentView!)
+            let containerView = UIView()
+            containerView.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(containerView)
+            
+            // Add proper constraints
+            NSLayoutConstraint.activate([
+                containerView.topAnchor.constraint(equalTo: view.topAnchor),
+                containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            ])
+            
+            contentView = containerView
         }
         return contentView!
     }

@@ -22,13 +22,22 @@ class DCFStackNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler
     }
     
     func createView(props: [String: Any]) -> UIView {
+        // Create a container view that will hold the navigation controller's view
+        let containerView = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        containerView.backgroundColor = .clear
+        
         // Configure navigation controller with initial props
         navigationController.navigationBar.prefersLargeTitles = true
         
-        // Apply props
-        updateView(navigationController.view, withProps: props)
+        // Add the navigation controller's view to the container with proper constraints
+        navigationController.view.frame = containerView.bounds
+        navigationController.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        containerView.addSubview(navigationController.view)
         
-        return navigationController.view
+        // Apply props
+        updateView(containerView, withProps: props)
+        
+        return containerView
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
@@ -200,13 +209,26 @@ class DCFRouteViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = .white
         
-        // Create a container view for route content
-        let containerView = UIView(frame: view.bounds)
-        containerView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        // Create a container view for route content with proper constraints
+        let containerView = UIView()
+        containerView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(containerView)
-        contentView = containerView
         
-        // Route content will be set by DCFlight framework
+        // Add proper constraints
+        NSLayoutConstraint.activate([
+            containerView.topAnchor.constraint(equalTo: view.topAnchor),
+            containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        
+        contentView = containerView
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // Ensure content view fills the available space
+        contentView?.frame = view.bounds
     }
     
     func setResult(_ result: Any?) {
@@ -219,9 +241,19 @@ class DCFRouteViewController: UIViewController {
     
     func getContentView() -> UIView {
         if contentView == nil {
-            contentView = UIView(frame: view.bounds)
-            contentView!.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-            view.addSubview(contentView!)
+            let containerView = UIView()
+            containerView.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(containerView)
+            
+            // Add proper constraints
+            NSLayoutConstraint.activate([
+                containerView.topAnchor.constraint(equalTo: view.topAnchor),
+                containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            ])
+            
+            contentView = containerView
         }
         return contentView!
     }
@@ -232,12 +264,25 @@ class DCFRouteViewController: UIViewController {
 extension DCFStackNavigatorComponent {
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
         // Apply the layout to the view
-        view.frame = CGRect(
+        let newFrame = CGRect(
             x: CGFloat(layout.left),
             y: CGFloat(layout.top),
             width: CGFloat(layout.width),
             height: CGFloat(layout.height)
         )
+        
+        // Update frame and force layout for the entire navigation controller
+        view.frame = newFrame
+        navigationController.view.frame = view.bounds
+        navigationController.view.setNeedsLayout()
+        navigationController.view.layoutIfNeeded()
+        
+        // Update safe area insets if needed for proper layout
+        if #available(iOS 11.0, *) {
+            for viewController in navigationController.viewControllers {
+                viewController.additionalSafeAreaInsets = .zero
+            }
+        }
     }
     
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
