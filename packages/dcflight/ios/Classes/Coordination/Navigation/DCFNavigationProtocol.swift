@@ -20,7 +20,7 @@ public protocol DCFNavigationHandler {
 
 /// Route transition configuration
 public struct DCFRouteTransition {
-    enum TransitionType: String {
+    public enum TransitionType: String {
         case platform = "platform"
         case fade = "fade"
         case slideRight = "slideRight"
@@ -30,10 +30,10 @@ public struct DCFRouteTransition {
         case none = "none"
     }
     
-    let type: TransitionType
-    let durationMs: Int
+    public let type: TransitionType
+    public let durationMs: Int
     
-    init(dictionary: [String: Any]) {
+    public init(dictionary: [String: Any]) {
         let typeString = dictionary["type"] as? String ?? "platform"
         self.type = TransitionType(rawValue: typeString) ?? .platform
         self.durationMs = dictionary["durationMs"] as? Int ?? 300

@@ -1,5 +1,6 @@
 import UIKit
 import dcflight
+import yoga
 
 class DCFTabNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler, UITabBarControllerDelegate {
     // The tab bar controller
@@ -11,8 +12,9 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler, 
     // Navigation controllers for each tab
     private var tabNavigationControllers: [UINavigationController] = []
     
-    // Observer for tab changes
-    private var tabChangeObserver: ((Int) -> Void)?
+    // Event callback for handling events
+    private var eventCallback: ((String, String, [String: Any]) -> Void)?
+    private var componentId: String?
     
     required override init() {
         super.init()
@@ -139,9 +141,56 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler, 
         // Notify Dart side of tab change
         print("Tab selected: \(tabBarController.selectedIndex)")
         
-        // Send event to DCFlight
+        // Get the proper view to trigger the event on (tabBarController.view)
         let eventData: [String: Any] = ["index": tabBarController.selectedIndex]
-        DCFEventBridge.shared.sendEvent(name: "onTabChange", data: eventData)
+        
+        // Use the standard event mechanism through the DCFComponent protocol
+        // This will properly route through the centralized event system
+        triggerEvent(on: tabBarController.view, eventType: "onTabChange", eventData: eventData)
+    }
+}
+
+// MARK: - DCFComponent Protocol Implementation
+
+extension DCFTabNavigatorComponent {
+    func applyLayout(_ view: UIView, layout: YGNodeLayout) {
+        // Apply the layout to the view
+        view.frame = CGRect(
+            x: CGFloat(layout.left),
+            y: CGFloat(layout.top),
+            width: CGFloat(layout.width),
+            height: CGFloat(layout.height)
+        )
+    }
+    
+    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+        // Tab navigator doesn't have intrinsic size, it takes the full space available
+        return CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric)
+    }
+    
+    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+        // Store the node ID for later use
+        self.componentId = nodeId
+    }
+    
+    func addEventListeners(to view: UIView, viewId: String, eventTypes: [String], eventCallback: @escaping (String, String, [String: Any]) -> Void) {
+        // Store the event callback
+        self.eventCallback = eventCallback
+        self.componentId = viewId
+    }
+    
+    func removeEventListeners(from view: UIView, viewId: String, eventTypes: [String]) {
+        // Clear the event callback if we're removing listeners for this view
+        if viewId == self.componentId {
+            self.eventCallback = nil
+        }
+    }
+    
+    func triggerEvent(on view: UIView, eventType: String, eventData: [String: Any]) {
+        // Forward to the registered callback
+        if let componentId = self.componentId {
+            self.eventCallback?(componentId, eventType, eventData)
+        }
     }
 }
 
