@@ -2,7 +2,7 @@
 library dcflight;
 
 export 'package:dcflight/framework/utilities/flutter_framework.dart' hide PlatformDispatcher,
-   Widget,View,StatefulWidget,State,BuildContext,MethodChannel,MethodCall,MethodCodec,PlatformException,AssetBundle,AssetBundleImageKey,AssetBundleImageProvider,ImageConfiguration,ImageStreamListener,ImageStream,ImageStreamCompleter,ImageInfo,ImageProvider,ImageErrorListener,ImageCache,Text,TextStyle,TextPainter,TextSpan,TextHeightBehavior,RenderBox,RenderObject,RenderObjectElement,RenderObjectWidget,StatefulElement,Element,ElementVisitor,WidgetInspectorService;
+   Widget,View,StatefulWidget,State,BuildContext,MethodChannel,MethodCall,MethodCodec,PlatformException,AssetBundle,AssetBundleImageKey,AssetBundleImageProvider,ImageConfiguration,ImageStreamListener,ImageStream,ImageStreamCompleter,ImageInfo,ImageProvider,ImageErrorListener,ImageCache,Text,TextStyle,TextPainter,TextSpan,TextHeightBehavior,RenderBox,RenderObject,RenderObjectElement,RenderObjectWidget,StatefulElement,Element,ElementVisitor,WidgetInspectorService,Route;
 // Core Infrastructure
 export 'framework/renderer/vdom/vdom.dart';
 export 'framework/renderer/vdom/vdom_node.dart';
@@ -23,6 +23,10 @@ export 'framework/constants/style_properties.dart';
 // Utilities
 export 'framework/utilities/screen_utilities.dart';
 
+// Navigation System
+export 'framework/navigation/route.dart';
+export 'framework/navigation/navigation_protocol.dart';
+export 'framework/navigation/navigation_context.dart';
 
 // Component Protocol Interfaces - no implementations
 export 'framework/protocol/component_protocol.dart';

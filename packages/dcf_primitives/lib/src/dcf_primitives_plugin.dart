@@ -7,6 +7,8 @@ import 'primitives/image_definition.dart';
 import 'primitives/scroll_view_definition.dart';
 import 'primitives/svg_definition.dart';
 import 'primitives/dcf_icon_definition.dart';
+import 'primitives/stack_navigator_definition.dart';
+import 'primitives/tab_navigator_definition.dart';
 
 /// Plugin for DCFlight primitives
 class DCFPrimitivesPlugin extends DCFPlugin {
@@ -34,5 +36,9 @@ class DCFPrimitivesPlugin extends DCFPlugin {
     // Register the new primitives
     DCFlight.registerComponentDefinition(DCFSvgDefinition());
     DCFlight.registerComponentDefinition(DCFIconDefinition());
+    
+    // Register navigation components
+    DCFlight.registerComponentDefinition(StackNavigatorDefinition());
+    DCFlight.registerComponentDefinition(TabNavigatorDefinition());
   }
 }

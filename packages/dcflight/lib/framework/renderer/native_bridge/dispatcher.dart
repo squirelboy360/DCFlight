@@ -51,6 +51,23 @@ abstract class PlatformDispatcher {
 
   /// Call a method on a specific component instance
   Future<dynamic> callComponentMethod(String viewId, String methodName, Map<String, dynamic> args);
+  
+  /// --- Navigation-specific methods ---
+  
+  /// Push a route onto a navigation stack
+  Future<bool> pushRoute(String navigatorId, Map<String, dynamic> routeInfo, Map<String, dynamic>? transition);
+  
+  /// Pop a route from a navigation stack
+  Future<bool> popRoute(String navigatorId, {dynamic result});
+  
+  /// Replace the current route on a navigation stack
+  Future<bool> replaceRoute(String navigatorId, Map<String, dynamic> routeInfo, Map<String, dynamic>? transition);
+  
+  /// Pop to the root route on a navigation stack
+  Future<bool> popToRootRoute(String navigatorId, {bool animated = true});
+  
+  /// Switch to a specific tab in a tab navigator
+  Future<bool> switchTab(String tabNavigatorId, int tabIndex);
 
   /// Start a batch update (multiple operations that will be applied atomically)
   Future<bool> startBatchUpdate();

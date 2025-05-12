@@ -11,5 +11,9 @@ export 'src/primitives/scroll_view.dart';
 export 'src/primitives/svg.dart';
 export 'src/primitives/dcf_icon.dart';
 
+// Export navigation primitives
+export 'src/primitives/stack_navigator.dart';
+export 'src/primitives/tab_navigator.dart';
+
 // Export the plugin class
 export 'src/dcf_primitives_plugin.dart';

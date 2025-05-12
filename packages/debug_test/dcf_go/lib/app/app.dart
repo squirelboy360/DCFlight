@@ -1,42 +1,108 @@
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
 
+import 'screens/home_screen.dart';
+import 'screens/profile_screen.dart';
+
 class DCFGo extends StatefulComponent {
   @override
   VDomNode render() {
-    return scrollView(
-      scrollViewProps: ScrollViewProps(
-        showsIndicator: true,
-        clipsToBounds: true,
+    // Shared routes used across tabs
+    final sharedRoutes = {
+      'details': detailsScreen,
+    };
+    
+    // Create tabs with their own stack navigators
+    final tabs = [
+      TabItem(
+        title: 'Home',
+        icon: 'home',
+        selectedIcon: 'home',
+        builder: (context) {
+          // Create a stack navigator for the Home tab
+          return stackNavigator(
+            props: StackNavigatorProps(
+              routes: {
+                'home': homeScreen,
+                ...sharedRoutes,
+              },
+              initialRoute: 'home',
+              title: 'Home',
+            ),
+            layout: LayoutProps(
+              flex: 1,
+            ),
+          );
+        },
       ),
-      style: StyleSheet(),
+      TabItem(
+        title: 'Profile',
+        icon: 'person',
+        selectedIcon: 'person',
+        builder: (context) {
+          // Create a stack navigator for the Profile tab
+          return stackNavigator(
+            props: StackNavigatorProps(
+              routes: {
+                'profile': profileScreen,
+                ...sharedRoutes,
+              },
+              initialRoute: 'profile',
+              title: 'Profile',
+            ),
+            layout: LayoutProps(
+              flex: 1,
+            ),
+          );
+        },
+      ),
+      TabItem(
+        title: 'Settings',
+        icon: 'settings',
+        selectedIcon: 'settings',
+        builder: (context) {
+          // Create a stack navigator for the Settings tab
+          return stackNavigator(
+            props: StackNavigatorProps(
+              routes: {
+                'settings': settingsScreen,
+                ...sharedRoutes,
+              },
+              initialRoute: 'settings',
+              title: 'Settings',
+            ),
+            layout: LayoutProps(
+              flex: 1,
+            ),
+          );
+        },
+      ),
+    ];
+    
+    // Setup tab change callback
+    void onTabChange(int index) {
+      print('Switched to tab: $index');
+    }
+    
+    return view(
       layout: LayoutProps(
         flex: 1,
-        padding: 8,
-        paddingVertical: ScreenUtilities.instance.statusBarHeight,
-        alignContent: YogaAlign.center,
-        alignItems: YogaAlign.center
+        // Apply safe area insets
+        paddingTop: ScreenUtilities.instance.statusBarHeight,
+        paddingBottom: ScreenUtilities.instance.statusBarHeight,
       ),
       children: [
-        image(imageProps: ImageProps(source: 'assets/logo_bg.png'),layout: LayoutProps(
-          width: 150,
-          height: 150,
-          padding: 8,
-          marginBottom: 16,
-        ),style: StyleSheet(
-          borderRadius:50,
-        )),
-        text(
-          content: 'Hello, DCF Go!',
-          layout: LayoutProps(width: 200),
-          textProps: TextProps(fontSize: 24, color: Colors.black),
-        ),
-        button(
-          onPress: () {
-            print('Button clicked!');
-          },
-        layout: LayoutProps(width: 200),
-          buttonProps: ButtonProps(title: 'Click Me'),
+        // Tab-based navigation with stack navigation in each tab
+        tabNavigator(
+          tabs: tabs,
+          initialTabIndex: 0,
+          tabBarBackgroundColor: Colors.white,
+          tabTextColor: Colors.grey,
+          selectedTabTextColor: Colors.blue,
+          layout: LayoutProps(
+            flex: 1,
+          ),
+          onTabChange: onTabChange,
         ),
       ],
     );
