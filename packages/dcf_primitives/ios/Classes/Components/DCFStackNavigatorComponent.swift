@@ -71,6 +71,13 @@ class DCFStackNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler
             navigationController.setViewControllers([viewController], animated: false)
         }
         
+        // Force layout update to handle orientation changes
+        if let containerView = view as? UIView {
+            navigationController.view.frame = containerView.bounds
+            navigationController.view.setNeedsLayout()
+            navigationController.view.layoutIfNeeded()
+        }
+        
         return true
     }
     

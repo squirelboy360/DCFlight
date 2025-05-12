@@ -87,18 +87,18 @@ class DCFGo extends StatefulComponent {
     return view(
       layout: LayoutProps(
         flex: 1,
-        // Apply safe area insets
-        paddingTop: ScreenUtilities.instance.statusBarHeight,
-        paddingBottom: ScreenUtilities.instance.statusBarHeight,
+        // // Apply safe area insets
+        // paddingTop: ScreenUtilities.instance.statusBarHeight,
+        // paddingBottom: ScreenUtilities.instance.statusBarHeight,
       ),
       children: [
         // Tab-based navigation with stack navigation in each tab
         tabNavigator(
           tabs: tabs,
-          initialTabIndex: 0,
+          initialTabIndex: 2,
           tabBarBackgroundColor: Colors.white,
           tabTextColor: Colors.grey,
-          selectedTabTextColor: Colors.blue,
+          selectedTabTextColor: Colors.pink,
           layout: LayoutProps(
             flex: 1,
           ),

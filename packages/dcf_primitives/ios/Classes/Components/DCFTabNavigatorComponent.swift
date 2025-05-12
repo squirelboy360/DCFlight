@@ -64,6 +64,31 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler, 
             tabBarController.tabBar.isHidden = !showTabBar
         }
         
+        // Configure navigation bar appearance for all tabs
+        if let navBarBackgroundColor = props["navBarBackgroundColor"] as? String {
+            let color = ColorUtilities.color(fromHexString: navBarBackgroundColor)
+            for navController in tabNavigationControllers {
+                navController.navigationBar.barTintColor = color
+            }
+        }
+        
+        if let navBarTextColor = props["navBarTextColor"] as? String {
+            let color = ColorUtilities.color(fromHexString: navBarTextColor)
+            for navController in tabNavigationControllers {
+                navController.navigationBar.tintColor = color
+                navController.navigationBar.titleTextAttributes = [
+                    NSAttributedString.Key.foregroundColor: color
+                ]
+            }
+        }
+        
+        // Show/hide navigation bar for all tabs
+        if let showNavBar = props["showNavBar"] as? Bool {
+            for navController in tabNavigationControllers {
+                navController.isNavigationBarHidden = !showNavBar
+            }
+        }
+        
         // Set up tabs
         if let tabsConfig = props["tabs"] as? [[String: Any]], !tabsConfig.isEmpty {
             setupTabs(tabsConfig)
@@ -96,13 +121,20 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler, 
             let title = tabConfig["title"] as? String ?? "Tab \(index + 1)"
             let icon = tabConfig["icon"] as? String
             let selectedIcon = tabConfig["selectedIcon"] as? String
+            let showNavBar = tabConfig["showNavBar"] as? Bool ?? true
             
             // Create a container view controller for this tab
             let tabViewController = TabViewController(tabIndex: index, title: title)
             
             // Wrap in a navigation controller for consistent navigation
             let navController = UINavigationController(rootViewController: tabViewController)
-            navController.navigationBar.prefersLargeTitles = true
+            
+            // Configure navigation bar
+            navController.navigationBar.prefersLargeTitles = false // We'll use standard size for better layout
+            navController.isNavigationBarHidden = !showNavBar
+            
+            // Override back button to avoid constraint issues
+            navController.navigationBar.topItem?.backBarButtonItem = UIBarButtonItem(title: "", style: .plain, target: nil, action: nil)
             
             // Configure tab bar item
             tabViewController.tabBarItem = UITabBarItem(title: title, image: nil, tag: index)
@@ -134,7 +166,29 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent, ComponentMethodHandler, 
             return false
             
         case "getSelectedIndex":
-            return (tabBarController.selectedIndex != 0)
+            // Return the current selected tab index
+            let eventData: [String: Any] = ["index": tabBarController.selectedIndex]
+            triggerEvent(on: tabBarController.view, eventType: "onSelectedIndexResponse", eventData: eventData)
+            return true
+            
+        case "toggleNavigationBar":
+            // Allows showing/hiding the navigation bar for the current tab
+            if let show = args["show"] as? Bool,
+               let currentVC = tabBarController.selectedViewController as? UINavigationController {
+                currentVC.isNavigationBarHidden = !show
+                return true
+            }
+            return false
+            
+        case "setNavigationTitle":
+            // Allows setting the title for the current tab's navigation bar
+            if let title = args["title"] as? String,
+               let currentVC = tabBarController.selectedViewController as? UINavigationController,
+               let rootVC = currentVC.viewControllers.first {
+                rootVC.title = title
+                return true
+            }
+            return false
             
         default:
             return false
@@ -242,19 +296,34 @@ class TabViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .white
+        
+        // Create a visual placeholder to show we're rendering (remove in production)
+        view.backgroundColor = UIColor(red: 0.95, green: 0.95, blue: 0.95, alpha: 1.0)
+        
+        // Create a visual indicator for debugging
+        let label = UILabel()
+        label.text = "Tab Content \(tabIndex + 1): \(title ?? "")"
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(label)
+        
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        ])
         
         // Create a container view for tab content with proper constraints
         let containerView = UIView()
         containerView.translatesAutoresizingMaskIntoConstraints = false
+        containerView.backgroundColor = .clear // Make it clear so content is visible
         view.addSubview(containerView)
         
-        // Add proper constraints
+        // Add proper constraints - use safe area for better layout
         NSLayoutConstraint.activate([
-            containerView.topAnchor.constraint(equalTo: view.topAnchor),
+            containerView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            containerView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
         ])
         
         contentView = containerView
