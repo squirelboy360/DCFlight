@@ -18,6 +18,15 @@ import dcflight
         DCFComponentRegistry.shared.registerComponent("Svg", componentClass: DCFSvgComponent.self)
         DCFComponentRegistry.shared.registerComponent("DCFIcon", componentClass: DCFIconComponent.self)
         
+        // Register interaction primitives
+        DCFComponentRegistry.shared.registerComponent("GestureDetector", componentClass: DCFGestureDetectorComponent.self)
+        DCFComponentRegistry.shared.registerComponent("TouchableOpacity", componentClass: DCFTouchableOpacityComponent.self)
+        DCFComponentRegistry.shared.registerComponent("PageView", componentClass: DCFPageViewComponent.self)
+        
+        // Register animation primitives
+        DCFComponentRegistry.shared.registerComponent("AnimatedView", componentClass: DCFAnimatedViewComponent.self)
+        DCFComponentRegistry.shared.registerComponent("AnimatedText", componentClass: DCFAnimatedTextComponent.self)
+        
         print("✅ DCF Primitives: All components registered successfully")
     }
 }

@@ -4,6 +4,17 @@ import 'package:dcflight/framework/renderer/native_bridge/dispatcher_imp.dart';
 
 /// Interface for platform-specific native bridge operations
 abstract class PlatformDispatcher {
+  /// Get the singleton instance
+  static PlatformDispatcher? _instance;
+  
+  /// Get the singleton instance
+  static PlatformDispatcher get instance {
+    if (_instance == null) {
+      _instance = NativeBridgeFactory.create();
+    }
+    return _instance!;
+  }
+  
   /// Initialize the bridge with native code
   Future<bool> initialize();
 
@@ -47,7 +58,7 @@ abstract class PlatformDispatcher {
   Future<bool> viewExists(String viewId);
 
   /// Invoke a generic method on the native platform
-  Future<dynamic> invokeMethod(String method, [Map<String, dynamic>? arguments]);
+  // Future<dynamic> invokeMethod(String method, [Map<String, dynamic>? arguments]);
 
   /// Call a method on a specific component instance
   Future<dynamic> callComponentMethod(String viewId, String methodName, Map<String, dynamic> args);
