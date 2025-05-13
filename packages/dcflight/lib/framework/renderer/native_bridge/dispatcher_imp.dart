@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:dcflight/framework/renderer/native_bridge/dispatcher_util.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'dispatcher.dart';
@@ -75,7 +76,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
 
     try {
       // Preprocess props to handle special types before encoding to JSON
-      final processedProps = _preprocessProps(props);
+      final processedProps = preprocessProps(props);
 
       final result = await bridgeChannel.invokeMethod<bool>('createView', {
         'viewId': viewId,
@@ -105,7 +106,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
 
     try {
       // Process props for updates
-      final processedProps = _preprocessProps(propPatches);
+      final processedProps = preprocessProps(propPatches);
 
       final result = await bridgeChannel.invokeMethod<bool>('updateView', {
         'viewId': viewId,
@@ -258,45 +259,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
     }
   }
 
-  // Helper method to preprocess props for JSON serialization
-  Map<String, dynamic> _preprocessProps(Map<String, dynamic> props) {
-    final processedProps = <String, dynamic>{};
 
-    props.forEach((key, value) {
-      if (value is Function) {
-        // Handle event handlers
-        if (key.startsWith('on')) {
-          key.substring(2).toLowerCase();
-          processedProps['_has${key.substring(2)}Handler'] = true;
-        }
-      } else if (value is Color) {
-        // Convert Color objects to hex strings with alpha
-        processedProps[key] =
-            '#${value.value.toRadixString(16).padLeft(8, '0')}';
-      } else if (value == double.infinity) {
-        // Convert infinity to 100% string for percentage sizing
-        processedProps[key] = '100%';
-      } else if (value is String &&
-          (value.endsWith('%') || value.startsWith('#'))) {
-        // Pass percentage strings and color strings through directly
-        processedProps[key] = value;
-      } else if (key == 'width' ||
-          key == 'height' ||
-          key.startsWith('margin') ||
-          key.startsWith('padding')) {
-        // Make sure numeric values go through as doubles for consistent handling
-        if (value is num) {
-          processedProps[key] = value.toDouble();
-        } else {
-          processedProps[key] = value;
-        }
-      } else if (value != null) {
-        processedProps[key] = value;
-      }
-    });
-
-    return processedProps;
-  }
 
   @override
   Future<dynamic> invokeMethod(String method,

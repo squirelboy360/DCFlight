@@ -48,6 +48,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  dcf_router:
+    dependency: "direct main"
+    description:
+      path: "../../dcf_router"
+      relative: true
+    source: path
+    version: "0.0.1"
   dcflight:
     dependency: "direct main"
     description:

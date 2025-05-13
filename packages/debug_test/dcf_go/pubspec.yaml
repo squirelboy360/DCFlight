@@ -19,6 +19,9 @@ dependencies:
   dcf_primitives:
     path: ../../dcf_primitives
 
+  dcf_router:
+    path: ../../dcf_router
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

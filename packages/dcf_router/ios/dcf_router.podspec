@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
-  s.name             = 'dcf_primitives'
+  s.name             = 'dcf_router'
   s.version          = '0.0.1'
-  s.summary          = 'Native components for DCFlight framework'
+  s.summary          = 'Native routing system for DCFlight framework'
   s.description      = <<-DESC
 A crossplatform framework.
                        DESC
@@ -11,9 +11,7 @@ A crossplatform framework.
   s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*'
   s.platform = :ios, '13.5'
-  # s.dependency 'Flutter'
   s.dependency 'dcflight'
-  s.dependency 'SVGKit', '~> 3.0.0' 
   
   s.swift_version = '5.0'
 
