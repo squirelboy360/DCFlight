@@ -18,7 +18,7 @@ class DCFGo extends StatefulComponent {
   
   @override
   VDomNode render() {
-        activeTabIndex = useState(0);
+    activeTabIndex = useState(0);
     pageViewId = useState('');
     tabChangeCount = useState(0);
     lastTabChangeTime = useState(DateTime.now().toString());
@@ -121,12 +121,13 @@ class DCFGo extends StatefulComponent {
         // Tab bar
         animatedView(
           layout: LayoutProps(
-            height: 60,
+            height: 100,
             flexDirection: YogaFlexDirection.row,
             alignItems: YogaAlign.center,
+            justifyContent: YogaJustifyContent.spaceAround
           ),
           style: StyleSheet(
-            backgroundColor: Colors.white,
+            backgroundColor: Colors.grey[100],
           ),
           animation: AnimationProps(
             duration: 300,
@@ -153,7 +154,8 @@ class DCFGo extends StatefulComponent {
     
     return touchableOpacity(
       layout: LayoutProps(
-        flex: 1,
+     
+        width: 60,
         height: 60,
         alignItems: YogaAlign.center,
         justifyContent: YogaJustifyContent.center,
@@ -202,12 +204,13 @@ class DCFGo extends StatefulComponent {
     }
   }
   
-  // Tab change
+  // Tab change handler - updates state and navigates PageView
   void onTabChanged(int index) {
-    if (index != activeTabIndex) {
-      // Update to trigger re-render
+    if (index != activeTabIndex.value) {
+      // Update all state hooks to trigger reactivity
       activeTabIndex.setValue(index);
-      scheduleUpdate();
+      tabChangeCount.setValue(tabChangeCount.value + 1);
+      lastTabChangeTime.setValue(DateTime.now().toString());
       
       // Programmatically switch the page view if needed
       if (pageViewId.value.isNotEmpty) {
