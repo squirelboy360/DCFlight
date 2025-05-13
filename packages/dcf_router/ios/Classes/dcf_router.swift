@@ -2,7 +2,7 @@ import UIKit
 import Flutter
 import dcflight
 
-@objc public class DcfPrimitives: NSObject {
+@objc public class DcfRouter: NSObject {
     @objc public static func registerWithRegistrar(_ registrar: FlutterPluginRegistrar) {
         print("DCF Primitives plugin registered with Flutter")
         registerComponents()
