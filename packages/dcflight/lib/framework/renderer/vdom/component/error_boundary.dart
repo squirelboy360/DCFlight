@@ -24,9 +24,8 @@ abstract class ErrorBoundary extends StatefulComponent {
     developer.log('Error caught by ErrorBoundary: $error',
         name: 'ErrorBoundary', error: error, stackTrace: stackTrace);
 
-    // Define a state hook to trigger a rerender
-    final forceUpdate = useState<bool>(false);
-    forceUpdate.setValue(!forceUpdate.value);
+    // Trigger a re-render directly
+    scheduleUpdate();
   }
 
   /// Reset error state
@@ -35,9 +34,8 @@ abstract class ErrorBoundary extends StatefulComponent {
     _stackTrace = null;
     _hasError = false;
 
-    // Define a state hook to trigger a rerender
-    final forceUpdate = useState<bool>(false);
-    forceUpdate.setValue(!forceUpdate.value);
+    // Trigger a re-render directly
+    scheduleUpdate();
   }
 
   /// Get whether there's an error
@@ -54,9 +52,6 @@ abstract class ErrorBoundary extends StatefulComponent {
 
   @override
   VDomNode render() {
-    // Add a state hook just for triggering rerenders from error handling
-    final _ = useState<bool>(false);
-
     if (_hasError) {
       return renderFallback(_error!, _stackTrace);
     }

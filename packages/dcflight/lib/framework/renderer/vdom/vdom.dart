@@ -239,35 +239,7 @@ class VDom {
     }
 
     if (node is VDomElement) {
-      // Try explicit events map first
-      if (node.events != null &&
-          node.events!.containsKey(eventType) &&
-          node.events![eventType] is Function) {
-        _performanceMonitor.startTimer('event_handler');
-        final handler = node.events![eventType] as Function;
-        
-        try {
-          if (handler is Function(Map<String, dynamic>)) {
-            // Function expects event data
-            handler(eventData);
-          } else if (handler is Function()) {
-            // Function takes no parameters
-            handler();
-          } else {
-            // Try a more general approach
-            Function.apply(handler, [], {});
-          }
-        } catch (e, stack) {
-          developer.log('❌ Error executing event handler: $e', 
-              name: 'VDom', error: e, stackTrace: stack);
-        }
-        
-        _performanceMonitor.endTimer('event_handler');
-        _performanceMonitor.endTimer('handle_native_event');
-        return;
-      }
-
-      // If not found in events map, try props with "onX" format
+      // Use props with "onX" format (simplifying event handling)
       final propName =
           'on${eventType[0].toUpperCase()}${eventType.substring(1)}';
 
@@ -293,7 +265,7 @@ class VDom {
         _performanceMonitor.endTimer('event_handler');
       }
     }
-
+    
     _performanceMonitor.endTimer('handle_native_event');
   }
 

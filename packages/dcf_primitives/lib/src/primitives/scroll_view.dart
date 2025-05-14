@@ -128,7 +128,7 @@ VDomElement scrollView({
       ...style.toMap(),
     },
     children: children,
-    events: eventMap.isNotEmpty ? eventMap : null,
+  
   );
 }
 

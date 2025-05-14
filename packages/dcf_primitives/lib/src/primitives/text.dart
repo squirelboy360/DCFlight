@@ -65,7 +65,7 @@ VDomElement text({
       ...style.toMap(),
     },
     children: [],
-    events: events,
+   
   );
 }
 

@@ -92,7 +92,6 @@ VDomElement animatedText({
       ...style.toMap(),
     },
     children: [],
-    events: eventMap.isEmpty ? null : eventMap,
   );
 }
 

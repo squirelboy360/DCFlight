@@ -63,7 +63,6 @@ VDomElement image({
       ...style.toMap(),
     },
     children: [],
-    events: eventMap.isNotEmpty ? eventMap : null,
   );
 }
 

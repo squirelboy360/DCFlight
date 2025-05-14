@@ -73,7 +73,6 @@ VDomElement pageView({
       ...style.toMap(),
     },
     children: children,
-    events: eventMap.isEmpty ? null : eventMap,
   );
 }
 

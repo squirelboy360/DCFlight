@@ -14,6 +14,6 @@ VDomElement view({
       ...style.toMap(),
     },
     children: children,
-    events: events,
+
   );
 }

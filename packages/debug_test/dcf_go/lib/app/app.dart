@@ -186,6 +186,7 @@ class DCFGo extends StatefulComponent {
   // Tab change handler - updates state and navigates PageView
   void onTabChanged(int index) {
     if (index != activeTabIndex.value) {
+      print("press tab $index");
       // Update all state hooks to trigger reactivity
       activeTabIndex.setValue(index);
       tabChangeCount.setValue(tabChangeCount.value + 1);

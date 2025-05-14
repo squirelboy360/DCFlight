@@ -36,6 +36,6 @@ VDomElement svg({
       'isRelativePath': true,
     },
     children: [],
-    events: eventMap.isEmpty ? null : eventMap,
+  
   );
 }

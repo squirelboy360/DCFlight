@@ -54,12 +54,6 @@ abstract class PlatformDispatcher {
   /// Calculate layout for the entire view hierarchy
   Future<bool> calculateLayout();
 
-  /// Check if a view exists
-  Future<bool> viewExists(String viewId);
-
-  /// Invoke a generic method on the native platform
-  // Future<dynamic> invokeMethod(String method, [Map<String, dynamic>? arguments]);
-
   /// Call a method on a specific component instance
   Future<dynamic> callComponentMethod(String viewId, String methodName, Map<String, dynamic> args);
 

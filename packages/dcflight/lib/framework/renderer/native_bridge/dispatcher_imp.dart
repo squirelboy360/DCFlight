@@ -246,33 +246,6 @@ class PlatformDispatcherIml implements PlatformDispatcher {
   }
 
   @override
-  Future<bool> viewExists(String viewId) async {
-    try {
-      final result = await bridgeChannel.invokeMethod<bool>('viewExists', {
-        'viewId': viewId,
-      });
-      
-      return result ?? false;
-    } catch (e) {
-      debugPrint('Error checking view existence: $e');
-      return false;
-    }
-  }
-
-
-
-  @override
-  Future<dynamic> invokeMethod(String method,
-      [Map<String, dynamic>? arguments]) async {
-    try {
-      return await bridgeChannel.invokeMethod(method, arguments);
-    } catch (e) {
-      debugPrint('Error invoking method $method: $e');
-      return null;
-    }
-  }
-
-  @override
   Future<dynamic> callComponentMethod(
       String viewId, String methodName, Map<String, dynamic> args) async {
     try {
