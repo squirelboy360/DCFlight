@@ -7,7 +7,6 @@ class DCFGo extends StatefulComponent {
   
   // Define state hooks at class level
   late StateHook<int> activeTabIndex;
-  late StateHook<String> pageViewId;
   late StateHook<int> tabChangeCount;
   late StateHook<String> lastTabChangeTime;
 
@@ -19,7 +18,6 @@ class DCFGo extends StatefulComponent {
   @override
   VDomNode render() {
     activeTabIndex = useState(0);
-    pageViewId = useState('');
     tabChangeCount = useState(0);
     lastTabChangeTime = useState(DateTime.now().toString());
     // Increment render count to track UI updates
@@ -86,35 +84,16 @@ class DCFGo extends StatefulComponent {
           ],
         ),
         
-        // Content area with page view
-        pageView(
+        // Content area with conditional rendering based on activeTabIndex
+        view(
           layout: LayoutProps(
             flex: 3,
           ),
-          pageViewProps: PageViewProps(
-            initialPage: activeTabIndex.value,
-            enableSwipe: true, 
-            showIndicator: true,
-            indicatorColor: Colors.indigo,
-          ),
-          onViewId: (id) {
-            // Store page view ID for programmatic navigation
-            pageViewId.setValue(id as String);
-          },
-          onPageChanged: (data) {
-            // Update active tab index when page changes via swipe
-            final page = data['page'] as int;
-            onTabChanged(page);
-          },
           children: [
-            // Home content
-            _buildHomeContent(),
-            
-            // Details page content
-            _buildDetailsContent(),
-            
-            // Settings page content
-            _buildSettingsContent(),
+            // Conditionally render content based on active tab
+            if (activeTabIndex.value == 0) _buildHomeContent(),
+            if (activeTabIndex.value == 1) _buildDetailsContent(),
+            if (activeTabIndex.value == 2) _buildSettingsContent(),
           ],
         ),
         
@@ -213,9 +192,7 @@ class DCFGo extends StatefulComponent {
       lastTabChangeTime.setValue(DateTime.now().toString());
       
       // Programmatically switch the page view if needed
-      if (pageViewId.value.isNotEmpty) {
-        PageViewMethods.goToPage(pageViewId.value, index);
-      }
+     
     }
   }
   
