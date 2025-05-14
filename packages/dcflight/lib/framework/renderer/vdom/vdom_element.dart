@@ -64,12 +64,23 @@ class VDomElement extends VDomNode {
   List<String> get eventTypes {
     final List<String> types = [];
     
-    // Extract event types from props with 'on' prefix
+    // Extract event types from props with direct event names (e.g., 'onPress')
     for (final key in props.keys) {
-      if (key.startsWith('on') && key.length > 2 && props[key] is Function) {
-        // Convert onEventName to eventName format
-        final eventName = key.substring(2, 3).toLowerCase() + key.substring(3);
-        types.add(eventName);
+      if (props[key] is Function) {
+        // First check for direct event format (e.g., 'onPress')
+        if (key.startsWith('on') && key.length > 2) {
+          // Use the event name directly without normalization (onPress -> onPress)
+          types.add(key);
+        }
+        
+        // Also check for canonical format that will be sent from native (onPress -> press)
+        if (key.startsWith('on') && key.length > 2) {
+          // Convert onEventName to eventName format
+          final eventName = key.substring(2, 3).toLowerCase() + key.substring(3);
+          if (!types.contains(eventName)) {
+            types.add(eventName);
+          }
+        }
       }
     }
     

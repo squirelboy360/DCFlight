@@ -63,9 +63,9 @@ VDomElement text({
       ...textProps.toMap(),
       ...layout.toMap(),
       ...style.toMap(),
+      ...(events ?? {}),
     },
     children: [],
-   
   );
 }
 

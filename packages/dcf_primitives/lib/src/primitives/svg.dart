@@ -34,6 +34,7 @@ VDomElement svg({
       ...style.toMap(),
       // direct svgs are relative as the native side will lookup the assets from the app bundle 
       'isRelativePath': true,
+        ...eventMap,
     },
     children: [],
   

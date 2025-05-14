@@ -110,6 +110,7 @@ VDomElement gestureDetector({
       ...gestureProps.toMap(),
       ...layout.toMap(),
       ...style.toMap(),
+      ...eventMap, // Add event handlers directly to props
     },
     children: children,
   );

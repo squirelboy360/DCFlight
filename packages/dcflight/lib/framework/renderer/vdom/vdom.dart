@@ -239,7 +239,30 @@ class VDom {
     }
 
     if (node is VDomElement) {
-      // Use props with "onX" format (simplifying event handling)
+      // First try direct event matching (used by many native components)
+      if (node.props.containsKey(eventType) && node.props[eventType] is Function) {
+        _performanceMonitor.startTimer('event_handler');
+        final handler = node.props[eventType] as Function;
+        
+        try {
+          if (handler is Function(Map<String, dynamic>)) {
+            handler(eventData);
+          } else if (handler is Function()) {
+            handler();
+          } else {
+            Function.apply(handler, [], {});
+          }
+        } catch (e, stack) {
+          developer.log('❌ Error executing event handler: $e', 
+              name: 'VDom', error: e, stackTrace: stack);
+        }
+        
+        _performanceMonitor.endTimer('event_handler');
+        _performanceMonitor.endTimer('handle_native_event');
+        return;
+      }
+
+      // Then try canonical "onEventName" format
       final propName =
           'on${eventType[0].toUpperCase()}${eventType.substring(1)}';
 

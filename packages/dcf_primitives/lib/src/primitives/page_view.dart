@@ -71,6 +71,7 @@ VDomElement pageView({
       ...pageViewProps.toMap(),
       ...layout.toMap(),
       ...style.toMap(),
+        ...eventMap,
     },
     children: children,
   );
