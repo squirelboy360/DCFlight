@@ -41,8 +41,8 @@ VDomElement dcfIcon({
   );
 }
 
-/// List of all available icon names in DCFIcons
-/// Similar to how Ionicons works in React Native
+// All these icons were extracted from forui_assets
+// @https://forui.dev
 class DCFIcons {
   // Navigation icons
   static const String home = "home";
@@ -96,3 +96,6 @@ class DCFIcons {
   static const String thumbsUp = "thumbs-up";
   static const String thumbsDown = "thumbs-down";
 }
+
+
+
