@@ -34,7 +34,15 @@ class VDomElement extends VDomNode {
   Function() scheduleUpdate = () {};
 
   /// Unique ID for this component instance
-  final String instanceId;
+  String _instanceId;
+
+  /// Get the instance ID
+  String get instanceId => _instanceId;
+
+  /// Set the instance ID
+  set instanceId(String value) {
+    _instanceId = value;
+  }
 
   // Add getter for events
   // ignore: unnecessary_getters_setters
@@ -56,7 +64,7 @@ class VDomElement extends VDomNode {
     Map<String, dynamic>? events,
   }) : 
     _events = events, 
-    instanceId = DateTime.now().millisecondsSinceEpoch.toString() + (0.5 + DateTime.now().microsecond / 1000000).toString() {
+    _instanceId = DateTime.now().millisecondsSinceEpoch.toString() + (0.5 + DateTime.now().microsecond / 1000000).toString() {
     
     // Set parent reference for children
     for (var child in children) {
@@ -98,13 +106,18 @@ class VDomElement extends VDomNode {
 
   @override
   VDomNode clone() {
-    return VDomElement(
+    final cloned = VDomElement(
       type: type,
       key: key,
       props: Map<String, dynamic>.from(props),
       children: children.map((child) => child.clone()).toList(),
       events: events != null ? Map<String, dynamic>.from(events!) : null,
     );
+    
+    // Preserve instanceId when cloning
+    cloned.instanceId = instanceId;
+    
+    return cloned;
   }
 
   @override
