@@ -1,118 +1,15 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 
-import 'package:dcflight/framework/renderer/native_bridge/dispatcher.dart' show NativeBridgeFactory, PlatformDispatcher;
-import 'package:dcflight/framework/renderer/vdom/component/component.dart';
-import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
-import 'package:dcflight/framework/renderer/vdom/component/context.dart';
-import 'package:dcflight/framework/renderer/vdom/component/error_boundary.dart';
-import 'package:dcflight/framework/renderer/vdom/vdom_element.dart';
+import '../../protocol/context_registry.dart';
+import '../native_bridge/dispatcher.dart';
+import '../monitor/performance_monitor.dart';
+
 import 'vdom_node.dart';
+import 'vdom_element.dart';
 import 'reconciler.dart';
-import 'fragment.dart';
 
-/// Performance monitoring for VDOM operations
-class PerformanceMonitor {
-  /// Map of timers by name
-  final Map<String, _Timer> _timers = {};
-
-  /// Map of metrics by name
-  final Map<String, _Metric> _metrics = {};
-
-  /// Start a timer with the given name
-  void startTimer(String name) {
-    _timers[name] = _Timer(DateTime.now());
-  }
-
-  /// End a timer with the given name
-  void endTimer(String name) {
-    final timer = _timers[name];
-    if (timer == null) return;
-
-    final duration = DateTime.now().difference(timer.startTime);
-
-    // Update or create the metric
-    final metric = _metrics[name] ?? _Metric(name);
-    metric.count++;
-    metric.totalDuration += duration.inMicroseconds;
-    metric.maxDuration = duration.inMicroseconds > metric.maxDuration
-        ? duration.inMicroseconds
-        : metric.maxDuration;
-    metric.minDuration =
-        metric.minDuration == 0 || duration.inMicroseconds < metric.minDuration
-            ? duration.inMicroseconds
-            : metric.minDuration;
-
-    _metrics[name] = metric;
-
-    // Remove the timer
-    _timers.remove(name);
-  }
-
-  /// Get a metrics report as a map
-  Map<String, dynamic> getMetricsReport() {
-    final report = <String, dynamic>{};
-
-    for (final metric in _metrics.values) {
-      report[metric.name] = {
-        'count': metric.count,
-        'totalMs': metric.totalDuration / 1000.0,
-        'avgMs': metric.count > 0
-            ? (metric.totalDuration / metric.count) / 1000.0
-            : 0,
-        'maxMs': metric.maxDuration / 1000.0,
-        'minMs': metric.minDuration / 1000.0,
-      };
-    }
-
-    return report;
-  }
-
-  /// Reset all metrics
-  void reset() {
-    _timers.clear();
-    _metrics.clear();
-  }
-}
-
-/// Internal timer class
-class _Timer {
-  final DateTime startTime;
-  _Timer(this.startTime);
-}
-
-/// Internal metric class
-class _Metric {
-  final String name;
-  int count = 0;
-  int totalDuration = 0;
-  int maxDuration = 0;
-  int minDuration = 0;
-
-  _Metric(this.name);
-}
-
-/// Represents an instance of a component
-class ComponentInstance {
-  /// The component
-  final Component component;
-
-  /// Reference to the VDOM
-  final VDom vdomRef;
-
-  /// Previous rendered tree
-  VDomNode? previousNode;
-
-  /// Whether component is mounted
-  bool isMounted = false;
-
-  ComponentInstance({
-    required this.component,
-    required this.vdomRef,
-  });
-}
-
-/// Virtual DOM implementation
+/// Virtual DOM implementation that directly supports hook-based elements
 class VDom {
   /// Native bridge for UI operations
   late final PlatformDispatcher _nativeBridge;
@@ -123,26 +20,17 @@ class VDom {
   /// Counter for generating view IDs
   int _viewIdCounter = 1;
 
-  /// Map of component instances by ID
-  final Map<String, Component> _components = {};
-
-  /// Enriched component instances with additional tracking
-  final Map<String, ComponentInstance> _componentInstances = {};
-
-  /// Map of component nodes by component instance ID
-  final Map<String, ComponentNode> _componentNodes = {};
-
   /// Map of view IDs to VDomNodes
   final Map<String, VDomNode> _nodesByViewId = {};
 
   /// Map to track detached views for potential reuse
   final Map<String, VDomNode> _detachedNodes = {};
-  
+
   /// Performance monitoring
   final PerformanceMonitor _performanceMonitor = PerformanceMonitor();
 
-  /// Current batch update
-  final Set<String> _pendingUpdates = {};
+  /// Current batch update for elements
+  final Set<String> _pendingElementUpdates = {};
 
   /// Whether an update is scheduled
   bool _isUpdateScheduled = false;
@@ -150,11 +38,8 @@ class VDom {
   /// Context registry
   final ContextRegistry _contextRegistry = ContextRegistry();
 
-  /// Error boundaries
-  final Map<String, ErrorBoundary> _errorBoundaries = {};
-
-  /// Root component node (for main application)
-  ComponentNode? rootComponentNode;
+  /// Root element node (for main application)
+  VDomElement? rootElement;
 
   /// Reconciliation engine
   late final Reconciler _reconciler;
@@ -188,7 +73,7 @@ class VDom {
       // Mark as ready
       _readyCompleter.complete();
 
-      developer.log('VDom initialized', name: 'VDom');
+      developer.log('EnhancedVDom initialized', name: 'VDom');
       _performanceMonitor.endTimer('vdom_initialize');
     } catch (e) {
       _readyCompleter.completeError(e);
@@ -204,100 +89,12 @@ class VDom {
     return 'view_${_viewIdCounter++}';
   }
 
-  /// Create a component node
-  ComponentNode createComponent(Component component) {
-    final node = ComponentNode(component: component);
-
-    // Store component and node by component ID
-    _components[component.instanceId] = component;
-    _componentNodes[component.instanceId] = node;
-
-    // Create and register a component instance
-    _componentInstances[component.instanceId] = ComponentInstance(
-      component: component,
-      vdomRef: this,
-    );
-
-    // Set up update scheduling for stateful components
-    if (component is StatefulComponent) {
-      component.scheduleUpdate = () => _scheduleComponentUpdate(component);
-    }
-
-    return node;
+  /// Generate a unique element instance ID
+  String _generateElementId() {
+    return 'element_${_viewIdCounter++}';
   }
 
-  /// Handle a native event
-  void _handleNativeEvent(
-      String viewId, String eventType, Map<String, dynamic> eventData) {
-    _performanceMonitor.startTimer('handle_native_event');
-
-    final node = _nodesByViewId[viewId];
-    if (node == null) {
-      developer.log('⚠️ No node found for viewId: $viewId', name: 'VDom');
-      _performanceMonitor.endTimer('handle_native_event');
-      return;
-    }
-
-    if (node is VDomElement) {
-      // Try explicit events map first
-      if (node.events != null &&
-          node.events!.containsKey(eventType) &&
-          node.events![eventType] is Function) {
-        _performanceMonitor.startTimer('event_handler');
-        final handler = node.events![eventType] as Function;
-        
-        try {
-          if (handler is Function(Map<String, dynamic>)) {
-            // Function expects event data
-            handler(eventData);
-          } else if (handler is Function()) {
-            // Function takes no parameters
-            handler();
-          } else {
-            // Try a more general approach
-            Function.apply(handler, [], {});
-          }
-        } catch (e, stack) {
-          developer.log('❌ Error executing event handler: $e', 
-              name: 'VDom', error: e, stackTrace: stack);
-        }
-        
-        _performanceMonitor.endTimer('event_handler');
-        _performanceMonitor.endTimer('handle_native_event');
-        return;
-      }
-
-      // If not found in events map, try props with "onX" format
-      final propName =
-          'on${eventType[0].toUpperCase()}${eventType.substring(1)}';
-
-      // Call the handler if it exists
-      if (node.props.containsKey(propName) &&
-          node.props[propName] is Function) {
-        _performanceMonitor.startTimer('event_handler');
-        final handler = node.props[propName] as Function;
-        
-        try {
-          if (handler is Function(Map<String, dynamic>)) {
-            handler(eventData);
-          } else if (handler is Function()) {
-            handler();
-          } else {
-            Function.apply(handler, [], {});
-          }
-        } catch (e, stack) {
-          developer.log('❌ Error executing event handler: $e', 
-              name: 'VDom', error: e, stackTrace: stack);
-        }
-        
-        _performanceMonitor.endTimer('event_handler');
-      }
-    }
-
-    _performanceMonitor.endTimer('handle_native_event');
-  }
-
-  /// Create a new element
+  /// Create an element
   VDomElement createElement(
     String type, {
     Map<String, dynamic>? props,
@@ -312,110 +109,180 @@ class VDom {
     );
   }
 
-  /// Render a node to native UI
-  Future<String?> renderToNative(VDomNode node,
-      {String? parentId, int? index}) async {
-    await isReady;
+  /// Create an element with hooks enabled
+  VDomElement createHookElement(
+    String type, {
+    Map<String, dynamic>? props,
+    List<VDomNode>? children,
+    String? key,
+  }) {
+    final element = createElement(type, props: props, children: children, key: key);
+    
+    // Assign a unique instance ID for hook tracking
+    (element as dynamic).instanceId = _generateElementId();
+    
+    // Set up update scheduling
+    element.scheduleUpdate = () => _scheduleElementUpdate(element);
+    
+    return element;
+  }
 
-    _performanceMonitor.startTimer('render_to_native');
-    try {
-      // Handle Fragment nodes
-      if (node is Fragment) {
-        // Just render children directly to parent
-        final childIds = <String>[];
-        int childIndex = index ?? 0;
+  /// Schedule an element update for batching
+  void _scheduleElementUpdate(VDomElement element) {
+    _pendingElementUpdates.add(element.instanceId);
 
-        for (final child in node.children) {
-          final childId = await renderToNative(
-            child,
-            parentId: parentId,
-            index: childIndex++,
-          );
+    if (_isUpdateScheduled) return;
+    _isUpdateScheduled = true;
 
-          if (childId != null && childId.isNotEmpty) {
-            childIds.add(childId);
-          }
-        }
+    // Schedule updates to run after current execution using microtask for animations
+    Future.microtask(() {
+      _processAllPendingUpdates();
+    });
+  }
 
-        return ""; // Fragments don't have their own ID
+  /// Process all pending updates
+  Future<void> _processAllPendingUpdates() async {
+    if (_pendingElementUpdates.isEmpty) {
+      _isUpdateScheduled = false;
+      return;
+    }
+
+    _performanceMonitor.startTimer('batch_update');
+
+    // Process Element updates
+    if (_pendingElementUpdates.isNotEmpty) {
+      // Copy the pending updates to allow for new ones during processing
+      final updates = Set<String>.from(_pendingElementUpdates);
+      _pendingElementUpdates.clear();
+
+      // Process each pending element update
+      for (final instanceId in updates) {
+        await _updateElement(instanceId);
       }
+    }
 
-      if (node is ComponentNode) {
-        try {
-          return await _renderComponentToNative(node,
-              parentId: parentId, index: index);
-        } catch (error, stackTrace) {
-          // Try to find nearest error boundary
-          final errorBoundary = _findNearestErrorBoundary(node);
-          if (errorBoundary != null) {
-            errorBoundary.handleError(error, stackTrace);
-            return ""; // Error handled by boundary
-          }
+    _performanceMonitor.endTimer('batch_update');
 
-          // No error boundary, propagate error
-          rethrow;
-        }
-      } else if (node is VDomElement) {
-        return await _renderElementToNative(node,
-            parentId: parentId, index: index);
-      }
-
-      return null;
-    } finally {
-      _performanceMonitor.endTimer('render_to_native');
+    // Check if new updates were added during processing
+    if (_pendingElementUpdates.isNotEmpty) {
+      // Process new updates in next microtask to avoid deep recursion
+      Future.microtask(() {
+        _processAllPendingUpdates();
+      });
+    } else {
+      _isUpdateScheduled = false;
     }
   }
 
-  /// Render a component to native UI
-  Future<String?> _renderComponentToNative(ComponentNode componentNode,
-      {String? parentId, int? index}) async {
-    final component = componentNode.component;
-    final componentInstance = _componentInstances[component.instanceId];
+  /// Update an element directly (for hook-based updates)
+  Future<void> _updateElement(String elementId) async {
+    final node = _nodesByViewId.entries
+        .firstWhere((entry) => entry.value is VDomElement && 
+                              (entry.value as VDomElement).instanceId == elementId,
+            orElse: () => MapEntry('', EmptyVDomNode()))
+        .value;
 
-    // Set the update function
-    if (component is StatefulComponent) {
-      component.scheduleUpdate = () => _scheduleComponentUpdate(component);
+    if (node is! VDomElement) {
+      return;
     }
 
-    // Reset hook state before render for stateful components
-    if (component is StatefulComponent) {
-      component.prepareForRender();
+    final element = node;
+    developer.log('Updating element: ${element.type}',
+        name: 'VDom');
+
+    // Reset hook state before render but preserve values
+    element.prepareForRender();
+
+    // We need to re-render the element, which means getting a fresh copy
+    // and then reconciling with the current version
+    final newElement = element.clone() as VDomElement;
+    
+    // Ensure the new element has the same instanceId
+    (newElement as dynamic).instanceId = element.instanceId;
+    
+    // Set up the schedule update function
+    newElement.scheduleUpdate = () => _scheduleElementUpdate(newElement);
+
+    // Reconcile with the current version
+    _performanceMonitor.startTimer('reconcile');
+    await _reconciler.reconcile(element, newElement);
+    _performanceMonitor.endTimer('reconcile');
+
+    // Run effects after update
+    element.runEffectsAfterRender();
+
+    // If this was a root element, trigger layout calculation
+    if (element.parent == null || element == rootElement) {
+      await calculateAndApplyLayout();
+    }
+  }
+
+  /// Handle events from native
+  void _handleNativeEvent(String viewId, String type, Map<String, dynamic> eventData) {
+    // Get the node associated with this view
+    final node = _nodesByViewId[viewId];
+    if (node == null) {
+      developer.log('No node found for viewId: $viewId', name: 'VDom');
+      return;
     }
 
-    // Render the component
-    _performanceMonitor.startTimer('component_render');
-    final renderedNode = component.render();
-    _performanceMonitor.endTimer('component_render');
-
-    componentNode.renderedNode = renderedNode;
-    renderedNode.parent = componentNode;
-
-    // Render the rendered node
-    final viewId =
-        await renderToNative(renderedNode, parentId: parentId, index: index);
-
-    // Store the view ID
-    componentNode.contentViewId = viewId;
-
-    // Mark as mounted if not already
-    if (componentInstance != null && !componentInstance.isMounted) {
-      // Call lifecycle method
-      component.componentDidMount();
-      componentInstance.isMounted = true;
+    if (node is VDomElement) {
+      // Process the event for the element
+      _handleElementEvent(node, type, eventData);
     }
+  }
 
-    // Register error boundary if applicable
-    if (component is ErrorBoundary) {
-      _errorBoundaries[component.instanceId] = component;
+  /// Handle element events
+  void _handleElementEvent(VDomElement element, String type, Map<String, dynamic> eventData) {
+    // Check if the element has a handler for this event type
+    final handlerName = 'on${type[0].toUpperCase()}${type.substring(1)}';
+    
+    if (element.props.containsKey(handlerName)) {
+      final handler = element.props[handlerName];
+      
+      if (handler is Function) {
+        // Call the handler with the event data
+        handler(eventData);
+      }
     }
+  }
 
-    // Run effects after render for stateful components
-    if (component is StatefulComponent &&
-        componentInstance?.isMounted == true) {
-      component.runEffectsAfterRender();
+  /// Add tracking of node to our internal maps
+  void addNodeToTree(String viewId, VDomNode node) {
+    _nodesByViewId[viewId] = node;
+  }
+
+  /// Remove tracking of node from our internal maps
+  void removeNodeFromTree(String viewId) {
+    _nodesByViewId.remove(viewId);
+  }
+
+  /// Finds a node with the specified ID
+  VDomNode? findNodeById(String viewId) {
+    return _nodesByViewId[viewId];
+  }
+
+  /// Calculate and apply layout
+  Future<void> calculateAndApplyLayout({double? width, double? height}) async {
+    _performanceMonitor.startTimer('native_layout_calculation');
+    final success = await _nativeBridge.calculateLayout();
+    _performanceMonitor.endTimer('native_layout_calculation');
+
+    if (!success) {
+      developer.log('⚠️ Native layout calculation failed', name: 'VDom');
     }
+  }
 
-    return viewId;
+  /// Render to native UI
+  Future<String?> renderToNative(VDomNode node, {String? parentId, int? index}) async {
+    if (node is VDomElement) {
+      return await _renderElementToNative(node, parentId: parentId, index: index);
+    } else if (node is EmptyVDomNode) {
+      return null;
+    } else {
+      developer.log('Unsupported node type: ${node.runtimeType}', name: 'VDom');
+      return null;
+    }
   }
 
   /// Render an element to native UI
@@ -504,6 +371,9 @@ class VDom {
     // Store map from node to view ID
     _nodesByViewId[viewId] = element;
     element.nativeViewId = viewId;
+    
+    // Set up update scheduling for element hooks
+    element.scheduleUpdate = () => _scheduleElementUpdate(element);
 
     // Create the view
     _performanceMonitor.startTimer('create_native_view');
@@ -585,198 +455,54 @@ class VDom {
       } else {
         // Render new child
         final childId = await renderToNative(newChild, parentId: viewId, index: i);
+        
         if (childId != null && childId.isNotEmpty) {
           childIds.add(childId);
         }
       }
     }
     
-    // Set children order
+    // Set the updated children order
     if (childIds.isNotEmpty) {
       await _nativeBridge.setChildren(viewId, childIds);
     }
-  }
-
-  /// Calculate and apply layout
-  Future<void> calculateAndApplyLayout({double? width, double? height}) async {
-    _performanceMonitor.startTimer('native_layout_calculation');
-    final success = await _nativeBridge.calculateLayout();
-    _performanceMonitor.endTimer('native_layout_calculation');
-
-    if (!success) {
-      developer.log('⚠️ Native layout calculation failed', name: 'VDom');
-    }
-  }
-
-  /// Schedule a component update for batching
-  void _scheduleComponentUpdate(StatefulComponent component) {
-    _pendingUpdates.add(component.instanceId);
-
-    if (_isUpdateScheduled) return;
-    _isUpdateScheduled = true;
-
-    // Schedule updates to run after current execution using microtask for animations
-    Future.microtask(() {
-      _processPendingUpdates();
-    });
-  }
-
-  /// Process all pending component updates
-  Future<void> _processPendingUpdates() async {
-    if (_pendingUpdates.isEmpty) {
-      _isUpdateScheduled = false;
-      return;
-    }
-
-    _performanceMonitor.startTimer('batch_update');
-
-    // Copy the pending updates to allow for new ones during processing
-    final updates = Set<String>.from(_pendingUpdates);
-    _pendingUpdates.clear();
-
-    // Process each pending component update
-    for (final instanceId in updates) {
-      final component = _findComponentById(instanceId);
-      if (component != null) {
-        await _updateComponent(component.instanceId);
+    
+    // Remove any extra old children that aren't in the new list
+    for (var i = newElement.children.length; i < oldElement.children.length; i++) {
+      final oldChild = oldElement.children[i];
+      
+      if (oldChild.nativeViewId != null) {
+        await _nativeBridge.deleteView(oldChild.nativeViewId!);
       }
     }
-
-    _performanceMonitor.endTimer('batch_update');
-
-    // Check if new updates were added during processing
-    if (_pendingUpdates.isNotEmpty) {
-      // Process new updates in next microtask to avoid deep recursion
-      Future.microtask(() {
-        _processPendingUpdates();
-      });
-    } else {
-      _isUpdateScheduled = false;
-    }
   }
 
-  /// Find a component by its ID
-  StatefulComponent? _findComponentById(String instanceId) {
-    for (final entry in _components.entries) {
-      if (entry.key == instanceId && entry.value is StatefulComponent) {
-        return entry.value as StatefulComponent;
-      }
-    }
-    return null;
-  }
-
-  /// Update a component
-  Future<void> _updateComponent(String componentId) async {
-    if (!_components.containsKey(componentId) ||
-        !_componentNodes.containsKey(componentId)) {
-      return;
-    }
-
-    final component = _components[componentId]!;
-    final componentNode = _componentNodes[componentId]!;
-
-    // Handle stateful components
-    if (component is StatefulComponent) {
-      // Reset hook state before render but preserve values
-      component.prepareForRender();
-    }
-
-    // Re-render the component
-    final newRenderedNode = component.render();
-    final oldRenderedNode = componentNode.renderedNode;
-
-    // Update the rendered node
-    componentNode.renderedNode = newRenderedNode;
-    newRenderedNode.parent = componentNode;
-
-    // Reconcile nodes
-    if (oldRenderedNode != null) {
-      _performanceMonitor.startTimer('reconcile');
-      await _reconciler.reconcile(oldRenderedNode, newRenderedNode);
-      _performanceMonitor.endTimer('reconcile');
-    } else if (componentNode.contentViewId != null) {
-      // If no previous node but we have a content view ID, this might be a special case
-      // Handle by re-rendering to native
-      final parentId = _findParentViewId(componentNode);
-      if (parentId != null) {
-        renderToNative(newRenderedNode, parentId: parentId, index: 0);
-      }
-    }
-
-    // Update component lifecycle
-    if (component is StatefulComponent) {
-      component.componentDidUpdate({});
-      component.runEffectsAfterRender();
-    }
-  }
-
-  /// Find parent view ID for a component node
-  String? _findParentViewId(ComponentNode node) {
-    VDomNode? current = node.parent;
-    while (current != null) {
-      if (current.nativeViewId != null) {
-        return current.nativeViewId;
-      }
-      current = current.parent;
-    }
-    return "root"; // Fallback to root if no parent found
-  }
-
- 
-  /// Call lifecycle methods for components
+  /// Call lifecycle methods for elements
   void _callLifecycleMethodsIfNeeded(VDomNode node) {
-    // Find component owning this node by traversing up the tree
-    VDomNode? current = node;
-    ComponentNode? componentNode;
-
-    while (current != null) {
-      if (current is ComponentNode) {
-        componentNode = current;
-        break;
-      }
-      current = current.parent;
-    }
-
-    if (componentNode != null) {
-      final component = componentNode.component;
-      final instance = _componentInstances[component.instanceId];
-
-      if (instance != null && !instance.isMounted) {
-        component.componentDidMount();
-        instance.isMounted = true;
+    // Check if this is a VDomElement with hooks
+    if (node is VDomElement) {
+      // Call didMount directly on the element
+      if (!node.isMounted) {
+        node.didMount();
+        // Run any effects after mounting
+        node.runEffectsAfterRender();
       }
     }
   }
 
-  /// Find the nearest error boundary for a node
-  ErrorBoundary? _findNearestErrorBoundary(VDomNode node) {
-    VDomNode? current = node;
-
-    while (current != null) {
-      if (current is ComponentNode && current.component is ErrorBoundary) {
-        return current.component as ErrorBoundary;
-      }
-      current = current.parent;
-    }
-
-    return null;
+  /// Attach a view to a parent
+  Future<bool> attachView(String viewId, String parentId, int index) async {
+    return await _nativeBridge.attachView(viewId, parentId, index);
   }
 
-  /// Get provider chain for context lookup
-  List<String> _getProviderChain(VDomNode node) {
-    final result = <String>[];
-    VDomNode? current = node;
+  /// Detach a view from its parent
+  Future<bool> detachView(String viewId) async {
+    return await _nativeBridge.detachView(viewId);
+  }
 
-    while (current != null) {
-      if (current is VDomElement &&
-          current.type == 'ContextProvider' &&
-          current.nativeViewId != null) {
-        result.add(current.nativeViewId!);
-      }
-      current = current.parent;
-    }
-
-    return result;
+  /// Set children for a view
+  Future<bool> setChildren(String parentId, List<String> childIds) async {
+    return await _nativeBridge.setChildren(parentId, childIds);
   }
 
   /// Update a view's properties
@@ -796,87 +522,37 @@ class VDom {
         
         // Cache node for potential reuse if it has a key
         if (node is VDomElement && node.key != null) {
-          String cacheKey = '${node.type}-${node.key}';
+          final cacheKey = '${node.type}-${node.key}';
           _detachedNodes[cacheKey] = node;
-          developer.log('Cached node $viewId with key ${node.key} for reuse', name: 'VDom');
         }
       }
       return result;
     } catch (e) {
-      developer.log('Error deleting view $viewId: $e', name: 'VDom');
+      developer.log('Failed to delete view: $e', name: 'VDom');
       return false;
     }
   }
 
-  /// Set the children of a view
-  Future<bool> setChildren(String viewId, List<String> childrenIds) async {
-    return await _nativeBridge.setChildren(viewId, childrenIds);
-  }
+  /// Get provider chain for context lookup
+  List<String> _getProviderChain(VDomNode node) {
+    final result = <String>[];
+    VDomNode? current = node;
 
-  /// Add a node to the node tree
-  void addNodeToTree(String viewId, VDomNode node) {
-    _nodesByViewId[viewId] = node;
-    node.nativeViewId = viewId;
-  }
-
-  /// Remove a node from the node tree
-  void removeNodeFromTree(String viewId) {
-    final node = _nodesByViewId[viewId];
-    if (node != null) {
-      node.nativeViewId = null;
-      _nodesByViewId.remove(viewId);
-    }
-  }
-
-  /// Attach a child view to a parent view at specific index
-  Future<bool> attachView(String childId, String parentId, int index) async {
-    return await _nativeBridge.attachView(childId, parentId, index);
-  }
-
-  /// Detach a view from its parent (without deleting it)
-  Future<bool> detachView(String viewId) async {
-    try {
-      // Get the node before detachment
-      final node = _nodesByViewId[viewId];
-      
-      // Use the native bridge to detach the view
-      final result = await _nativeBridge.detachView(viewId);
-      
-      // Cache the node for potential reuse if it has a key and detachment was successful
-      if (result && node is VDomElement && node.key != null) {
-        String cacheKey = '${node.type}-${node.key}';
-        _detachedNodes[cacheKey] = node;
-        developer.log('🔄 Detached and cached node $viewId with key ${node.key}', name: 'VDom');
-      } else if (result) {
-        developer.log('🔄 Detached node $viewId (no caching)', name: 'VDom');
+    while (current != null) {
+      if (current is VDomElement &&
+          current.type == 'ContextProvider' &&
+          current.nativeViewId != null) {
+        result.add(current.nativeViewId!);
       }
-      
-      return result;
-    } catch (e) {
-      developer.log('❌ Error detaching view $viewId: $e', name: 'VDom');
-      return false;
+      current = current.parent;
     }
+
+    return result;
   }
 
-  /// Get performance data
-  Map<String, dynamic> getPerformanceData() {
-    return _performanceMonitor.getMetricsReport();
-  }
-
-  /// Reset performance metrics
-  void resetPerformanceMetrics() {
-    _performanceMonitor.reset();
-  }
-
-  /// Find a node by ID
-  VDomNode? findNodeById(String id) {
-    // Check direct mapping
-    return _nodesByViewId[id];
-  }
-  
-  /// Purge all cached/detached nodes to force fresh rendering
-  void purgeDetachedNodes() {
-    int count = _detachedNodes.length;
+  /// Purge all detached nodes from cache
+  void purgeDetachedNodesCache() {
+    final count = _detachedNodes.length;
     _detachedNodes.clear();
     developer.log('🧹 Purged $count detached nodes from cache', name: 'VDom');
   }

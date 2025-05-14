@@ -9,10 +9,9 @@ export 'framework/renderer/vdom/vdom_node.dart';
 export 'framework/renderer/vdom/vdom_element.dart';
 export 'framework/renderer/vdom/reconciler.dart';
 export 'framework/renderer/vdom/fragment.dart';
-export 'framework/renderer/vdom/component/component.dart';
-export 'framework/renderer/vdom/component/state_hook.dart';
+export 'framework/renderer/vdom/hooks.dart';
 // Native Bridge System
-export 'framework/renderer/native_bridge/dispatcher.dart' ;
+export 'framework/renderer/native_bridge/dispatcher.dart';
 export 'framework/renderer/native_bridge/dispatcher_imp.dart';
 
 // Core Constants and Properties - explicitly exported for component developers
@@ -23,21 +22,15 @@ export 'framework/constants/style_properties.dart';
 // Utilities
 export 'framework/utilities/screen_utilities.dart';
 
-
-// Component Protocol Interfaces - no implementations
-export 'framework/protocol/component_protocol.dart';
-export 'framework/protocol/component_registry.dart';
+// Protocol Interfaces
 export 'framework/protocol/plugin_protocol.dart';
 
 // Application Entry Point
-// import 'package:dcflight/framework/protocol/component_protocol.dart';
-// import 'package:dcflight/framework/protocol/component_registry.dart';
-
 import 'package:dcflight/framework/protocol/component_protocol.dart';
 import 'package:dcflight/framework/protocol/component_registry.dart';
 
 import 'framework/renderer/vdom/vdom.dart';
-import 'framework/renderer/vdom/component/component.dart';
+import 'framework/renderer/vdom/vdom_element.dart';
 import 'framework/renderer/native_bridge/dispatcher.dart';
 import 'framework/utilities/screen_utilities.dart';
 import 'framework/protocol/plugin_protocol.dart';
@@ -51,7 +44,6 @@ class DCFlight {
     
     // Initialize platform dispatcher
     final bridge = NativeBridgeFactory.create();
-    // PlatformDispatcher.initializeInstance(bridge);
     await bridge.initialize();
     
     // Initialize screen utilities
@@ -63,20 +55,24 @@ class DCFlight {
     return true;
   }
   
-  /// Start the application with the given root component
-  static Future<void> start({required Component app}) async {
-  await   _initialize();
+  /// Start the application with a VDomElement as the root
+  /// Uses hooks directly in VDomElements for state management
+  static Future<void> start({required VDomElement element}) async {
+    await _initialize();
+    
     // Create VDOM instance
     final vdom = VDom();
     
-    // Create our main app component
-    final mainApp = app;
+    // Create a hook-enabled element (which sets up update scheduling)
+    final rootElement = vdom.createHookElement(
+      element.type, 
+      props: element.props,
+      children: element.children,
+      key: element.key
+    );
     
-    // Create a component node
-    final appNode = vdom.createComponent(mainApp);
-    
-    // Render the component to native UI
-    await vdom.renderToNative(appNode, parentId: "root", index: 0);
+    // Render the element to native UI
+    await vdom.renderToNative(rootElement, parentId: "root", index: 0);
     
     // Wait for the VDom to be ready
     vdom.isReady.whenComplete(() async {
@@ -86,7 +82,8 @@ class DCFlight {
       });
     });
   }
-  /// Register a component definition with the framework
+
+    /// Register a component definition with the framework
   static void registerComponentDefinition(ComponentDefinition definition) {
     ComponentRegistry.instance.registerComponentDefinition(definition);
   }

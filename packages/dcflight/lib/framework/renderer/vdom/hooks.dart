@@ -1,6 +1,6 @@
 import 'dart:developer' as developer;
 
-/// Base hook class
+/// Base hook class 
 abstract class Hook {
   /// Whether the hook is initialized
   bool _isInitialized = false;

@@ -5,8 +5,6 @@ PODS:
   - dcf_primitives (0.0.1):
     - dcflight
     - SVGKit (~> 3.0.0)
-  - dcf_router (0.0.1):
-    - dcflight
   - dcflight (0.0.1):
     - Flutter
     - Yoga
@@ -17,7 +15,6 @@ PODS:
 
 DEPENDENCIES:
   - dcf_primitives (from `.symlinks/plugins/dcf_primitives/ios`)
-  - dcf_router (from `.symlinks/plugins/dcf_router/ios`)
   - dcflight (from `.symlinks/plugins/dcflight/ios`)
   - Flutter (from `Flutter`)
 
@@ -30,8 +27,6 @@ SPEC REPOS:
 EXTERNAL SOURCES:
   dcf_primitives:
     :path: ".symlinks/plugins/dcf_primitives/ios"
-  dcf_router:
-    :path: ".symlinks/plugins/dcf_router/ios"
   dcflight:
     :path: ".symlinks/plugins/dcflight/ios"
   Flutter:
@@ -40,7 +35,6 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   CocoaLumberjack: 6a459bc897d6d80bd1b8c78482ec7ad05dffc3f0
   dcf_primitives: d79c4f56cf3943beb0f6f2edd96825eb1f0632f3
-  dcf_router: 857e6786103d75f6d58d771fdfad2d2a27b9d47b
   dcflight: 1a0a9507326871b1d0bd9aa3b593aa084c280f08
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   SVGKit: 1ad7513f8c74d9652f94ed64ddecda1a23864dea

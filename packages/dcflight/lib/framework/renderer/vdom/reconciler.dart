@@ -1,15 +1,21 @@
 import 'dart:developer' as developer;
 import 'dart:math' as math;
-import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 
 import '../../constants/layout_properties.dart';
 
 import 'vdom_node.dart';
 import 'vdom_element.dart';
-
 import 'vdom.dart';
 
-/// Class responsible for reconciling differences between VDOM trees
+/// Parent information for node operations
+class _ParentInfo {
+  final String parentId;
+  final int index;
+
+  _ParentInfo(this.parentId, this.index);
+}
+
+/// Enhanced reconciler that works directly with VDomElements and hooks
 class Reconciler {
   /// Reference to the VDOM
   final VDom vdom;
@@ -40,25 +46,6 @@ class Reconciler {
 
       // Different type or key - replacement needed
       await _replaceNode(oldNode, newNode);
-    } else if (oldNode is ComponentNode && newNode is ComponentNode) {
-      // Component comparison - check type
-      if (oldNode.component.runtimeType == newNode.component.runtimeType) {
-        // Copy over native view IDs for proper tracking
-        newNode.nativeViewId = oldNode.nativeViewId;
-        newNode.contentViewId = oldNode.contentViewId;
-
-        // Just update rendered content if available
-        if (oldNode.renderedNode != null && newNode.renderedNode != null) {
-          // Pass parent's native view ID for proper hierarchical updates
-          if (oldNode.contentViewId != null) {
-            newNode.renderedNode!.nativeViewId = oldNode.contentViewId;
-          }
-
-          await reconcile(oldNode.renderedNode!, newNode.renderedNode!);
-        }
-      } else {
-        await _replaceNode(oldNode, newNode);
-      }
     } else if (oldNode is EmptyVDomNode && newNode is EmptyVDomNode) {
       // Nothing to do for empty nodes
       return;
@@ -67,8 +54,8 @@ class Reconciler {
       await _replaceNode(oldNode, newNode);
     }
 
-    // Calculate and apply layout after reconciliation if this is a root element
-    if (newNode == vdom.rootComponentNode?.renderedNode) {
+    // Calculate and apply layout after reconciliation if necessary
+    if (oldNode.parent == null || newNode.parent == null) {
       await vdom.calculateAndApplyLayout();
     }
   }
@@ -82,7 +69,7 @@ class Reconciler {
     if (oldElement.nativeViewId != null) {
       newElement.nativeViewId = oldElement.nativeViewId;
 
-      // Find changed props with generic diffing
+      // Find changed props with generic diffing - excluding layout props
       final changedProps = <String, dynamic>{};
 
       // Check for props that have changed or been added
@@ -100,7 +87,7 @@ class Reconciler {
       // Check for removed props
       for (final key in oldElement.props.keys) {
         if (!newElement.props.containsKey(key)) {
-          // Set to null to indicate removal
+          // Set to null to indicate removal (handled by native bridge)
           changedProps[key] = null;
         }
       }
@@ -366,20 +353,4 @@ class Reconciler {
 
     return _ParentInfo(parent.nativeViewId!, index);
   }
-
-  /// Generate a unique ID for a node
-  static String generateId() {
-    final random = math.Random();
-    final id =
-        'node_${DateTime.now().millisecondsSinceEpoch}_${random.nextInt(10000)}';
-    return id;
-  }
-}
-
-/// Helper class to store parent information
-class _ParentInfo {
-  final String parentId;
-  final int index;
-
-  _ParentInfo(this.parentId, this.index);
 }

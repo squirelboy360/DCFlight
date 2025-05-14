@@ -1,8 +1,18 @@
+import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
-import 'app/app.dart';
+
 
 void main() {
-  DCFlight.start(app: DCFGo());
+  DCFlight.start(element: view(
+    layout: LayoutProps(
+    flex: 1
+    ),
+    style: StyleSheet(
+      backgroundColor: Colors.amber,
+    ),
+    children: [
+      text(content: "DCFlight")
+    ],
+  ));
 }
-
 

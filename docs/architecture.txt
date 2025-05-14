@@ -35,6 +35,9 @@ DCFlight is a high-performance cross-platform UI framework that uses a modulariz
 │                    │                     │
 └───────────────────┬─────────────────────┘
                     │
+                    (NB: Currently depends on Method channels due to current advancements
+                    from a custom cone of the flutter engine and future advancements from the flutter team.
+                    This is not just a bet but it does in fact perfoem very well)
         +-----------+-----------+
         │           │           │
 ┌───────▼─────┐ ┌───▼────┐ ┌───▼────┐
