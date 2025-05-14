@@ -9,9 +9,7 @@ abstract class PlatformDispatcher {
   
   /// Get the singleton instance
   static PlatformDispatcher get instance {
-    if (_instance == null) {
-      _instance = NativeBridgeFactory.create();
-    }
+    _instance ??= NativeBridgeFactory.create();
     return _instance!;
   }
   
