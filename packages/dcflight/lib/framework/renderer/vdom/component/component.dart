@@ -4,24 +4,30 @@ import 'state_hook.dart';
 import 'store.dart';
 
 /// Base component class
-abstract class Component {
+abstract class Component extends VDomNode {
   /// Unique ID for this component instance
   final String instanceId;
-
-  /// Key for reconciliation
-  final String? key;
 
   /// Fully qualified type name for component
   final String typeName;
 
+  /// The rendered node from the component
+  VDomNode? _renderedNode;
+
   /// Create a component
-  Component({this.key})
+  Component({super.key})
       : instanceId = DateTime.now().millisecondsSinceEpoch.toString() +
             Random().nextDouble().toString(),
         typeName = StackTrace.current.toString().split('\n')[1].split(' ')[0];
 
   /// Render the component
   VDomNode render();
+  
+  /// Get the rendered node (lazily render if necessary)
+  VDomNode get renderedNode {
+    _renderedNode ??= render();
+    return _renderedNode!;
+  }
 
   /// Called when the component is mounted
   void componentDidMount() {}
@@ -29,6 +35,46 @@ abstract class Component {
   /// Called when the component will unmount
   void componentWillUnmount() {
     // Base implementation does nothing
+  }
+  
+  /// Implement VDomNode methods
+  
+  @override
+  VDomNode clone() {
+    // Components can't be cloned easily due to state, hooks, etc.
+    // Instead, we create a new instance with the same key and let it render itself
+    throw UnsupportedError("Components cannot be cloned directly. Use ComponentNode instead.");
+  }
+  
+  @override
+  bool equals(VDomNode other) {
+    if (other is! Component) return false;
+    return runtimeType == other.runtimeType && key == other.key;
+  }
+  
+  @override
+  void mount(VDomNode? parent) {
+    this.parent = parent;
+    
+    // Ensure the component has rendered
+    final node = renderedNode;
+    
+    // Mount the rendered content
+    node.mount(this);
+    
+    // Component lifecycle method
+    componentDidMount();
+  }
+  
+  @override
+  void unmount() {
+    // Unmount the rendered content if any
+    if (_renderedNode != null) {
+      _renderedNode!.unmount();
+    }
+    
+    // Component lifecycle method
+    componentWillUnmount();
   }
 }
 
