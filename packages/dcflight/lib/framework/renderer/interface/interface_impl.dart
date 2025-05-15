@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'package:dcflight/framework/renderer/native_bridge/dispatcher_util.dart';
+import 'package:dcflight/framework/renderer/interface/interface_util.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'dispatcher.dart';
+import 'interface.dart';
 
 /// Method channel-based implementation of NativeBridge
-class PlatformDispatcherIml implements PlatformDispatcher {
+class PlatformInterfaceImpl implements PlatformInterface {
   // Method channels
   static const MethodChannel bridgeChannel = MethodChannel('com.dcmaui.bridge');
   static const MethodChannel eventChannel = MethodChannel('com.dcmaui.events');
@@ -22,7 +22,7 @@ class PlatformDispatcherIml implements PlatformDispatcher {
   Function(String viewId, String eventType, Map<String, dynamic> eventData)? _eventHandler;
 
   // Sets up communication with native code
-  PlatformDispatcherIml() {
+  PlatformInterfaceImpl() {
     // Set up method channels for events
     _setupMethodChannelEventHandling();
     debugPrint('Method channel bridge initialized');

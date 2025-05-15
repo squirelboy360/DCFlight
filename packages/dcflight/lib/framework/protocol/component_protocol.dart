@@ -3,7 +3,7 @@
 import 'package:flutter/foundation.dart';
 import '../renderer/vdom/vdom_node.dart';
 import '../renderer/vdom/vdom_element.dart';
-import '../renderer/native_bridge/dispatcher.dart';
+import '../renderer/interface/interface.dart';
 
 /// Type definition for a component factory function
 /// This will be used to register component factories with the framework
@@ -24,7 +24,7 @@ abstract class ComponentDefinition {
     
     // Forward the call to the native implementation through the platform dispatcher
     try {
-      final dispatcher = PlatformDispatcher.instance;
+      final dispatcher = PlatformInterface.instance;
       return await dispatcher.callComponentMethod(viewId, methodName, args);
     } catch (e) {
       debugPrint('Error calling component method $methodName on $viewId: $e');
