@@ -25,17 +25,10 @@ export 'framework/constants/style_properties.dart';
 export 'framework/utilities/screen_utilities.dart';
 
 
-// Component Protocol Interfaces - no implementations
-export 'framework/protocol/component_protocol.dart';
+
 export 'framework/protocol/component_registry.dart';
 export 'framework/protocol/plugin_protocol.dart';
 
-// Application Entry Point
-// import 'package:dcflight/framework/protocol/component_protocol.dart';
-// import 'package:dcflight/framework/protocol/component_registry.dart';
-
-import 'package:dcflight/framework/protocol/component_protocol.dart';
-import 'package:dcflight/framework/protocol/component_registry.dart';
 
 import 'framework/renderer/vdom/vdom.dart';
 import 'framework/renderer/vdom/component/component.dart';
@@ -87,9 +80,6 @@ class DCFlight {
       });
     });
   }
-  /// Register a component definition with the framework
-  static void registerComponentDefinition(ComponentDefinition definition) {
-    ComponentRegistry.instance.registerComponentDefinition(definition);
-  }
+
 }
 

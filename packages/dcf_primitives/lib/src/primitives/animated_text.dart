@@ -1,6 +1,6 @@
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
-import 'package:dcf_primitives/src/primitives/animated_text_definition.dart';
+
 
 /// Animation properties specific to text
 class TextAnimationProps {
@@ -103,15 +103,15 @@ class AnimatedTextMethods {
     int? duration,
     String? curve,
   }) async {
-    await DCFAnimatedTextDefinition().callMethod(
-      viewId,
-      'setText',
-      {
-        'text': text,
-        if (duration != null) 'duration': duration,
-        if (curve != null) 'curve': curve,
-      },
-    );
+    // await DCFAnimatedTextDefinition().callMethod(
+    //   viewId,
+    //   'setText',
+    //   {
+    //     'text': text,
+    //     if (duration != null) 'duration': duration,
+    //     if (curve != null) 'curve': curve,
+    //   },
+    // );
   }
   
   /// Trigger animation programmatically
@@ -123,17 +123,17 @@ class AnimatedTextMethods {
     double? toTranslateX,
     double? toTranslateY,
   }) async {
-    await DCFAnimatedTextDefinition().callMethod(
-      viewId,
-      'animate',
-      {
-        if (duration != null) 'duration': duration,
-        if (curve != null) 'curve': curve,
-        if (toScale != null) 'toScale': toScale,
-        if (toOpacity != null) 'toOpacity': toOpacity,
-        if (toTranslateX != null) 'toTranslateX': toTranslateX,
-        if (toTranslateY != null) 'toTranslateY': toTranslateY,
-      },
-    );
+    // await DCFAnimatedTextDefinition().callMethod(
+    //   viewId,
+    //   'animate',
+    //   {
+    //     if (duration != null) 'duration': duration,
+    //     if (curve != null) 'curve': curve,
+    //     if (toScale != null) 'toScale': toScale,
+    //     if (toOpacity != null) 'toOpacity': toOpacity,
+    //     if (toTranslateX != null) 'toTranslateX': toTranslateX,
+    //     if (toTranslateY != null) 'toTranslateY': toTranslateY,
+    //   },
+    // );
   }
 }

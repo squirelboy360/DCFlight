@@ -1,5 +1,4 @@
 import 'package:dcflight/dcflight.dart';
-import 'package:dcf_primitives/src/primitives/animated_view_definition.dart';
 
 /// Animation properties
 class AnimationProps {
@@ -109,27 +108,27 @@ class AnimatedViewMethods {
     double? toTranslateY,
     double? toRotate,
   }) async {
-    await DCFAnimatedViewDefinition().callMethod(
-      viewId,
-      'animate',
-      {
-        if (duration != null) 'duration': duration,
-        if (curve != null) 'curve': curve,
-        if (toScale != null) 'toScale': toScale,
-        if (toOpacity != null) 'toOpacity': toOpacity,
-        if (toTranslateX != null) 'toTranslateX': toTranslateX,
-        if (toTranslateY != null) 'toTranslateY': toTranslateY,
-        if (toRotate != null) 'toRotate': toRotate,
-      },
-    );
+    // await DCFAnimatedViewDefinition().callMethod(
+    //   viewId,
+    //   'animate',
+    //   {
+    //     if (duration != null) 'duration': duration,
+    //     if (curve != null) 'curve': curve,
+    //     if (toScale != null) 'toScale': toScale,
+    //     if (toOpacity != null) 'toOpacity': toOpacity,
+    //     if (toTranslateX != null) 'toTranslateX': toTranslateX,
+    //     if (toTranslateY != null) 'toTranslateY': toTranslateY,
+    //     if (toRotate != null) 'toRotate': toRotate,
+    //   },
+    // );
   }
   
   /// Reset animation to initial state
   static Future<void> reset(String viewId) async {
-    await DCFAnimatedViewDefinition().callMethod(
-      viewId,
-      'reset',
-      {},
-    );
+    // await DCFAnimatedViewDefinition().callMethod(
+    //   viewId,
+    //   'reset',
+    //   {},
+    // );
   }
 }

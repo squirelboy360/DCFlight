@@ -14,7 +14,6 @@ export 'src/primitives/dcf_icon.dart';
 // Export advanced interaction primitives
 export 'src/primitives/gesture_detector.dart';
 export 'src/primitives/touchable_opacity.dart';
-export 'src/primitives/page_view.dart';
 
 // Export animation primitives
 export 'src/primitives/animated_view.dart';
