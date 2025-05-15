@@ -4,8 +4,8 @@ import 'dart:developer' as developer;
 import 'package:dcflight/framework/renderer/interface/interface.dart' show NativeBridgeFactory, PlatformInterface;
 import 'package:dcflight/framework/renderer/vdom/component/component.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
-import 'package:dcflight/framework/renderer/vdom/component/context.dart';
 import 'package:dcflight/framework/renderer/vdom/component/error_boundary.dart';
+export 'package:dcflight/framework/renderer/vdom/component/store.dart';
 import 'package:dcflight/framework/renderer/vdom/vdom_element.dart';
 import 'vdom_node.dart';
 import 'reconciler.dart';
@@ -146,9 +146,6 @@ class VDom {
 
   /// Whether an update is scheduled
   bool _isUpdateScheduled = false;
-
-  /// Context registry
-  final ContextRegistry _contextRegistry = ContextRegistry();
 
   /// Error boundaries
   final Map<String, ErrorBoundary> _errorBoundaries = {};
@@ -416,39 +413,6 @@ class VDom {
   /// Render an element to native UI
   Future<String?> _renderElementToNative(VDomElement element,
       {String? parentId, int? index}) async {
-    // Special handling for context provider
-    if (element.type == 'ContextProvider') {
-      final contextId = element.props['contextId'] as String;
-      final value = element.props['value'];
-      final providerId = 'provider_${_viewIdCounter++}';
-
-      // Register context value
-      _contextRegistry.setContextValue(contextId, providerId, value);
-
-      // Render children
-      if (element.children.isNotEmpty) {
-        return await renderToNative(element.children[0],
-            parentId: parentId, index: index);
-      }
-      return "";
-    }
-
-    // Special handling for context consumer
-    if (element.type == 'ContextConsumer') {
-      final contextId = element.props['contextId'] as String;
-      final consumer = element.props['consumer'] as Function;
-      final providerChain = _getProviderChain(element);
-
-      // Get context value
-      final value = _contextRegistry.getContextValue(contextId, providerChain);
-
-      // Build child using consumer function
-      final child = consumer(value);
-
-      // Render the child
-      return await renderToNative(child, parentId: parentId, index: index);
-    }
-
     // Check if this is a detached node we can reuse
     String? viewId = element.nativeViewId;
     
@@ -755,23 +719,6 @@ class VDom {
     }
 
     return null;
-  }
-
-  /// Get provider chain for context lookup
-  List<String> _getProviderChain(VDomNode node) {
-    final result = <String>[];
-    VDomNode? current = node;
-
-    while (current != null) {
-      if (current is VDomElement &&
-          current.type == 'ContextProvider' &&
-          current.nativeViewId != null) {
-        result.add(current.nativeViewId!);
-      }
-      current = current.parent;
-    }
-
-    return result;
   }
 
   /// Update a view's properties

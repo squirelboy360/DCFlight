@@ -11,6 +11,7 @@ export 'framework/renderer/vdom/reconciler.dart';
 export 'framework/renderer/vdom/component/fragment.dart';
 export 'framework/renderer/vdom/component/component.dart';
 export 'framework/renderer/vdom/component/state_hook.dart';
+export 'framework/renderer/vdom/component/store.dart';
 // Native Bridge System
 export 'framework/renderer/interface/interface.dart' ;
 export 'framework/renderer/interface/interface_impl.dart';

@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:dcflight/framework/renderer/vdom/vdom_node.dart';
 import 'state_hook.dart';
+import 'store.dart';
 
 /// Base component class
 abstract class Component {
@@ -119,6 +120,23 @@ abstract class StatefulComponent extends Component {
     _hookIndex++;
     
     return hook.ref;
+  }
+
+  /// Create a store hook for global state
+  StoreHook<T> useStore<T>(Store<T> store) {
+    if (_hookIndex >= _hooks.length) {
+      // Create new hook
+      final hook = StoreHook<T>(store, () {
+        scheduleUpdate();
+      });
+      _hooks.add(hook);
+    }
+    
+    // Get the hook (either existing or newly created)
+    final hook = _hooks[_hookIndex] as StoreHook<T>;
+    _hookIndex++;
+    
+    return hook;
   }
 
   /// Prepare component for rendering - used by VDOM
