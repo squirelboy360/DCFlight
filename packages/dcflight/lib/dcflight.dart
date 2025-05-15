@@ -8,7 +8,7 @@ export 'framework/renderer/vdom/vdom.dart';
 export 'framework/renderer/vdom/vdom_node.dart';
 export 'framework/renderer/vdom/vdom_element.dart';
 export 'framework/renderer/vdom/reconciler.dart';
-export 'framework/renderer/vdom/fragment.dart';
+export 'framework/renderer/vdom/component/fragment.dart';
 export 'framework/renderer/vdom/component/component.dart';
 export 'framework/renderer/vdom/component/state_hook.dart';
 // Native Bridge System
