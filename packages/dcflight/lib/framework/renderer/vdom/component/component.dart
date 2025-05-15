@@ -159,3 +159,26 @@ abstract class StatefulComponent extends Component {
     return '$typeName($instanceId)';
   }
 }
+
+/// Stateless component without hooks
+abstract class StatelessComponent extends Component {
+  /// Whether the component is mounted
+  bool _isMounted = false;
+
+  /// Get whether the component is mounted
+  bool get isMounted => _isMounted;
+
+  /// Create a stateless component
+  StatelessComponent({super.key});
+
+  /// Called when the component is mounted
+  @override
+  void componentDidMount() {
+    _isMounted = true;
+  }
+
+  @override
+  String toString() {
+    return '$typeName($instanceId)';
+  }
+}

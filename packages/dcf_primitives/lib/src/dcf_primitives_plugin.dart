@@ -1,6 +1,5 @@
 import 'package:dcflight/dcflight.dart';
 
-
 /// Plugin for DCFlight primitives
 class DCFPrimitivesPlugin extends DCFPlugin {
   /// Singleton instance
@@ -17,5 +16,10 @@ class DCFPrimitivesPlugin extends DCFPlugin {
   
   @override
   void registerComponents() {
-  
-}}
+    // StatelessComponent-based primitives don't need explicit registration
+    // since they work directly with the reconciler as Component instances.
+    //
+    // If we need to register factory methods in the future, we can use:
+    // ComponentRegistry.instance.registerComponent('ComponentName', factoryFunction);
+  }
+}
