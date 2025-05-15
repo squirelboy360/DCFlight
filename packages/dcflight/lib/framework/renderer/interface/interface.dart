@@ -1,14 +1,14 @@
 import 'dart:async';
 
-import 'package:dcflight/framework/renderer/native_bridge/dispatcher_imp.dart';
+import 'package:dcflight/framework/renderer/interface/interface_impl.dart';
 
 /// Interface for platform-specific native bridge operations
-abstract class PlatformDispatcher {
+abstract class PlatformInterface {
   /// Get the singleton instance
-  static PlatformDispatcher? _instance;
+  static PlatformInterface? _instance;
   
   /// Get the singleton instance
-  static PlatformDispatcher get instance {
+  static PlatformInterface get instance {
     _instance ??= NativeBridgeFactory.create();
     return _instance!;
   }
@@ -70,7 +70,7 @@ abstract class PlatformDispatcher {
 
 /// Factory for creating platform-specific native bridges
 class NativeBridgeFactory {
-  static PlatformDispatcher create() {
-    return PlatformDispatcherIml();
+  static PlatformInterface create() {
+    return PlatformInterfaceImpl();
   }
 }

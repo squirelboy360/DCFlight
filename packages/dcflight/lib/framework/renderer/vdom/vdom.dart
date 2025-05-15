@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 
-import 'package:dcflight/framework/renderer/native_bridge/dispatcher.dart' show NativeBridgeFactory, PlatformDispatcher;
+import 'package:dcflight/framework/renderer/interface/interface.dart' show NativeBridgeFactory, PlatformInterface;
 import 'package:dcflight/framework/renderer/vdom/component/component.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 import 'package:dcflight/framework/renderer/vdom/component/context.dart';
@@ -115,7 +115,7 @@ class ComponentInstance {
 /// Virtual DOM implementation
 class VDom {
   /// Native bridge for UI operations
-  late final PlatformDispatcher _nativeBridge;
+  late final PlatformInterface _nativeBridge;
 
   /// Whether the VDom is ready for use
   final Completer<void> _readyCompleter = Completer<void>();
