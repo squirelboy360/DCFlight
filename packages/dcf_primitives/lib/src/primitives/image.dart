@@ -1,7 +1,4 @@
 import 'package:dcflight/dcflight.dart';
-import 'package:dcflight/framework/constants/layout_properties.dart';
-import 'package:dcflight/framework/constants/style_properties.dart';
-
 /// Image properties
 class ImageProps {
   /// The image source URI (can be a network URL or local resource)
@@ -16,18 +13,21 @@ class ImageProps {
   /// Placeholder image to show while loading
   final String? placeholder;
   
+  
   /// Create image props
   const ImageProps({
     required this.source,
     this.resizeMode,
     this.fadeDuration,
     this.placeholder,
+
   });
   
   /// Convert to props map
   Map<String, dynamic> toMap() {
     return {
       'source': source,
+      'isRelativePath': false,
       if (resizeMode != null) 'resizeMode': resizeMode,
       if (fadeDuration != null) 'fadeDuration': fadeDuration,
       if (placeholder != null) 'placeholder': placeholder,
@@ -61,9 +61,9 @@ VDomElement image({
       ...imageProps.toMap(),
       ...layout.toMap(),
       ...style.toMap(),
+      ...eventMap, // Add event handlers directly to props
     },
     children: [],
-    events: eventMap.isNotEmpty ? eventMap : null,
   );
 }
 
@@ -81,6 +81,31 @@ VDomElement networkImage({
     imageProps: ImageProps(
       source: url,
       resizeMode: resizeMode,
+
+    ),
+    layout: layout,
+    style: style,
+    onLoad: onLoad,
+    onError: onError,
+    events: events,
+  );
+}
+
+/// Create an image from a local asset
+VDomElement assetImage({
+  required String asset,
+  String resizeMode = 'contain',
+  LayoutProps layout = const LayoutProps(),
+  StyleSheet style = const StyleSheet(),
+  Function? onLoad,
+  Function? onError,
+  Map<String, dynamic>? events,
+}) {
+  return image(
+    imageProps: ImageProps(
+      source: asset,
+      resizeMode: resizeMode,
+    
     ),
     layout: layout,
     style: style,

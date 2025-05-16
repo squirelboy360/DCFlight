@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 
-import 'package:dcflight/framework/renderer/native_bridge/dispatcher.dart' show NativeBridgeFactory, PlatformDispatcher;
+import 'package:dcflight/framework/renderer/interface/interface.dart' show NativeBridgeFactory, PlatformInterface;
 import 'package:dcflight/framework/renderer/vdom/component/component.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 import 'package:dcflight/framework/renderer/vdom/component/context.dart';
@@ -115,7 +115,7 @@ class ComponentInstance {
 /// Virtual DOM implementation
 class VDom {
   /// Native bridge for UI operations
-  late final PlatformDispatcher _nativeBridge;
+  late final PlatformInterface _nativeBridge;
 
   /// Whether the VDom is ready for use
   final Completer<void> _readyCompleter = Completer<void>();
@@ -239,22 +239,17 @@ class VDom {
     }
 
     if (node is VDomElement) {
-      // Try explicit events map first
-      if (node.events != null &&
-          node.events!.containsKey(eventType) &&
-          node.events![eventType] is Function) {
+      // First try direct event matching (used by many native components)
+      if (node.props.containsKey(eventType) && node.props[eventType] is Function) {
         _performanceMonitor.startTimer('event_handler');
-        final handler = node.events![eventType] as Function;
+        final handler = node.props[eventType] as Function;
         
         try {
           if (handler is Function(Map<String, dynamic>)) {
-            // Function expects event data
             handler(eventData);
           } else if (handler is Function()) {
-            // Function takes no parameters
             handler();
           } else {
-            // Try a more general approach
             Function.apply(handler, [], {});
           }
         } catch (e, stack) {
@@ -267,7 +262,7 @@ class VDom {
         return;
       }
 
-      // If not found in events map, try props with "onX" format
+      // Then try canonical "onEventName" format
       final propName =
           'on${eventType[0].toUpperCase()}${eventType.substring(1)}';
 
@@ -293,7 +288,7 @@ class VDom {
         _performanceMonitor.endTimer('event_handler');
       }
     }
-
+    
     _performanceMonitor.endTimer('handle_native_event');
   }
 

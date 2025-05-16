@@ -1,44 +1,24 @@
 import '../vdom_node.dart';
-import '../vdom_element.dart';
 import 'component.dart';
 
-/// Represents a context for sharing data throughout the component tree
+/// Simple context system for passing values down the component tree
+/// This is a minimal implementation that doesn't rely on provider chains
 class Context<T> {
   /// Default value when no provider is found
   final T defaultValue;
-
-  /// Unique ID for this context
-  final String _id;
+  
+  /// Current value - will be managed by the VDOM
+  T _value;
 
   /// Create a context with default value
-  Context(this.defaultValue)
-      : _id = DateTime.now().millisecondsSinceEpoch.toString();
+  Context(this.defaultValue) : _value = defaultValue;
 
-  /// Create a provider element for this context
-  VDomElement createProvider(T value, {required VDomNode child}) {
-    return VDomElement(
-      type: 'ContextProvider',
-      props: {
-        'contextId': _id,
-        'value': value,
-      },
-      children: [child],
-    );
-  }
-
-  /// Get current value for this context (default if no provider found)
-  T get value => defaultValue;
-
-  /// Create a consumer element for this context
-  VDomElement createConsumer({required Function(T) builder}) {
-    return VDomElement(
-      type: 'ContextConsumer',
-      props: {
-        'contextId': _id,
-        'consumer': builder,
-      },
-      children: [],
-    );
+  /// Get current value
+  T get value => _value;
+  
+  /// Set current value (should only be used by providers)
+  set value(T newValue) {
+    _value = newValue;
   }
 }
 
@@ -61,8 +41,20 @@ class ContextProvider<T> extends Component {
   });
 
   @override
+  void componentDidMount() {
+    super.componentDidMount();
+    context.value = value;
+  }
+
+  @override
+  void componentWillUnmount() {
+    super.componentWillUnmount();
+    context.value = context.defaultValue;
+  }
+
+  @override
   VDomNode render() {
-    return context.createProvider(value, child: child);
+    return child;
   }
 }
 

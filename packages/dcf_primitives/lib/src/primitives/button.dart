@@ -1,5 +1,4 @@
 import 'package:dcflight/dcflight.dart';
-import 'package:flutter/material.dart' show Color, Colors;
 
 /// Button properties
 class ButtonProps {
@@ -55,9 +54,9 @@ VDomElement button({
       ...buttonProps.toMap(),
       ...layout.toMap(),
       ...style.toMap(),
+      ...eventMap, // Add event handlers directly to props
     },
     children: [],
-    events: eventMap.isNotEmpty ? eventMap : null,
   );
 }
 

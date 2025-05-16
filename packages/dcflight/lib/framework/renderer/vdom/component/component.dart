@@ -1,4 +1,3 @@
-import 'dart:developer' as developer;
 import 'dart:math';
 import 'package:dcflight/framework/renderer/vdom/vdom_node.dart';
 import 'state_hook.dart';
@@ -29,7 +28,6 @@ abstract class Component {
   /// Called when the component will unmount
   void componentWillUnmount() {
     // Base implementation does nothing
-    // Subclasses like StatefulComponent override this with specific cleanup
   }
 }
 
@@ -80,66 +78,48 @@ abstract class StatefulComponent extends Component {
 
   /// Create a state hook
   StateHook<T> useState<T>(T initialValue, [String? name]) {
-    return _createHook(() {
-      return StateHook<T>(initialValue, name, () {
-        // Schedule an update when state changes
+    if (_hookIndex >= _hooks.length) {
+      // Create new hook
+      final hook = StateHook<T>(initialValue, name, () {
         scheduleUpdate();
       });
-    }) as StateHook<T>;
+      _hooks.add(hook);
+    }
+    
+    // Get the hook (either existing or newly created)
+    final hook = _hooks[_hookIndex] as StateHook<T>;
+    _hookIndex++;
+    
+    return hook;
   }
 
   /// Create an effect hook
   void useEffect(Function()? Function() effect,
       {List<dynamic> dependencies = const []}) {
-   _createHook(() => EffectHook(effect, dependencies));
-
-    // Cast to EffectHook to access its methods
-    // Don't run effects here - they will be run after render
-    // via runEffectsAfterRender()
-  }
-
-  
-
-  /// Create a memo hook
-  T useMemo<T>(T Function() compute, {List<dynamic> dependencies = const []}) {
-    final hook = _createHook(() => MemoHook<T>(compute, dependencies));
-
-    // Cast to MemoHook to access its methods
-    return (hook as MemoHook<T>).value;
+    if (_hookIndex >= _hooks.length) {
+      // Create new hook
+      final hook = EffectHook(effect, dependencies);
+      _hooks.add(hook);
+    }
+    
+    // Just increment the hook index
+    _hookIndex++;
   }
 
   /// Create a ref hook
   RefObject<T> useRef<T>([T? initialValue]) {
-    final hook = _createHook(() => RefHook<T>(initialValue));
-
-    // Cast to RefHook to access its methods
-    return (hook as RefHook<T>).current;
-  }
-
-  /// Helper to create/retrieve hooks
-  Hook _createHook(Hook Function() createHook) {
-    // Get or create the hook
-    Hook hook;
-    if (_hookIndex < _hooks.length) {
-      // Reuse existing hook
-      hook = _hooks[_hookIndex];
-    } else {
+    if (_hookIndex >= _hooks.length) {
       // Create new hook
-      hook = createHook();
+      final hook = RefHook<T>(initialValue);
       _hooks.add(hook);
     }
-
-    // Initialize the hook if needed
-    hook.initIfNeeded();
-
-    // Move to next hook
+    
+    // Get the hook (either existing or newly created)
+    final hook = _hooks[_hookIndex] as RefHook<T>;
     _hookIndex++;
-
-    return hook;
+    
+    return hook.ref;
   }
-
-  /// Get hooks for testing and debugging
-  List<Hook> get hooks => List.unmodifiable(_hooks);
 
   /// Prepare component for rendering - used by VDOM
   void prepareForRender() {
@@ -148,38 +128,12 @@ abstract class StatefulComponent extends Component {
 
   /// Run effects after render - called by VDOM
   void runEffectsAfterRender() {
-    // FIXED: Properly run effect hooks after render/updates
     for (var i = 0; i < _hooks.length; i++) {
       final hook = _hooks[i];
       if (hook is EffectHook) {
-        // Run each effect hook
-        developer.log('Running effect hook #$i in component $typeName',
-            name: 'Component');
         hook.runEffect();
       }
     }
-  }
-
-  @override
-  String toString() {
-    return '$typeName($instanceId)';
-  }
-}
-
-
-
-/// Stateful component with hooks
-abstract class StatelessComponent extends Component {
-  /// Whether the component is mounted
-  bool _isMounted = false;
-
-  /// Get whether the component is mounted
-  bool get isMounted => _isMounted;
-
-  /// Called when the component is mounted
-  @override
-  void componentDidMount() {
-    _isMounted = true;
   }
 
   @override

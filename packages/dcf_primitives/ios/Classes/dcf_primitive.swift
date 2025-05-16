@@ -4,10 +4,6 @@ import dcflight
 
 @objc public class DcfPrimitives: NSObject {
     @objc public static func registerWithRegistrar(_ registrar: FlutterPluginRegistrar) {
-        // This is required by the Flutter plugin system
-        print("DCF Primitives plugin registered with Flutter")
-        
-        // Register all primitive components when the plugin is registered
         registerComponents()
     }
     
@@ -18,10 +14,18 @@ import dcflight
         DCFComponentRegistry.shared.registerComponent("Text", componentClass: DCFTextComponent.self)
         DCFComponentRegistry.shared.registerComponent("Image", componentClass: DCFImageComponent.self)
         DCFComponentRegistry.shared.registerComponent("ScrollView", componentClass: DCFScrollViewComponent.self)
-        
         // Register new primitives
         DCFComponentRegistry.shared.registerComponent("Svg", componentClass: DCFSvgComponent.self)
         DCFComponentRegistry.shared.registerComponent("DCFIcon", componentClass: DCFIconComponent.self)
+        
+        // Register interaction primitives
+        DCFComponentRegistry.shared.registerComponent("GestureDetector", componentClass: DCFGestureDetectorComponent.self)
+        DCFComponentRegistry.shared.registerComponent("TouchableOpacity", componentClass: DCFTouchableOpacityComponent.self)
+        DCFComponentRegistry.shared.registerComponent("PageView", componentClass: DCFPageViewComponent.self)
+        
+        // Register animation primitives
+        DCFComponentRegistry.shared.registerComponent("AnimatedView", componentClass: DCFAnimatedViewComponent.self)
+        DCFComponentRegistry.shared.registerComponent("AnimatedText", componentClass: DCFAnimatedTextComponent.self)
         
         print("✅ DCF Primitives: All components registered successfully")
     }

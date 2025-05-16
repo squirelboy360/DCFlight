@@ -1,5 +1,4 @@
 import 'package:dcflight/dcflight.dart';
-import 'package:dcflight/framework/utilities/flutter.dart';
 
 /// A component that displays SVG images from assets
 VDomElement svg({
@@ -35,8 +34,9 @@ VDomElement svg({
       ...style.toMap(),
       // direct svgs are relative as the native side will lookup the assets from the app bundle 
       'isRelativePath': true,
+        ...eventMap,
     },
     children: [],
-    events: eventMap.isEmpty ? null : eventMap,
+  
   );
 }

@@ -84,13 +84,6 @@ class DCMauiBridgeMethodChannel: NSObject {
                 result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
             }
             
-        case "viewExists":
-            if let args = args {
-                handleViewExists(args, result: result)
-            } else {
-                result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
-            }
-            
         case "commitBatchUpdate":
             if let args = args {
                 handleCommitBatchUpdate(args, result: result)
@@ -360,19 +353,6 @@ class DCMauiBridgeMethodChannel: NSObject {
     }
     // --- END NEW HANDLER ---
     
-    // Check if a view exists
-    private func handleViewExists(_ args: [String: Any], result: @escaping FlutterResult) {
-        guard let viewId = args["viewId"] as? String else {
-            result(FlutterError(code: "VIEW_EXISTS_ERROR", message: "Invalid view ID", details: nil))
-            return
-        }
-        
-        // Execute on main thread
-        DispatchQueue.main.async {
-            let exists = DCMauiBridgeImpl.shared.viewExists(viewId: viewId)
-            result(exists)
-        }
-    }
     
     /// Helper to get a view by ID
     func getViewById(_ viewId: String) -> UIView? {

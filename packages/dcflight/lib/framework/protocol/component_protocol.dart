@@ -1,7 +1,9 @@
+// Not registring components wont break your code but the component would be treated with 
+// low priority and you might notice a hang in the UI
 import 'package:flutter/foundation.dart';
-
 import '../renderer/vdom/vdom_node.dart';
 import '../renderer/vdom/vdom_element.dart';
+import '../renderer/interface/interface.dart';
 
 /// Type definition for a component factory function
 /// This will be used to register component factories with the framework
@@ -18,8 +20,16 @@ abstract class ComponentDefinition {
   
   /// Call a method on a component instance
   Future<dynamic> callMethod(String viewId, String methodName, Map<String, dynamic> args) async {
-    debugPrint('Method $methodName called on $type component $viewId');
-    return null;
+    debugPrint('Sending method $methodName call to $type component $viewId');
+    
+    // Forward the call to the native implementation through the platform dispatcher
+    try {
+      final dispatcher = PlatformInterface.instance;
+      return await dispatcher.callComponentMethod(viewId, methodName, args);
+    } catch (e) {
+      debugPrint('Error calling component method $methodName on $viewId: $e');
+      return null;
+    }
   }
 }
 

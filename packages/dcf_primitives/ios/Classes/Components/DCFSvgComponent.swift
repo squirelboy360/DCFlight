@@ -26,10 +26,23 @@ class DCFSvgComponent: NSObject, DCFComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let imageView = view as? UIImageView else { return false }
         
+        // Apply background color from StyleSheet
+        if let backgroundColor = props["backgroundColor"] as? String {
+            imageView.backgroundColor = ColorUtilities.color(fromHexString: backgroundColor)
+        }
+        
         // Get SVG asset path
         if let asset = props["asset"] as? String {
-            print("Loading SVG asset: \(asset)")
-            loadSvgFromAsset(asset, into: imageView, isRel: (props["isRelativePath"] as? Bool ?? false))
+            let key = sharedFlutterViewController?.lookupKey(forAsset: asset)
+            let mainBundle = Bundle.main
+            let path = mainBundle.path(forResource: key, ofType: nil)
+            
+            loadSvgFromAsset(
+                asset, 
+                into: imageView, 
+                isRel: (props["isRelativePath"] as? Bool ?? false),
+                path: path ?? "no path"
+            )
         }
         
         // Apply tint color if specified
@@ -42,12 +55,23 @@ class DCFSvgComponent: NSObject, DCFComponent {
             imageView.image = imageView.image?.withRenderingMode(.automatic)
         }
         
+        // Apply border radius if specified - SVGs should support this too
+        if let borderRadius = props["borderRadius"] as? CGFloat {
+            imageView.layer.cornerRadius = borderRadius
+            imageView.clipsToBounds = true
+        }
+        
+        // Apply opacity if specified
+        if let opacity = props["opacity"] as? CGFloat {
+            imageView.alpha = opacity
+        }
+        
         return true
     }
     
     // MARK: - SVG Loading Methods
     
-    private func loadSvgFromAsset(_ asset: String, into imageView: UIImageView, isRel: Bool) {
+    private func loadSvgFromAsset(_ asset: String, into imageView: UIImageView, isRel: Bool, path:String) {
         // Check cache first
         if let cachedImage = DCFSvgComponent.imageCache[asset] {
             imageView.image = cachedImage.uiImage
@@ -58,7 +82,7 @@ class DCFSvgComponent: NSObject, DCFComponent {
         }
         
         // Load SVG using SVGKit
-        if let svgImage = loadSVGFromAssetPath(asset,isRelativePath: isRel) {
+        if let svgImage = loadSVGFromAssetPath(asset,isRelativePath: isRel,path: path) {
             // Cache the image
             DCFSvgComponent.imageCache[asset] = svgImage
             
@@ -69,39 +93,22 @@ class DCFSvgComponent: NSObject, DCFComponent {
             triggerEvent(on: imageView, eventType: "onLoad", eventData: [:])
         } else {
             // If we reach here, the image couldn't be loaded
-            print("❌ Failed to load SVG: \(asset)")
             triggerEvent(on: imageView, eventType: "onError", eventData: ["error": "SVG not found: \(asset)"])
         }
     }
     
     // Load SVG from various possible sources using SVGKit
-    private func loadSVGFromAssetPath(_ asset: String, isRelativePath: Bool) -> SVGKImage? {
-      
+    private func loadSVGFromAssetPath(_ asset: String, isRelativePath: Bool, path:String) -> SVGKImage? {
         // Method 1: Try loading from direct path if it looks like a file path
-        if (asset.hasPrefix("/") || asset.contains(".")) && FileManager.default.fileExists(atPath: asset) && isRelativePath == false{
-            print("📂 Loading SVG from direct file path: \(asset)")
+        if (asset.hasPrefix("/") || asset.contains(".")) && FileManager.default.fileExists(atPath: asset) && isRelativePath == false {
             return SVGKImage(contentsOfFile: asset)
         } else if asset.hasPrefix("http://") || asset.hasPrefix("https://") {
             if let url = URL(string: asset) {
-                print("🌐 Loading SVG from URL: \(url)")
                 return SVGKImage(contentsOf: url)
             }
-        }else if (isRelativePath == true){
-            print("executing due to svg hardcoded")
-      
-            guard let key = sharedFlutterViewController?.lookupKey(forAsset: asset)else{
-                print("some serious something is happening \(asset)")
-                return SVGKImage(contentsOfFile: "assets/dcf/broken_img.svg")
-            }
-            
-            let mainBundle = Bundle.main
-            let path = mainBundle.path(forResource: key, ofType: nil)
-              
-    print("this is key \(key) and path is \(String(describing: path))")
-          
-                return SVGKImage(contentsOfFile: path)
+        } else if (isRelativePath == true) {
+            return SVGKImage(contentsOfFile: path)
         }
-        print("❌ Could not load SVG from any location: \(asset)")
         return nil
     }
 }

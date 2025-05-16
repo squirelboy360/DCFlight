@@ -455,14 +455,6 @@ import Foundation
         return props.filter { layoutPropKeys.contains($0.key) }
     }
     
-    // Check if a view exists
-    @objc func viewExists(viewId: String) -> Bool {
-        // Check all registries
-        return self.views[viewId] != nil || 
-               ViewRegistry.shared.getView(id: viewId) != nil || 
-               DCFLayoutManager.shared.getView(withId: viewId) != nil
-    }
-    
     // Get children of a view
     @objc func getChildrenIds(viewId: String) -> [String] {
         return viewHierarchy[viewId] ?? []

@@ -1,6 +1,8 @@
 // Main entry point for the DCFlight framework
 library dcflight;
 
+export 'package:dcflight/framework/utilities/flutter_framework.dart' hide PlatformDispatcher,
+   Widget,View,StatefulWidget,State,BuildContext,MethodChannel,MethodCall,MethodCodec,PlatformException,AssetBundle,AssetBundleImageKey,AssetBundleImageProvider,ImageConfiguration,ImageStreamListener,ImageStream,ImageStreamCompleter,ImageInfo,ImageProvider,ImageErrorListener,ImageCache,Text,TextStyle,TextPainter,TextSpan,TextHeightBehavior,RenderBox,RenderObject,RenderObjectElement,RenderObjectWidget,StatefulElement,Element,ElementVisitor,WidgetInspectorService;
 // Core Infrastructure
 export 'framework/renderer/vdom/vdom.dart';
 export 'framework/renderer/vdom/vdom_node.dart';
@@ -10,8 +12,8 @@ export 'framework/renderer/vdom/fragment.dart';
 export 'framework/renderer/vdom/component/component.dart';
 export 'framework/renderer/vdom/component/state_hook.dart';
 // Native Bridge System
-export 'framework/renderer/native_bridge/dispatcher.dart';
-export 'framework/renderer/native_bridge/dispatcher_imp.dart';
+export 'framework/renderer/interface/interface.dart' ;
+export 'framework/renderer/interface/interface_impl.dart';
 
 // Core Constants and Properties - explicitly exported for component developers
 export 'framework/constants/yoga_enums.dart';
@@ -36,7 +38,7 @@ import 'package:dcflight/framework/protocol/component_registry.dart';
 
 import 'framework/renderer/vdom/vdom.dart';
 import 'framework/renderer/vdom/component/component.dart';
-import 'framework/renderer/native_bridge/dispatcher.dart';
+import 'framework/renderer/interface/interface.dart';
 import 'framework/utilities/screen_utilities.dart';
 import 'framework/protocol/plugin_protocol.dart';
 import 'package:flutter/material.dart';

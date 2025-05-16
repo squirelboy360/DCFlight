@@ -168,9 +168,7 @@ class DCFButtonComponent: NSObject, DCFComponent, ComponentMethodHandler {
             print("❌ Cannot add event listeners to non-button view")
             return 
         }
-        
-        print("🔘 Adding event listeners to button \(viewId): \(eventTypes)")
-        
+ 
         // Store event data with associated objects
         storeEventData(on: button, viewId: viewId, eventTypes: eventTypes, callback: eventCallback)
         

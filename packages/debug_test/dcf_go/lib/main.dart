@@ -1,8 +1,8 @@
 import 'package:dcflight/dcflight.dart';
 import 'app/app.dart';
 
-void main() async {
-  DCFlight.start(app: DCFlightDemoApp());
+void main() {
+  DCFlight.start(app: DCFGo());
 }
 
 

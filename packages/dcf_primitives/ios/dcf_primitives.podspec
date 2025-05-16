@@ -11,9 +11,8 @@ A crossplatform framework.
   s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*'
   s.platform = :ios, '13.5'
-  s.dependency 'Flutter'
   s.dependency 'dcflight'
-  s.dependency 'SVGKit', '~> 3.0.0'  # Add SVGKit dependency
+  s.dependency 'SVGKit', '~> 3.0.0' 
   
   s.swift_version = '5.0'
 

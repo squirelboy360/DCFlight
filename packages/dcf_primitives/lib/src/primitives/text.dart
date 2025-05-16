@@ -1,5 +1,4 @@
 import 'package:dcflight/dcflight.dart';
-import 'package:dcflight/framework/utilities/flutter.dart' show Color;
 
 /// Text style properties
 class TextProps {
@@ -11,6 +10,9 @@ class TextProps {
   
   /// Font family
   final String? fontFamily;
+  
+  /// Whether the font family refers to an asset path
+  final bool isFontAsset;
   
   /// Text color
   final Color? color;
@@ -26,6 +28,7 @@ class TextProps {
     this.fontSize,
     this.fontWeight,
     this.fontFamily,
+    this.isFontAsset = false,
     this.color,
     this.textAlign,
     this.numberOfLines,
@@ -37,6 +40,7 @@ class TextProps {
       if (fontSize != null) 'fontSize': fontSize,
       if (fontWeight != null) 'fontWeight': fontWeight,
       if (fontFamily != null) 'fontFamily': fontFamily,
+      if (isFontAsset) 'isFontAsset': isFontAsset,
       if (color != null) 'color': color,
       if (textAlign != null) 'textAlign': textAlign,
       if (numberOfLines != null) 'numberOfLines': numberOfLines,
@@ -59,8 +63,38 @@ VDomElement text({
       ...textProps.toMap(),
       ...layout.toMap(),
       ...style.toMap(),
+      ...(events ?? {}),
     },
     children: [],
+  );
+}
+
+/// A text component with a custom font from an asset
+VDomElement customFontText({
+  required String content,
+  required String fontAsset,
+  double fontSize = 16.0,
+  String fontWeight = 'regular',
+  Color? color,
+  String? textAlign,
+  int? numberOfLines,
+  LayoutProps layout = const LayoutProps(),
+  StyleSheet style = const StyleSheet(),
+  Map<String, dynamic>? events,
+}) {
+  return text(
+    content: content,
+    textProps: TextProps(
+      fontFamily: fontAsset,
+      isFontAsset: true,
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      textAlign: textAlign,
+      numberOfLines: numberOfLines,
+    ),
+    layout: layout,
+    style: style,
     events: events,
   );
 }

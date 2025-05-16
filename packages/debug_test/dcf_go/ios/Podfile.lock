@@ -4,7 +4,6 @@ PODS:
   - CocoaLumberjack/Core (3.8.5)
   - dcf_primitives (0.0.1):
     - dcflight
-    - Flutter
     - SVGKit (~> 3.0.0)
   - dcflight (0.0.1):
     - Flutter
@@ -35,7 +34,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   CocoaLumberjack: 6a459bc897d6d80bd1b8c78482ec7ad05dffc3f0
-  dcf_primitives: 707eded21d0463606390ef886ea22b3e8b8222af
+  dcf_primitives: d79c4f56cf3943beb0f6f2edd96825eb1f0632f3
   dcflight: 1a0a9507326871b1d0bd9aa3b593aa084c280f08
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   SVGKit: 1ad7513f8c74d9652f94ed64ddecda1a23864dea
