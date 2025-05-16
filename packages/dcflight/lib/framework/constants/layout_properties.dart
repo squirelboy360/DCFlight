@@ -60,7 +60,7 @@ class LayoutProps {
   /// Create layout props with the specified values
   const LayoutProps({
     this.width = '100%', // Default to 100% width for proper nesting
-    this.height = 40, // Default to 40 height for visibility
+    this.height = "50%", // Default to 50% height for visibility
     this.minWidth,
     this.maxWidth,
     this.minHeight,
@@ -72,7 +72,7 @@ class LayoutProps {
     this.marginLeft,
     this.marginHorizontal,
     this.marginVertical,
-    this.padding,
+    this.padding = 8,
     this.paddingTop,
     this.paddingRight,
     this.paddingBottom,
@@ -84,18 +84,18 @@ class LayoutProps {
     this.right,
     this.bottom,
     this.position,
-    this.flexDirection,
+    this.flexDirection = YogaFlexDirection.column,
     this.justifyContent,
-    this.alignItems,
+    this.alignItems = YogaAlign.stretch,
     this.alignSelf,
-    this.alignContent,
-    this.flexWrap,
-    this.flex,
+    this.alignContent = YogaAlign.stretch,
+    this.flexWrap = YogaWrap.wrap,
+    this.flex = 1,
     this.flexGrow,
     this.flexShrink,
     this.flexBasis,
-    this.display,
-    this.overflow,
+    this.display = YogaDisplay.flex,
+    this.overflow = YogaOverflow.hidden,
     this.direction,
     this.borderWidth,
   });
