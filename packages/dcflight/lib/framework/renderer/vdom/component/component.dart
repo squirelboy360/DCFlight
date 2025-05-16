@@ -3,8 +3,8 @@ import 'package:dcflight/framework/renderer/vdom/vdom_node.dart';
 import 'state_hook.dart';
 import 'store.dart';
 
-/// Base component class
-abstract class Component extends VDomNode {
+/// Stateful component with hooks
+abstract class StatefulComponent extends VDomNode {
   /// Unique ID for this component instance
   final String instanceId;
 
@@ -14,72 +14,6 @@ abstract class Component extends VDomNode {
   /// The rendered node from the component
   VDomNode? _renderedNode;
 
-  /// Create a component
-  Component({super.key})
-      : instanceId = DateTime.now().millisecondsSinceEpoch.toString() +
-            Random().nextDouble().toString(),
-        typeName = StackTrace.current.toString().split('\n')[1].split(' ')[0];
-
-  /// Render the component
-  VDomNode render();
-  
-  /// Get the rendered node (lazily render if necessary)
-  VDomNode get renderedNode {
-    _renderedNode ??= render();
-    return _renderedNode!;
-  }
-
-  /// Called when the component is mounted
-  void componentDidMount() {}
-
-  /// Called when the component will unmount
-  void componentWillUnmount() {
-    // Base implementation does nothing
-  }
-  
-  /// Implement VDomNode methods
-  
-  @override
-  VDomNode clone() {
-    // Components can't be cloned easily due to state, hooks, etc.
-    // Instead, we create a new instance with the same key and let it render itself
-    throw UnsupportedError("Components cannot be cloned directly. Use ComponentNode instead.");
-  }
-  
-  @override
-  bool equals(VDomNode other) {
-    if (other is! Component) return false;
-    return runtimeType == other.runtimeType && key == other.key;
-  }
-  
-  @override
-  void mount(VDomNode? parent) {
-    this.parent = parent;
-    
-    // Ensure the component has rendered
-    final node = renderedNode;
-    
-    // Mount the rendered content
-    node.mount(this);
-    
-    // Component lifecycle method
-    componentDidMount();
-  }
-  
-  @override
-  void unmount() {
-    // Unmount the rendered content if any
-    if (_renderedNode != null) {
-      _renderedNode!.unmount();
-    }
-    
-    // Component lifecycle method
-    componentWillUnmount();
-  }
-}
-
-/// Stateful component with hooks
-abstract class StatefulComponent extends Component {
   /// Whether the component is mounted
   bool _isMounted = false;
 
@@ -93,19 +27,38 @@ abstract class StatefulComponent extends Component {
   Function() scheduleUpdate = () {};
 
   /// Create a stateful component
-  StatefulComponent({super.key});
+  StatefulComponent({super.key})
+      : instanceId = DateTime.now().millisecondsSinceEpoch.toString() +
+            Random().nextDouble().toString(),
+        typeName = StackTrace.current.toString().split('\n')[1].split(' ')[0];
+
+  /// Render the component
+  VDomNode render();
+  
+  /// Get the rendered node (lazily render if necessary)
+  VDomNode get renderedNode {
+    _renderedNode ??= render();
+    return _renderedNode!;
+  }
+  
+  /// Set the rendered node
+  @override
+  set renderedNode(VDomNode? node) {
+    _renderedNode = node;
+    if (_renderedNode != null) {
+      _renderedNode!.parent = this;
+    }
+  }
 
   /// Get whether the component is mounted
   bool get isMounted => _isMounted;
 
   /// Called when the component is mounted
-  @override
   void componentDidMount() {
     _isMounted = true;
   }
 
   /// Called when the component will unmount
-  @override
   void componentWillUnmount() {
     // Clean up hooks
     for (final hook in _hooks) {
@@ -199,6 +152,45 @@ abstract class StatefulComponent extends Component {
       }
     }
   }
+  
+  /// Implement VDomNode methods
+  
+  @override
+  VDomNode clone() {
+    // Components can't be cloned easily due to state, hooks, etc.
+    throw UnsupportedError("Stateful components cannot be cloned directly.");
+  }
+  
+  @override
+  bool equals(VDomNode other) {
+    if (other is! StatefulComponent) return false;
+    return runtimeType == other.runtimeType && key == other.key;
+  }
+  
+  @override
+  void mount(VDomNode? parent) {
+    this.parent = parent;
+    
+    // Ensure the component has rendered
+    final node = renderedNode;
+    
+    // Mount the rendered content
+    node.mount(this);
+    
+    // Component lifecycle method
+    componentDidMount();
+  }
+  
+  @override
+  void unmount() {
+    // Unmount the rendered content if any
+    if (_renderedNode != null) {
+      _renderedNode!.unmount();
+    }
+    
+    // Component lifecycle method
+    componentWillUnmount();
+  }
 
   @override
   String toString() {
@@ -207,20 +199,93 @@ abstract class StatefulComponent extends Component {
 }
 
 /// Stateless component without hooks
-abstract class StatelessComponent extends Component {
+abstract class StatelessComponent extends VDomNode {
+  /// Unique ID for this component instance
+  final String instanceId;
+
+  /// Fully qualified type name for component
+  final String typeName;
+
+  /// The rendered node from the component
+  VDomNode? _renderedNode;
+
   /// Whether the component is mounted
   bool _isMounted = false;
+
+  /// Create a stateless component
+  StatelessComponent({super.key})
+      : instanceId = DateTime.now().millisecondsSinceEpoch.toString() +
+            Random().nextDouble().toString(),
+        typeName = StackTrace.current.toString().split('\n')[1].split(' ')[0];
+
+  /// Render the component
+  VDomNode render();
+  
+  /// Get the rendered node (lazily render if necessary)
+  VDomNode get renderedNode {
+    _renderedNode ??= render();
+    return _renderedNode!;
+  }
+  
+  /// Set the rendered node
+  @override
+  set renderedNode(VDomNode? node) {
+    _renderedNode = node;
+    if (_renderedNode != null) {
+      _renderedNode!.parent = this;
+    }
+  }
 
   /// Get whether the component is mounted
   bool get isMounted => _isMounted;
 
-  /// Create a stateless component
-  StatelessComponent({super.key});
-
   /// Called when the component is mounted
-  @override
   void componentDidMount() {
     _isMounted = true;
+  }
+
+  /// Called when the component will unmount
+  void componentWillUnmount() {
+    // Base implementation does nothing
+  }
+  
+  /// Implement VDomNode methods
+  
+  @override
+  VDomNode clone() {
+    // Components can't be cloned easily due to state, hooks, etc.
+    throw UnsupportedError("Stateless components cannot be cloned directly.");
+  }
+  
+  @override
+  bool equals(VDomNode other) {
+    if (other is! StatelessComponent) return false;
+    return runtimeType == other.runtimeType && key == other.key;
+  }
+  
+  @override
+  void mount(VDomNode? parent) {
+    this.parent = parent;
+    
+    // Ensure the component has rendered
+    final node = renderedNode;
+    
+    // Mount the rendered content
+    node.mount(this);
+    
+    // Component lifecycle method
+    componentDidMount();
+  }
+  
+  @override
+  void unmount() {
+    // Unmount the rendered content if any
+    if (_renderedNode != null) {
+      _renderedNode!.unmount();
+    }
+    
+    // Component lifecycle method
+    componentWillUnmount();
   }
 
   @override

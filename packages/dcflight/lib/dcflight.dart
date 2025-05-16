@@ -30,8 +30,9 @@ export 'framework/protocol/component_registry.dart';
 export 'framework/protocol/plugin_protocol.dart';
 
 
+import 'package:dcflight/framework/renderer/vdom/vdom_node.dart';
+
 import 'framework/renderer/vdom/vdom.dart';
-import 'framework/renderer/vdom/component/component.dart';
 import 'framework/renderer/interface/interface.dart';
 import 'framework/utilities/screen_utilities.dart';
 import 'framework/protocol/plugin_protocol.dart';
@@ -58,19 +59,19 @@ class DCFlight {
   }
   
   /// Start the application with the given root component
-  static Future<void> start({required Component app}) async {
-  await   _initialize();
+  static Future<void> start({required VDomNode app}) async {
+    await _initialize();
     // Create VDOM instance
     final vdom = VDom();
     
     // Create our main app component
     final mainApp = app;
     
-    // Create a component node
-    final appNode = vdom.createComponent(mainApp);
+    // Register the component with the VDOM
+    vdom.rootComponent = mainApp;
     
     // Render the component to native UI
-    await vdom.renderToNative(appNode, parentId: "root", index: 0);
+    await vdom.renderToNative(mainApp, parentId: "root", index: 0);
     
     // Wait for the VDom to be ready
     vdom.isReady.whenComplete(() async {

@@ -7,6 +7,6 @@ class DCFGo extends StatefulComponent {
     return DCFView(
       layout: LayoutProps(flex: 1),
       style: StyleSheet(backgroundColor: Colors.amber),
-    ).render();
+    );
   }
 }

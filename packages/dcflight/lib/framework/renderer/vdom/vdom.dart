@@ -3,7 +3,6 @@ import 'dart:developer' as developer;
 
 import 'package:dcflight/framework/renderer/interface/interface.dart' show NativeBridgeFactory, PlatformInterface;
 import 'package:dcflight/framework/renderer/vdom/component/component.dart';
-import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 import 'package:dcflight/framework/renderer/vdom/component/error_boundary.dart';
 export 'package:dcflight/framework/renderer/vdom/component/store.dart';
 import 'package:dcflight/framework/renderer/vdom/vdom_element.dart';
@@ -93,9 +92,9 @@ class _Metric {
 }
 
 /// Represents an instance of a component
-class ComponentInstance {
-  /// The component
-  final Component component;
+class _ComponentInstance {
+  /// The component node
+  final VDomNode component;
 
   /// Reference to the VDOM
   final VDom vdomRef;
@@ -106,7 +105,7 @@ class ComponentInstance {
   /// Whether component is mounted
   bool isMounted = false;
 
-  ComponentInstance({
+  _ComponentInstance({
     required this.component,
     required this.vdomRef,
   });
@@ -123,14 +122,11 @@ class VDom {
   /// Counter for generating view IDs
   int _viewIdCounter = 1;
 
-  /// Map of component instances by ID
-  final Map<String, Component> _components = {};
+  /// Map of components by ID
+  final Map<String, VDomNode> _components = {};
 
   /// Enriched component instances with additional tracking
-  final Map<String, ComponentInstance> _componentInstances = {};
-
-  /// Map of component nodes by component instance ID
-  final Map<String, ComponentNode> _componentNodes = {};
+  final Map<String, _ComponentInstance> _componentInstances = {};
 
   /// Map of view IDs to VDomNodes
   final Map<String, VDomNode> _nodesByViewId = {};
@@ -150,8 +146,8 @@ class VDom {
   /// Error boundaries
   final Map<String, ErrorBoundary> _errorBoundaries = {};
 
-  /// Root component node (for main application)
-  ComponentNode? rootComponentNode;
+  /// Root component (for main application)
+  VDomNode? rootComponent;
 
   /// Reconciliation engine
   late final Reconciler _reconciler;
@@ -201,26 +197,30 @@ class VDom {
     return 'view_${_viewIdCounter++}';
   }
 
-  /// Create a component node
-  ComponentNode createComponent(Component component) {
-    final node = ComponentNode(component: component);
+  /// Register a component in the VDOM
+  VDomNode registerComponent(VDomNode component) {
+    String instanceId;
+    
+    // Get the instanceId based on the component type
+    if (component is StatefulComponent) {
+      instanceId = component.instanceId;
+      component.scheduleUpdate = () => _scheduleComponentUpdate(component);
+    } else if (component is StatelessComponent) {
+      instanceId = component.instanceId;
+    } else {
+      throw ArgumentError('Component must be StatefulComponent or StatelessComponent');
+    }
 
-    // Store component and node by component ID
-    _components[component.instanceId] = component;
-    _componentNodes[component.instanceId] = node;
+    // Store component by ID
+    _components[instanceId] = component;
 
     // Create and register a component instance
-    _componentInstances[component.instanceId] = ComponentInstance(
+    _componentInstances[instanceId] = _ComponentInstance(
       component: component,
       vdomRef: this,
     );
 
-    // Set up update scheduling for stateful components
-    if (component is StatefulComponent) {
-      component.scheduleUpdate = () => _scheduleComponentUpdate(component);
-    }
-
-    return node;
+    return component;
   }
 
   /// Handle a native event
@@ -332,7 +332,7 @@ class VDom {
         return ""; // Fragments don't have their own ID
       }
 
-      if (node is ComponentNode) {
+      if (node is StatefulComponent || node is StatelessComponent) {
         try {
           return await _renderComponentToNative(node,
               parentId: parentId, index: index);
@@ -359,35 +359,42 @@ class VDom {
   }
 
   /// Render a component to native UI
-  Future<String?> _renderComponentToNative(ComponentNode componentNode,
+  Future<String?> _renderComponentToNative(VDomNode component,
       {String? parentId, int? index}) async {
-    final component = componentNode.component;
-    final componentInstance = _componentInstances[component.instanceId];
-
-    // Set the update function
+    String instanceId;
+    _ComponentInstance? componentInstance;
+    
     if (component is StatefulComponent) {
+      instanceId = component.instanceId;
+      componentInstance = _componentInstances[instanceId];
+
+      // Set the update function
       component.scheduleUpdate = () => _scheduleComponentUpdate(component);
-    }
-
-    // Reset hook state before render for stateful components
-    if (component is StatefulComponent) {
+      
+      // Reset hook state before render for stateful components
       component.prepareForRender();
+    } else if (component is StatelessComponent) {
+      instanceId = component.instanceId;
+      componentInstance = _componentInstances[instanceId];
+    } else {
+      throw ArgumentError('Component must be StatefulComponent or StatelessComponent');
     }
 
     // Render the component
     _performanceMonitor.startTimer('component_render');
-    final renderedNode = component.render();
+    final renderedNode = _getRenderResult(component);
     _performanceMonitor.endTimer('component_render');
 
-    componentNode.renderedNode = renderedNode;
-    renderedNode.parent = componentNode;
+    // Set parent-child relationship
+    component.renderedNode = renderedNode;
+    renderedNode.parent = component;
 
     // Render the rendered node
     final viewId =
         await renderToNative(renderedNode, parentId: parentId, index: index);
 
     // Store the view ID
-    componentNode.contentViewId = viewId;
+    component.contentViewId = viewId;
 
     // Mark as mounted if not already
     if (componentInstance != null && !componentInstance.isMounted) {
@@ -398,7 +405,7 @@ class VDom {
 
     // Register error boundary if applicable
     if (component is ErrorBoundary) {
-      _errorBoundaries[component.instanceId] = component;
+      _errorBoundaries[instanceId] = component;
     }
 
     // Run effects after render for stateful components
@@ -408,6 +415,15 @@ class VDom {
     }
 
     return viewId;
+  }
+  
+  VDomNode _getRenderResult(VDomNode component) {
+    if (component is StatefulComponent) {
+      return component.renderedNode;
+    } else if (component is StatelessComponent) {
+      return component.renderedNode;
+    }
+    throw ArgumentError('Component must be StatefulComponent or StatelessComponent');
   }
 
   /// Render an element to native UI
@@ -626,13 +642,11 @@ class VDom {
 
   /// Update a component
   Future<void> _updateComponent(String componentId) async {
-    if (!_components.containsKey(componentId) ||
-        !_componentNodes.containsKey(componentId)) {
+    if (!_components.containsKey(componentId)) {
       return;
     }
 
     final component = _components[componentId]!;
-    final componentNode = _componentNodes[componentId]!;
 
     // Handle stateful components
     if (component is StatefulComponent) {
@@ -641,24 +655,24 @@ class VDom {
     }
 
     // Re-render the component
-    final newRenderedNode = component.render();
-    final oldRenderedNode = componentNode.renderedNode;
+    final oldRenderedNode = component.renderedNode;
+    final newRenderedNode = _getRenderResult(component);
 
     // Update the rendered node
-    componentNode.renderedNode = newRenderedNode;
-    newRenderedNode.parent = componentNode;
+    component.renderedNode = newRenderedNode;
+    newRenderedNode.parent = component;
 
     // Reconcile nodes
     if (oldRenderedNode != null) {
       _performanceMonitor.startTimer('reconcile');
       await _reconciler.reconcile(oldRenderedNode, newRenderedNode);
       _performanceMonitor.endTimer('reconcile');
-    } else if (componentNode.contentViewId != null) {
+    } else if (component.contentViewId != null) {
       // If no previous node but we have a content view ID, this might be a special case
       // Handle by re-rendering to native
-      final parentId = _findParentViewId(componentNode);
+      final parentId = _findParentViewId(component);
       if (parentId != null) {
-        renderToNative(newRenderedNode, parentId: parentId, index: 0);
+        await renderToNative(newRenderedNode, parentId: parentId, index: 0);
       }
     }
 
@@ -669,8 +683,8 @@ class VDom {
     }
   }
 
-  /// Find parent view ID for a component node
-  String? _findParentViewId(ComponentNode node) {
+  /// Find parent view ID for a component
+  String? _findParentViewId(VDomNode node) {
     VDomNode? current = node.parent;
     while (current != null) {
       if (current.nativeViewId != null) {
@@ -681,15 +695,14 @@ class VDom {
     return "root"; // Fallback to root if no parent found
   }
 
- 
   /// Call lifecycle methods for components
   void _callLifecycleMethodsIfNeeded(VDomNode node) {
     // Find component owning this node by traversing up the tree
     VDomNode? current = node;
-    ComponentNode? componentNode;
+    VDomNode? componentNode;
 
     while (current != null) {
-      if (current is ComponentNode) {
+      if (current is StatefulComponent || current is StatelessComponent) {
         componentNode = current;
         break;
       }
@@ -697,11 +710,14 @@ class VDom {
     }
 
     if (componentNode != null) {
-      final component = componentNode.component;
-      final instance = _componentInstances[component.instanceId];
+      final String instanceId = componentNode is StatefulComponent 
+          ? (componentNode).instanceId 
+          : (componentNode as StatelessComponent).instanceId;
+          
+      final instance = _componentInstances[instanceId];
 
       if (instance != null && !instance.isMounted) {
-        component.componentDidMount();
+        componentNode.componentDidMount();
         instance.isMounted = true;
       }
     }
@@ -712,8 +728,8 @@ class VDom {
     VDomNode? current = node;
 
     while (current != null) {
-      if (current is ComponentNode && current.component is ErrorBoundary) {
-        return current.component as ErrorBoundary;
+      if (current is ErrorBoundary) {
+        return current;
       }
       current = current.parent;
     }

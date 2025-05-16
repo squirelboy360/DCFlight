@@ -1,6 +1,6 @@
 import 'dart:developer' as developer;
 import 'dart:math' as math;
-import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
+import 'package:dcflight/framework/renderer/vdom/component/component.dart';
 
 import '../../constants/layout_properties.dart';
 
@@ -40,9 +40,10 @@ class Reconciler {
 
       // Different type or key - replacement needed
       await _replaceNode(oldNode, newNode);
-    } else if (oldNode is ComponentNode && newNode is ComponentNode) {
+    } else if (oldNode is StatefulComponent && newNode is StatefulComponent || 
+             oldNode is StatelessComponent && newNode is StatelessComponent) {
       // Component comparison - check type
-      if (oldNode.component.runtimeType == newNode.component.runtimeType) {
+      if (oldNode.runtimeType == newNode.runtimeType) {
         // Copy over native view IDs for proper tracking
         newNode.nativeViewId = oldNode.nativeViewId;
         newNode.contentViewId = oldNode.contentViewId;
@@ -68,7 +69,7 @@ class Reconciler {
     }
 
     // Calculate and apply layout after reconciliation if this is a root element
-    if (newNode == vdom.rootComponentNode?.renderedNode) {
+    if (newNode == vdom.rootComponent?.renderedNode) {
       await vdom.calculateAndApplyLayout();
     }
   }
