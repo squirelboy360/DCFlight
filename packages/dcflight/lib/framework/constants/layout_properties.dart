@@ -54,6 +54,7 @@ class LayoutProps {
   // Direction
   final YogaDirection? direction;
 
+@Deprecated("Use borderWidth from style instead")
   // Border (although visual, it affects layout)
   final dynamic borderWidth;
 
@@ -90,12 +91,12 @@ class LayoutProps {
     this.alignSelf,
     this.alignContent = YogaAlign.stretch,
     this.flexWrap = YogaWrap.wrap,
-    this.flex = 1,
+    this.flex,
     this.flexGrow,
     this.flexShrink,
     this.flexBasis,
     this.display = YogaDisplay.flex,
-    this.overflow = YogaOverflow.hidden,
+    this.overflow = YogaOverflow.visible,
     this.direction,
     this.borderWidth,
   });
