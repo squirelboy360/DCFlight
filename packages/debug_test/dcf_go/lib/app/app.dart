@@ -15,17 +15,29 @@ class DCFGo extends StatefulComponent {
       children: [
         DCFView(
           layout: LayoutProps(
-            height: 150,
+            height: 200,
             flexDirection: YogaFlexDirection.row,
-            // paddingTop: ScreenUtilities.instance.statusBarHeight,
+            flexWrap: YogaWrap.wrap,
+            justifyContent: YogaJustifyContent.spaceBetween,
+            alignItems: YogaAlign.stretch,
+            paddingTop: ScreenUtilities.instance.statusBarHeight,
           ),
           style: StyleSheet(backgroundColor: Colors.indigo[400]),
           children: [
             DCFText(
-              content: "Framework Reconciliation Test",
-              textProps: TextProps(fontSize: 20, fontWeight: 'bod'),
-              layout: LayoutProps(height: 200, width: 200),
+              content: "Framework Reconciliation Test ",
+              textProps: TextProps(fontSize: 20, fontWeight: 'bold'),
+              
               style: StyleSheet(backgroundColor: Colors.yellow),
+            ),
+
+            DCFText(
+              content: "Counter Local ${counter.value}",
+              textProps: TextProps(fontSize: 12, fontWeight: 'normal'),
+            ),
+            DCFText(
+              content: "Counter Gobal ${globalCounter.state}",
+              textProps: TextProps(fontSize: 12, fontWeight: 'normal'),
             ),
           ],
         ),
@@ -40,67 +52,89 @@ class DCFGo extends StatefulComponent {
             flexDirection: YogaFlexDirection.column,
           ),
           children: [
-            DCFTouchableOpacity(activeOpacity:0.5 ,
-            onPress: (){},
+            DCFTouchableOpacity(
+              activeOpacity: 0.5,
+              onPress: () {
+                print("touchable pressed, maybe state woud change");
+                print("counter value: ${counter.value}");
+                print("global counter value: ${globalCounter.state}");
+                counter.setValue(counter.value + 1);
+                globalCounter.setState(globalCounter.state + 1);
+              },
               layout: LayoutProps(
-                height: 200,
-                width: "100%",
-                alignContent: YogaAlign.stretch,
-                flexWrap: YogaWrap.nowrap,
-                justifyContent: YogaJustifyContent.spaceAround,
-              ),children: [  DCFView(
-              layout: LayoutProps(
-                height: 200,
+                height: 120,
                 width: "100%",
                 alignContent: YogaAlign.stretch,
                 flexWrap: YogaWrap.nowrap,
                 justifyContent: YogaJustifyContent.spaceAround,
               ),
-              style: StyleSheet(backgroundColor: Colors.grey[100]),
               children: [
-                DCFImage(
-                  imageProps: ImageProps(
-                    resizeMode: "cover",
-                    source:
-                        "https://avatars.githubusercontent.com/u/130235676?v=4",
-                  ),
-                  layout: LayoutProps(height: 60, width: 60, borderWidth: 1),
-                  style: StyleSheet(
-                    borderRadius: 30,
-                    borderColor: Colors.black,
-                  ),
-                ),
                 DCFView(
                   layout: LayoutProps(
-                  width: "60%",
-                    alignContent: YogaAlign.center,
+                    height: 120,
+                    width: "100%",
+                    alignContent: YogaAlign.stretch,
+                    flexWrap: YogaWrap.nowrap,
+                    flexDirection: YogaFlexDirection.row,
                     justifyContent: YogaJustifyContent.spaceAround,
+                    alignItems: YogaAlign.center,
                   ),
+                  style: StyleSheet(backgroundColor: Colors.grey[100]),
                   children: [
-                    DCFText(
-                      content: "DCFight",
-                      textProps: TextProps(fontSize: 20, fontWeight: 'bold'),
+                    DCFImage(
+                      imageProps: ImageProps(
+                        resizeMode: "cover",
+                        source:
+                            "https://avatars.githubusercontent.com/u/130235676?v=4",
+                      ),
+                      layout: LayoutProps(
+                        height: 60,
+                        width: 60,
+                        borderWidth: 1,
+                      ),
+                      style: StyleSheet(
+                        borderRadius: 30,
+                        borderColor: Colors.black,
+                      ),
                     ),
-                    DCFText(
-                      content: "Deveolper lead",
-                      textProps: TextProps(fontSize: 12, fontWeight: 'normal'),
+                    DCFView(
+                      layout: LayoutProps(
+                        width: "60%",
+                        alignContent: YogaAlign.center,
+                        justifyContent: YogaJustifyContent.spaceAround,
+                      ),
+                      children: [
+                        DCFText(
+                          content: "DCFight",
+                          textProps: TextProps(
+                            fontSize: 20,
+                            fontWeight: 'bold',
+                          ),
+                        ),
+                        DCFText(
+                          content: "Deveolper lead",
+                          textProps: TextProps(
+                            fontSize: 12,
+                            fontWeight: 'normal',
+                          ),
+                        ),
+                        DCFIcon(
+                          iconProps: IconProps(name: DCFIcons.github),
+                          layout: LayoutProps(height: 20, width: 20),
+                        ),
+                      ],
                     ),
+
                     DCFIcon(
-                      iconProps: IconProps(name: DCFIcons.github),
+                      iconProps: IconProps(name: DCFIcons.chevronRight),
                       layout: LayoutProps(height: 20, width: 20),
                     ),
                   ],
                 ),
-               
-                  DCFIcon(
-                  iconProps: IconProps(name: DCFIcons.chevronRight),
-                  layout: LayoutProps(height: 20, width: 20),
-                ),
-              
-              ]),
-          ]),
+              ],
+            ),
           ],
-      ),
+        ),
         Fragment(children: [GobalStateCounterComp()]),
       ],
     );
@@ -112,12 +146,16 @@ class GobalStateCounterComp extends StatefulComponent {
   VDomNode render() {
     final globalCounter = useStore(globalCounterState);
     return DCFView(
-      layout: LayoutProps(height: 200, flexDirection: YogaFlexDirection.column),
+      layout: LayoutProps(
+        height: 100,
+        marginVertical: 20,
+        flexDirection: YogaFlexDirection.column,
+      ),
       children: [
         DCFText(
           content: "State change for global ${globalCounter.state}",
           textProps: TextProps(fontSize: 20, fontWeight: 'normal'),
-          layout: LayoutProps(margin: 20),
+
           style: StyleSheet(backgroundColor: Colors.indigo),
         ),
         DCFButton(
