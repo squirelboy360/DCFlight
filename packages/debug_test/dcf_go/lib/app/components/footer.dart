@@ -21,14 +21,14 @@ class GobalStateCounterComp extends StatefulComponent {
           buttonProps: ButtonProps(
             title: "Increment Global",
             color: Colors.white,
-            backgroundColor: Colors.blue,
+            backgroundColor: Colors.deepPurpleAccent,
             disabled: false,
           ),
           onPress: () {
             globalCounter.setState(globalCounter.state + 1);
           },
 
-          style: StyleSheet(backgroundColor: Colors.blue),
+      
         ),
       ],
     );

@@ -17,11 +17,15 @@ class TopBar extends StatefulComponent {
         alignContent: YogaAlign.center,
         paddingTop: ScreenUtilities.instance.statusBarHeight,
       ),
-      style: StyleSheet(backgroundColor: Colors.indigo[400]),
+      style: StyleSheet(backgroundColor: Colors.deepPurple),
       children: [
         DCFText(
           content: "DCF Go",
-          textProps: TextProps(fontSize: 20, fontWeight: 'bold'),
+          textProps: TextProps(
+            fontSize: 20,
+            fontWeight: 'bold',
+            color: Colors.white,
+          ),
         ),
 
         DCFView(
@@ -34,12 +38,16 @@ class TopBar extends StatefulComponent {
           ),
           children: [
             DCFIcon(
-              iconProps: IconProps(name: DCFIcons.house),
+              iconProps: IconProps(name: DCFIcons.house, color: Colors.white),
               layout: LayoutProps(width: 20, height: 20),
             ),
             DCFText(
               content: counter.value.toString(),
-              textProps: TextProps(fontSize: 12, fontWeight: 'bold'),
+              textProps: TextProps(
+                fontSize: 12,
+                fontWeight: 'bold',
+                color: Colors.white,
+              ),
             ),
           ],
         ),
@@ -53,12 +61,16 @@ class TopBar extends StatefulComponent {
           ),
           children: [
             DCFIcon(
-              iconProps: IconProps(name: DCFIcons.globe),
+              iconProps: IconProps(name: DCFIcons.globe, color: Colors.white),
               layout: LayoutProps(width: 20, height: 20),
             ),
             DCFText(
               content: globalCounter.state.toString(),
-              textProps: TextProps(fontSize: 12, fontWeight: 'bold'),
+              textProps: TextProps(
+                fontSize: 12,
+                fontWeight: 'bold',
+                color: Colors.white,
+              ),
             ),
           ],
         ),
