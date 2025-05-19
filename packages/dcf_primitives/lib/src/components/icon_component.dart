@@ -58,7 +58,9 @@ class DCFIcon extends StatelessComponent {
   /// Create an icon component
   DCFIcon({
     required this.iconProps,
-    this.layout = const LayoutProps(),
+       this.layout = const LayoutProps(
+      flex: 1
+    ),
     this.style = const StyleSheet(),
     this.onLoad,
     this.onError,

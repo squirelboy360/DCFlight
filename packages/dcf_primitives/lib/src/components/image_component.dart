@@ -57,7 +57,9 @@ class DCFImage extends StatelessComponent {
   /// Create an image component
   DCFImage({
     required this.imageProps,
-    this.layout = const LayoutProps(),
+       this.layout = const LayoutProps(
+      flex: 1
+    ),
     this.style = const StyleSheet(),
     this.onLoad,
     this.onError,

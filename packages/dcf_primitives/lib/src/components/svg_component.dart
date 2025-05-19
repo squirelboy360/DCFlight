@@ -50,7 +50,9 @@ class DCFSVG extends StatelessComponent {
   /// Create an SVG component
   DCFSVG({
     required this.svgProps,
-    this.layout = const LayoutProps(),
+       this.layout = const LayoutProps(
+      flex: 1
+    ),
     this.style = const StyleSheet(),
     this.events,
     super.key,
