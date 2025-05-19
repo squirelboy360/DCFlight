@@ -18,183 +18,78 @@ It is almost impossible to decouple the Dart VM from Flutter. To work around thi
 ```dart
 
 void main() {
-  DCFlight.start(app: DCFlightDemoApp());
+  DCFlight.start(app: DCFGo());
 }
 
-class DCFlightDemoApp extends StatefulComponent {
+import 'package:dcf_go/app/components/footer.dart';
+import 'package:dcf_go/app/components/user_card.dart';
+import 'package:dcf_go/app/store.dart';
+import 'package:dcf_go/app/components/top_bar.dart';
+import 'package:dcf_primitives/dcf_primitives.dart';
+import 'package:dcflight/dcflight.dart';
+
+class DCFGo extends StatefulComponent {
   @override
-  UIComponent render() {
-    // State for theme
-    final isDarkTheme = useState(false);
-    
-    // State for active tab
-    final activeTabIndex = useState(0);
-    
-    // State for counter
-    final counterState = useState(0);
-    
-    // Derive theme colors based on isDarkTheme
-    final backgroundColor = isDarkTheme.value 
-        ? const Color(0xFF121212) 
-        : const Color(0xFFF5F5F5);
-    
-    final textColor = isDarkTheme.value 
-        ? const Color(0xFFFFFFFF) 
-        : const Color(0xFF000000);
-    
-    final accentColor = isDarkTheme.value 
-        ? const Color(0xFF536DFE) 
-        : const Color(0xFF3D5AFE);
-    
-    // Define tabs
-    final tabs = [
-      "Counter",
-      "Gallery",
-      "About",
-    ];
-    
-    return view(
-      style: StyleSheet(
-        backgroundColor: backgroundColor,
-      ),
-      layout: const LayoutProps(
-        width: '100%',
-        height: '100%',
-        justifyContent: YogaJustifyContent.flexStart,
-        alignItems: YogaAlign.center,
-      ),
+  VDomNode render() {
+    final globalCounter = useStore(globalCounterState);
+    final counter = useState(0);
+    return Fragment(
       children: [
-        // Header
-        view(
-          style: StyleSheet(
-            backgroundColor: accentColor,
-          ),
-          layout:  LayoutProps(flexWrap: YogaWrap.wrap,
-            width: '100%',
-            height: 80,
-            flexDirection: YogaFlexDirection.row,
+        TopBar(globalCounter: globalCounter, counter: counter),
+        DCFScrollView(
+          showsScrollIndicator: true,
+          style: StyleSheet(backgroundColor: Colors.white),
+          layout: LayoutProps(
+            paddingHorizontal: 20,
             justifyContent: YogaJustifyContent.spaceBetween,
-            alignItems: YogaAlign.center,
-            padding: ScreenUtilities.instance.statusBarHeight,
-            paddingLeft: 20,
-            paddingRight: 20,
+            flex: 1,
+            width: "100%",
+            flexDirection: YogaFlexDirection.column,
           ),
           children: [
-            text(
-              layout: const LayoutProps(
-                width: 200,
-                height: 40,
-
-              ),
-              content: "DCFlight Demo",
-              textProps: const TextProps(
-                fontSize: 24,
-                color: Color(0xFFFFFFFF),
-                fontWeight: "bold",
-              ),
-            ),
-            button(
-              buttonProps: ButtonProps(
-                title: isDarkTheme.value ? "☀️" : "🌙",
-                color: isDarkTheme.value ? const Color(0xFF000000) : const Color(0xFFFFFFFF),
-                backgroundColor: isDarkTheme.value ? const Color(0xFFFFFFFF) : const Color(0xFF222222),
-              ),
-              layout: const LayoutProps(
-                width: 50,
-                height: 40,
-              ),
+            UserCard(
               onPress: () {
-                isDarkTheme.setValue(!isDarkTheme.value);
+                print("touchable pressed, maybe state woud change");
+                print("counter value: ${counter.value}");
+                print("global counter value: ${globalCounter.state}");
+                counter.setValue(counter.value + 1);
+                globalCounter.setState(globalCounter.state + 1);
+              },
+            ),
+            UserCard(
+              onPress: () {
+                print("touchable pressed, maybe state woud change");
+                print("counter value: ${counter.value}");
+                print("global counter value: ${globalCounter.state}");
+                counter.setValue(counter.value + 1);
+                globalCounter.setState(globalCounter.state + 1);
+              },
+            ),
+            UserCard(
+              onPress: () {
+                print("touchable pressed, maybe state woud change");
+                print("counter value: ${counter.value}");
+                print("global counter value: ${globalCounter.state}");
+                counter.setValue(counter.value + 1);
+                globalCounter.setState(globalCounter.state + 1);
+              },
+            ),
+            UserCard(
+              onPress: () {
+                print("touchable pressed, maybe state woud change");
+                print("counter value: ${counter.value}");
+                print("global counter value: ${globalCounter.state}");
+                counter.setValue(counter.value + 1);
+                globalCounter.setState(globalCounter.state + 1);
               },
             ),
           ],
         ),
-        
-        // Tabs
-        view(
-          style: StyleSheet(
-            backgroundColor: isDarkTheme.value ? const Color(0xFF1E1E1E) : const Color(0xFFE0E0E0),
-          ),
-          layout: const LayoutProps(
-            width: '100%',
-            height: 50,
-            flexDirection: YogaFlexDirection.row,
-            justifyContent: YogaJustifyContent.spaceEvenly,
-            alignItems: YogaAlign.center,
-          ),
-          children: [
-            for (int i = 0; i < tabs.length; i++)
-              button(
-                buttonProps: ButtonProps(
-                  title: tabs[i],
-                  color: i == activeTabIndex.value 
-                      ? const Color(0xFFFFFFFF) 
-                      : textColor,
-                  backgroundColor: i == activeTabIndex.value 
-                      ? accentColor
-                      : Colors.transparent,
-                ),
-                layout: const LayoutProps(
-                  width: 100,
-                  height: 40,
-                ),
-                onPress: () {
-                  activeTabIndex.setValue(i);
-                },
-              ),
-          ],
-        ),
-        
-        // Content based on active tab
-        renderTabContent(
-          activeTabIndex.value, 
-          counterState, 
-          textColor, 
-          accentColor,
-          backgroundColor,
-        ),
+        GobalStateCounterComp(),
       ],
     );
   }
-  
-  // Helper method to render the content of the active tab
-  UIComponent renderTabContent(
-    int activeTab, 
-    StateHook<int> counterState, 
-    Color textColor, 
-    Color accentColor,
-    Color backgroundColor,
-  ) {
-    switch (activeTab) {
-      case 0:
-        return CounterScreen(
-          counterState: counterState,
-          textColor: textColor,
-          accentColor: accentColor,
-        );
-      case 1:
-        return galleryScreen(
-          textColor: textColor,
-          accentColor: accentColor,
-          backgroundColor: backgroundColor,
-        );
-      case 2:
-        return aboutScreen(
-          textColor: textColor,
-          accentColor: accentColor,
-        );
-      default:
-        return view();
-    }
-  }
 }
-
-
-
-
-
-
-
 ```
 
 
