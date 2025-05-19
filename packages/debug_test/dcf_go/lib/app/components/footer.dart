@@ -15,9 +15,7 @@ class GobalStateCounterComp extends StatefulComponent {
       children: [
         DCFText(
           content: "State change for global ${globalCounter.state}",
-          textProps: TextProps(fontSize: 20, fontWeight: 'normal'),
-
-          style: StyleSheet(backgroundColor: Colors.indigo),
+          textProps: TextProps(fontSize: 20, fontWeight: 'normal')
         ),
         DCFButton(
           buttonProps: ButtonProps(
