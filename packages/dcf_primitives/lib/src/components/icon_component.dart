@@ -7,7 +7,7 @@ class IconProps {
   final String name;
   
   /// Size of the icon
-  final double size;
+  // final double size;
   
   /// Color of the icon
   final Color? color;
@@ -18,7 +18,7 @@ class IconProps {
   /// Create icon props
   const IconProps({
     required this.name,
-    this.size = 24.0,
+    // this.size = 24.0,
     this.color,
     this.package = 'dcf_primitives',
   });
@@ -27,7 +27,7 @@ class IconProps {
   Map<String, dynamic> toMap() {
     return {
       'name': name,
-      'size': size,
+      // 'size': size,
       'package': package,
       'isRelativePath': false,
       if (color != null) 'color': color,
