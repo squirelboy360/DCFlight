@@ -24,7 +24,7 @@ class UserCard extends StatelessComponent {
       children: [
         DCFView(
           layout: LayoutProps(
-            height: 120,
+            height: 150,
             width: "100%",
             alignContent: YogaAlign.stretch,
             flexWrap: YogaWrap.nowrap,

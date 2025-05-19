@@ -5,8 +5,6 @@ import 'package:dcf_go/app/components/top_bar.dart';
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
 
-
-
 class DCFGo extends StatefulComponent {
   @override
   VDomNode render() {
@@ -14,10 +12,10 @@ class DCFGo extends StatefulComponent {
     final counter = useState(0);
     return Fragment(
       children: [
-       TopBar(globalCounter: globalCounter, counter: counter),
+        TopBar(globalCounter: globalCounter, counter: counter),
         DCFScrollView(
           showsScrollIndicator: true,
-          style: StyleSheet(backgroundColor: Colors.deepPurpleAccent),
+          style: StyleSheet(backgroundColor: Colors.white),
           layout: LayoutProps(
             paddingHorizontal: 20,
             justifyContent: YogaJustifyContent.spaceBetween,
@@ -34,7 +32,8 @@ class DCFGo extends StatefulComponent {
                 counter.setValue(counter.value + 1);
                 globalCounter.setState(globalCounter.state + 1);
               },
-            ), UserCard(
+            ),
+            UserCard(
               onPress: () {
                 print("touchable pressed, maybe state woud change");
                 print("counter value: ${counter.value}");
@@ -42,7 +41,8 @@ class DCFGo extends StatefulComponent {
                 counter.setValue(counter.value + 1);
                 globalCounter.setState(globalCounter.state + 1);
               },
-            ), UserCard(
+            ),
+            UserCard(
               onPress: () {
                 print("touchable pressed, maybe state woud change");
                 print("counter value: ${counter.value}");
@@ -50,7 +50,8 @@ class DCFGo extends StatefulComponent {
                 counter.setValue(counter.value + 1);
                 globalCounter.setState(globalCounter.state + 1);
               },
-            ), UserCard(
+            ),
+            UserCard(
               onPress: () {
                 print("touchable pressed, maybe state woud change");
                 print("counter value: ${counter.value}");
@@ -61,9 +62,8 @@ class DCFGo extends StatefulComponent {
             ),
           ],
         ),
-        Fragment(children: [GobalStateCounterComp()]),
+        GobalStateCounterComp(),
       ],
     );
   }
 }
-

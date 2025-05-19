@@ -1,43 +1,68 @@
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
 
-class TopBar extends StatefulComponent{
+class TopBar extends StatefulComponent {
   final StoreHook<int> globalCounter;
   final StateHook<int> counter;
-  TopBar({
-    super.key,
-    required this.globalCounter,
-    required this.counter,
-  });
+  TopBar({super.key, required this.globalCounter, required this.counter});
   @override
   VDomNode render() {
-    return  DCFView(
+    return DCFView(
+      layout: LayoutProps(
+        height: 100,
+        flexDirection: YogaFlexDirection.row,
+        flexWrap: YogaWrap.wrap,
+        justifyContent: YogaJustifyContent.spaceBetween,
+        alignItems: YogaAlign.center,
+        alignContent: YogaAlign.center,
+        paddingTop: ScreenUtilities.instance.statusBarHeight,
+      ),
+      style: StyleSheet(backgroundColor: Colors.indigo[400]),
+      children: [
+        DCFText(
+          content: "DCF Go",
+          textProps: TextProps(fontSize: 20, fontWeight: 'bold'),
+        ),
+
+        DCFView(
           layout: LayoutProps(
-            height: 200,
             flexDirection: YogaFlexDirection.row,
-            flexWrap: YogaWrap.wrap,
             justifyContent: YogaJustifyContent.spaceBetween,
-            alignItems: YogaAlign.stretch,
-            paddingTop: ScreenUtilities.instance.statusBarHeight,
+            alignItems: YogaAlign.center,
+            alignContent: YogaAlign.center,
+            width: 100,
           ),
-          style: StyleSheet(backgroundColor: Colors.indigo[400]),
           children: [
-            DCFText(
-              content: "Framework Reconciliation Test ",
-              textProps: TextProps(fontSize: 20, fontWeight: 'bold'),
-
-              style: StyleSheet(backgroundColor: Colors.yellow),
-            ),
-
-            DCFText(
-              content: "Counter Local ${counter.value}",
-              textProps: TextProps(fontSize: 12, fontWeight: 'normal'),
+            DCFIcon(
+              iconProps: IconProps(name: DCFIcons.house),
+              layout: LayoutProps(width: 20, height: 20),
             ),
             DCFText(
-              content: "Counter Gobal ${globalCounter.state}",
-              textProps: TextProps(fontSize: 12, fontWeight: 'normal'),
+              content: counter.value.toString(),
+              textProps: TextProps(fontSize: 12, fontWeight: 'bold'),
             ),
           ],
-        );
-  } 
+        ),
+        DCFView(
+          layout: LayoutProps(
+            flexDirection: YogaFlexDirection.row,
+            justifyContent: YogaJustifyContent.spaceBetween,
+            width: 100,
+            alignItems: YogaAlign.center,
+            alignContent: YogaAlign.center,
+          ),
+          children: [
+            DCFIcon(
+              iconProps: IconProps(name: DCFIcons.globe),
+              layout: LayoutProps(width: 20, height: 20),
+            ),
+            DCFText(
+              content: globalCounter.state.toString(),
+              textProps: TextProps(fontSize: 12, fontWeight: 'bold'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }
