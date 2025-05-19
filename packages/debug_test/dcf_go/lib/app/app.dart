@@ -1,7 +1,7 @@
 import 'package:dcf_go/app/components/footer.dart';
 import 'package:dcf_go/app/components/user_card.dart';
 import 'package:dcf_go/app/store.dart';
-import 'package:dcf_go/app/top_bar.dart';
+import 'package:dcf_go/app/components/top_bar.dart';
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
 
