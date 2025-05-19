@@ -36,6 +36,7 @@ abstract class StatefulComponent extends VDomNode {
   VDomNode render();
   
   /// Get the rendered node (lazily render if necessary)
+  @override
   VDomNode get renderedNode {
     _renderedNode ??= render();
     return _renderedNode!;
@@ -54,11 +55,13 @@ abstract class StatefulComponent extends VDomNode {
   bool get isMounted => _isMounted;
 
   /// Called when the component is mounted
+  @override
   void componentDidMount() {
     _isMounted = true;
   }
 
   /// Called when the component will unmount
+  @override
   void componentWillUnmount() {
     // Clean up hooks
     for (final hook in _hooks) {
