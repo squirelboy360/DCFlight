@@ -1,3 +1,4 @@
+import 'package:dcf_go/app/components/user_card.dart';
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
 
@@ -27,7 +28,7 @@ class DCFGo extends StatefulComponent {
             DCFText(
               content: "Framework Reconciliation Test ",
               textProps: TextProps(fontSize: 20, fontWeight: 'bold'),
-              
+
               style: StyleSheet(backgroundColor: Colors.yellow),
             ),
 
@@ -52,8 +53,7 @@ class DCFGo extends StatefulComponent {
             flexDirection: YogaFlexDirection.column,
           ),
           children: [
-            DCFTouchableOpacity(
-              activeOpacity: 0.5,
+            UserCard(
               onPress: () {
                 print("touchable pressed, maybe state woud change");
                 print("counter value: ${counter.value}");
@@ -61,77 +61,30 @@ class DCFGo extends StatefulComponent {
                 counter.setValue(counter.value + 1);
                 globalCounter.setState(globalCounter.state + 1);
               },
-              layout: LayoutProps(
-                height: 120,
-                width: "100%",
-                alignContent: YogaAlign.stretch,
-                flexWrap: YogaWrap.nowrap,
-                justifyContent: YogaJustifyContent.spaceAround,
-              ),
-              children: [
-                DCFView(
-                  layout: LayoutProps(
-                    height: 120,
-                    width: "100%",
-                    alignContent: YogaAlign.stretch,
-                    flexWrap: YogaWrap.nowrap,
-                    flexDirection: YogaFlexDirection.row,
-                    justifyContent: YogaJustifyContent.spaceAround,
-                    alignItems: YogaAlign.center,
-                  ),
-                  style: StyleSheet(backgroundColor: Colors.grey[100]),
-                  children: [
-                    DCFImage(
-                      imageProps: ImageProps(
-                        resizeMode: "cover",
-                        source:
-                            "https://avatars.githubusercontent.com/u/130235676?v=4",
-                      ),
-                      layout: LayoutProps(
-                        height: 60,
-                        width: 60,
-                        borderWidth: 1,
-                      ),
-                      style: StyleSheet(
-                        borderRadius: 30,
-                        borderColor: Colors.black,
-                      ),
-                    ),
-                    DCFView(
-                      layout: LayoutProps(
-                        width: "60%",
-                        alignContent: YogaAlign.center,
-                        justifyContent: YogaJustifyContent.spaceAround,
-                      ),
-                      children: [
-                        DCFText(
-                          content: "DCFight",
-                          textProps: TextProps(
-                            fontSize: 20,
-                            fontWeight: 'bold',
-                          ),
-                        ),
-                        DCFText(
-                          content: "Deveolper lead",
-                          textProps: TextProps(
-                            fontSize: 12,
-                            fontWeight: 'normal',
-                          ),
-                        ),
-                        DCFIcon(
-                          iconProps: IconProps(name: DCFIcons.github),
-                          layout: LayoutProps(height: 20, width: 20),
-                        ),
-                      ],
-                    ),
-
-                    DCFIcon(
-                      iconProps: IconProps(name: DCFIcons.chevronRight),
-                      layout: LayoutProps(height: 20, width: 20),
-                    ),
-                  ],
-                ),
-              ],
+            ), UserCard(
+              onPress: () {
+                print("touchable pressed, maybe state woud change");
+                print("counter value: ${counter.value}");
+                print("global counter value: ${globalCounter.state}");
+                counter.setValue(counter.value + 1);
+                globalCounter.setState(globalCounter.state + 1);
+              },
+            ), UserCard(
+              onPress: () {
+                print("touchable pressed, maybe state woud change");
+                print("counter value: ${counter.value}");
+                print("global counter value: ${globalCounter.state}");
+                counter.setValue(counter.value + 1);
+                globalCounter.setState(globalCounter.state + 1);
+              },
+            ), UserCard(
+              onPress: () {
+                print("touchable pressed, maybe state woud change");
+                print("counter value: ${counter.value}");
+                print("global counter value: ${globalCounter.state}");
+                counter.setValue(counter.value + 1);
+                globalCounter.setState(globalCounter.state + 1);
+              },
             ),
           ],
         ),
