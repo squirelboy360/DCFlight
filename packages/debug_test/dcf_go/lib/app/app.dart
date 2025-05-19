@@ -40,7 +40,15 @@ class DCFGo extends StatefulComponent {
             flexDirection: YogaFlexDirection.column,
           ),
           children: [
-            DCFView(
+            DCFTouchableOpacity(activeOpacity:0.5 ,
+            onPress: (){},
+              layout: LayoutProps(
+                height: 200,
+                width: "100%",
+                alignContent: YogaAlign.stretch,
+                flexWrap: YogaWrap.nowrap,
+                justifyContent: YogaJustifyContent.spaceAround,
+              ),children: [  DCFView(
               layout: LayoutProps(
                 height: 200,
                 width: "100%",
@@ -89,10 +97,10 @@ class DCFGo extends StatefulComponent {
                   layout: LayoutProps(height: 20, width: 20),
                 ),
               
-              ],
-            ),
+              ]),
+          ]),
           ],
-        ),
+      ),
         Fragment(children: [GobalStateCounterComp()]),
       ],
     );
