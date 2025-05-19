@@ -28,6 +28,7 @@ class DCFView extends StatelessComponent {
     return VDomElement(
       type: 'View',
       props: {
+     
         ...layout.toMap(),
         ...style.toMap(),
         ...(events ?? {}),
