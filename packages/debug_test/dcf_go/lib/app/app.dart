@@ -15,9 +15,9 @@ class DCFGo extends StatefulComponent {
       children: [
         DCFView(
           layout: LayoutProps(
-            height: 120,
+            height: 150,
             flexDirection: YogaFlexDirection.row,
-            paddingTop: ScreenUtilities.instance.statusBarHeight,
+            // paddingTop: ScreenUtilities.instance.statusBarHeight,
           ),
           style: StyleSheet(backgroundColor: Colors.indigo[400]),
           children: [
