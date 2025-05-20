@@ -235,55 +235,27 @@ class VDom {
       return;
     }
 
-    if (node is VDomElement) {
-      // First try direct event matching (used by many native components)
-      if (node.props.containsKey(eventType) && node.props[eventType] is Function) {
-        _performanceMonitor.startTimer('event_handler');
-        final handler = node.props[eventType] as Function;
-        
-        try {
-          if (handler is Function(Map<String, dynamic>)) {
-            handler(eventData);
-          } else if (handler is Function()) {
-            handler();
-          } else {
-            Function.apply(handler, [], {});
-          }
-        } catch (e, stack) {
-          developer.log('❌ Error executing event handler: $e', 
-              name: 'VDom', error: e, stackTrace: stack);
+    // Get the event handler using the polymorphic method
+    final directHandler = node.getEventHandler(eventType);
+    
+    // Try to execute the handler if found
+    if (directHandler != null) {
+      _performanceMonitor.startTimer('event_handler');
+      
+      try {
+        if (directHandler is Function(Map<String, dynamic>)) {
+          directHandler(eventData);
+        } else if (directHandler is Function()) {
+          directHandler();
+        } else {
+          Function.apply(directHandler, [], {});
         }
-        
-        _performanceMonitor.endTimer('event_handler');
-        _performanceMonitor.endTimer('handle_native_event');
-        return;
+      } catch (e, stack) {
+        developer.log('❌ Error executing event handler: $e', 
+            name: 'VDom', error: e, stackTrace: stack);
       }
-
-      // Then try canonical "onEventName" format
-      final propName =
-          'on${eventType[0].toUpperCase()}${eventType.substring(1)}';
-
-      // Call the handler if it exists
-      if (node.props.containsKey(propName) &&
-          node.props[propName] is Function) {
-        _performanceMonitor.startTimer('event_handler');
-        final handler = node.props[propName] as Function;
-        
-        try {
-          if (handler is Function(Map<String, dynamic>)) {
-            handler(eventData);
-          } else if (handler is Function()) {
-            handler();
-          } else {
-            Function.apply(handler, [], {});
-          }
-        } catch (e, stack) {
-          developer.log('❌ Error executing event handler: $e', 
-              name: 'VDom', error: e, stackTrace: stack);
-        }
-        
-        _performanceMonitor.endTimer('event_handler');
-      }
+      
+      _performanceMonitor.endTimer('event_handler');
     }
     
     _performanceMonitor.endTimer('handle_native_event');
@@ -332,7 +304,8 @@ class VDom {
         return ""; // Fragments don't have their own ID
       }
 
-      if (node is StatefulComponent || node is StatelessComponent) {
+      // Use polymorphism: check if this is a component
+      if (node.isComponent) {
         try {
           return await _renderComponentToNative(node,
               parentId: parentId, index: index);
@@ -361,42 +334,37 @@ class VDom {
   /// Render a component to native UI
   Future<String?> _renderComponentToNative(VDomNode component,
       {String? parentId, int? index}) async {
-    String instanceId;
-    _ComponentInstance? componentInstance;
+    // Make sure it's a component
+    if (!component.isComponent) {
+      throw ArgumentError('Node must be a component');
+    }
     
+    // Get the component's instance ID
+    String instanceId = component.instanceId;
+    _ComponentInstance? componentInstance = _componentInstances[instanceId];
+    
+    // Handle stateful components (prepare for render, set update function)
     if (component is StatefulComponent) {
-      instanceId = component.instanceId;
-      componentInstance = _componentInstances[instanceId];
-
       // Set the update function
       component.scheduleUpdate = () => _scheduleComponentUpdate(component);
       
       // Reset hook state before render for stateful components
       component.prepareForRender();
-    } else if (component is StatelessComponent) {
-      instanceId = component.instanceId;
-      componentInstance = _componentInstances[instanceId];
-    } else {
-      throw ArgumentError('Component must be StatefulComponent or StatelessComponent');
     }
-
+    
     // Render the component
     _performanceMonitor.startTimer('component_render');
-    final renderedNode = _getRenderResult(component);
+    final renderedNode = component.renderedNode;
     _performanceMonitor.endTimer('component_render');
-
-    // Set parent-child relationship
-    component.renderedNode = renderedNode;
-    renderedNode.parent = component;
-
-    // Render the rendered node
-    final viewId =
-        await renderToNative(renderedNode, parentId: parentId, index: index);
-
+    
+    // Render the rendered node (handle null safety)
+    final viewId = renderedNode != null ? 
+        await renderToNative(renderedNode, parentId: parentId, index: index) : null;
+    
     // Store the view ID
     component.contentViewId = viewId;
-
-    // Mark as mounted if not already
+    
+    // Mark as mounted if not already 
     if (componentInstance != null && !componentInstance.isMounted) {
       // Call lifecycle method
       component.componentDidMount();
@@ -417,14 +385,8 @@ class VDom {
     return viewId;
   }
   
-  VDomNode _getRenderResult(VDomNode component) {
-    if (component is StatefulComponent) {
-      return component.renderedNode;
-    } else if (component is StatelessComponent) {
-      return component.renderedNode;
-    }
-    throw ArgumentError('Component must be StatefulComponent or StatelessComponent');
-  }
+  // Since we're using polymorphic methods, we no longer need this special handling
+  // Method removed - now using polymorphic renderedNode property directly
 
   /// Render an element to native UI
   Future<String?> _renderElementToNative(VDomElement element,
@@ -640,13 +602,18 @@ class VDom {
     return null;
   }
 
-  /// Update a component
+  /// Update a component 
   Future<void> _updateComponent(String componentId) async {
     if (!_components.containsKey(componentId)) {
       return;
     }
 
     final component = _components[componentId]!;
+    
+    // Only process components
+    if (!component.isComponent) {
+      return;
+    }
 
     // Handle stateful components
     if (component is StatefulComponent) {
@@ -654,20 +621,19 @@ class VDom {
       component.prepareForRender();
     }
 
-    // Re-render the component
+    // Get the old rendered node
     final oldRenderedNode = component.renderedNode;
-    final newRenderedNode = _getRenderResult(component);
-
-    // Update the rendered node
-    component.renderedNode = newRenderedNode;
-    newRenderedNode.parent = component;
+    
+    // Force re-render by getting the rendered node again
+    // The renderedNode getter will call render() if needed
+    final newRenderedNode = component.renderedNode;
 
     // Reconcile nodes
-    if (oldRenderedNode != null) {
+    if (oldRenderedNode != null && newRenderedNode != null) {
       _performanceMonitor.startTimer('reconcile');
       await _reconciler.reconcile(oldRenderedNode, newRenderedNode);
       _performanceMonitor.endTimer('reconcile');
-    } else if (component.contentViewId != null) {
+    } else if (component.contentViewId != null && newRenderedNode != null) {
       // If no previous node but we have a content view ID, this might be a special case
       // Handle by re-rendering to native
       final parentId = _findParentViewId(component);
@@ -678,7 +644,7 @@ class VDom {
 
     // Update component lifecycle
     if (component is StatefulComponent) {
-      component.componentDidUpdate({});
+      component.componentDidUpdate();
       component.runEffectsAfterRender();
     }
   }
@@ -702,7 +668,7 @@ class VDom {
     VDomNode? componentNode;
 
     while (current != null) {
-      if (current is StatefulComponent || current is StatelessComponent) {
+      if (current.isComponent) {
         componentNode = current;
         break;
       }
@@ -710,10 +676,7 @@ class VDom {
     }
 
     if (componentNode != null) {
-      final String instanceId = componentNode is StatefulComponent 
-          ? (componentNode).instanceId 
-          : (componentNode as StatelessComponent).instanceId;
-          
+      final String instanceId = componentNode.instanceId;
       final instance = _componentInstances[instanceId];
 
       if (instance != null && !instance.isMounted) {
@@ -736,6 +699,9 @@ class VDom {
 
     return null;
   }
+  
+  /// Handle component update - updated for polymorphic architecture
+    // This method has been merged with the async version above
 
   /// Update a view's properties
   Future<bool> updateView(String viewId, Map<String, dynamic> props) async {

@@ -3,25 +3,49 @@ import 'package:dcflight/dcflight.dart';
 
 
 /// Represents an element in the Virtual DOM tree
+/// These are the primitive building blocks of the UI
 class VDomElement extends VDomNode {
   /// Type of the element (e.g., 'View', 'Text', 'Button')
   final String type;
 
   /// Properties of the element
   Map<String, dynamic> props;
+  
   /// Child nodes
-  final List<VDomNode> children;
+  final List<VDomNode> _children;
 
   VDomElement({
     required this.type,
     super.key,
     required this.props,
-    this.children = const [],
-  }) {
+    List<VDomNode> children = const [],
+  }) : _children = children {
     // Set parent reference for children
-    for (var child in children) {
+    for (var child in _children) {
       child.parent = this;
     }
+  }
+  
+  @override
+  List<VDomNode> get children => _children;
+  
+  @override
+  bool get isComponent => false;
+  
+  @override
+  Function? getEventHandler(String eventType) {
+    // First try direct match
+    if (props.containsKey(eventType) && props[eventType] is Function) {
+      return props[eventType] as Function;
+    }
+    
+    // Then try canonical format (onPress -> press)
+    final propName = 'on${eventType[0].toUpperCase()}${eventType.substring(1)}';
+    if (props.containsKey(propName) && props[propName] is Function) {
+      return props[propName] as Function;
+    }
+    
+    return null;
   }
 
   @override

@@ -14,8 +14,32 @@ abstract class VDomNode {
   
   /// The rendered node from the component (for component nodes)
   VDomNode? _renderedNode;
+  
+  /// Common instance ID for tracking (used by reconciler)
+  final String instanceId;
 
-  VDomNode({this.key});
+  VDomNode({this.key})
+      : instanceId = DateTime.now().millisecondsSinceEpoch.toString() +
+            (key ?? '').hashCode.toString();
+
+  /// Whether this node is a component that renders other nodes
+  bool get isComponent => false;
+  
+  /// Get children nodes for container-like nodes
+  List<VDomNode> get children => const [];
+  
+  /// Get event handler for a specific event type
+  Function? getEventHandler(String eventType) => null;
+  
+  /// Get the underlying implementation node (for reconciler use)
+  /// This is the key method that simplifies reconciliation
+  VDomNode getImplementationNode() {
+    if (isComponent) {
+      return renderedNode?.getImplementationNode() ?? this;
+    } else {
+      return this;
+    }
+  }
 
   /// Clone this node
   VDomNode clone();
@@ -23,7 +47,10 @@ abstract class VDomNode {
   /// Whether this node is equal to another
   bool equals(VDomNode other);
 
+  /// Mount to the tree
   void mount(VDomNode? parent);
+  
+  /// Unmount from the tree
   void unmount();
   
   /// Called when the node is mounted (lifecycle method)
