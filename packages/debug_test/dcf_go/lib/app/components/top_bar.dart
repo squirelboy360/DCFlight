@@ -17,7 +17,7 @@ class TopBar extends StatefulComponent {
         alignContent: YogaAlign.center,
         paddingTop: ScreenUtilities.instance.statusBarHeight,
       ),
-      style: StyleSheet(backgroundColor: Colors.deepPurple),
+      style: StyleSheet(backgroundColor: Colors.blueAccent),
       children: [
         DCFText(
           content: "DCF Go",
