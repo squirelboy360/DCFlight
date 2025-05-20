@@ -243,11 +243,13 @@ abstract class StatelessComponent extends VDomNode {
   bool get isMounted => _isMounted;
 
   /// Called when the component is mounted
+  @override
   void componentDidMount() {
     _isMounted = true;
   }
 
   /// Called when the component will unmount
+  @override
   void componentWillUnmount() {
     // Base implementation does nothing
   }
