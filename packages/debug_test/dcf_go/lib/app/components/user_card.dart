@@ -32,7 +32,7 @@ class UserCard extends StatelessComponent {
             justifyContent: YogaJustifyContent.spaceAround,
             alignItems: YogaAlign.center,
           ),
-          style: StyleSheet(backgroundColor: Colors.grey[100]),
+          style: StyleSheet(borderRadius: 15,backgroundColor: Colors.grey[100]),
           children: [
             DCFImage(
               imageProps: ImageProps(
