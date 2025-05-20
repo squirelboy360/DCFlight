@@ -225,6 +225,7 @@ abstract class StatelessComponent extends VDomNode {
   VDomNode render();
   
   /// Get the rendered node (lazily render if necessary)
+  @override
   VDomNode get renderedNode {
     _renderedNode ??= render();
     return _renderedNode!;
