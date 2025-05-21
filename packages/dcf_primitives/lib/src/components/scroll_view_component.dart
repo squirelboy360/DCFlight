@@ -1,7 +1,7 @@
 import 'package:dcflight/dcflight.dart';
 
-/// A scroll view component implementation using StatelessComponent
-class DCFScrollView extends StatelessComponent {
+/// A scroll view component implementation using Component
+class DCFScrollView extends Component {
   /// Child nodes
   final List<VDomNode> children;
   

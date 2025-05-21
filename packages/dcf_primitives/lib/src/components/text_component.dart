@@ -48,8 +48,8 @@ class TextProps {
   }
 }
 
-/// A text component implementation using StatelessComponent
-class DCFText extends StatelessComponent {
+/// A text component implementation using Component
+class DCFText extends Component {
   /// The text content to display
   final String content;
   

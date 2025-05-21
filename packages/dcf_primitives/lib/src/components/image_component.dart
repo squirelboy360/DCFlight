@@ -34,8 +34,8 @@ class ImageProps {
   }
 }
 
-/// An image component implementation using StatelessComponent
-class DCFImage extends StatelessComponent {
+/// An image component implementation using Component
+class DCFImage extends Component {
   /// The image properties
   final ImageProps imageProps;
   

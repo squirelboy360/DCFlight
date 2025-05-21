@@ -33,8 +33,8 @@ class ButtonProps {
   }
 }
 
-/// A button component implementation using StatelessComponent
-class DCFButton extends StatelessComponent {
+/// A button component implementation using Component
+class DCFButton extends Component {
   /// The button properties
   final ButtonProps buttonProps;
   

@@ -33,8 +33,8 @@ class SVGProps {
   }
 }
 
-/// An SVG component implementation using StatelessComponent
-class DCFSVG extends StatelessComponent {
+/// An SVG component implementation using Component
+class DCFSVG extends Component {
   /// The SVG properties
   final SVGProps svgProps;
   

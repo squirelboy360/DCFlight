@@ -9,7 +9,7 @@ import 'package:dcflight/framework/renderer/vdom/component/error_boundary.dart';
 import 'package:dcflight/framework/renderer/vdom/vdom_element.dart';
 import 'vdom_node.dart';
 import 'reconciler.dart';
-import 'fragment.dart';
+import 'component/fragment.dart';
 
 /// Performance monitoring for VDOM operations
 class PerformanceMonitor {

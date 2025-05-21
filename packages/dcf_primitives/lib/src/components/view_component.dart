@@ -1,7 +1,7 @@
 import 'package:dcflight/dcflight.dart';
 
-/// A basic view component implementation using StatelessComponent
-class DCFView extends StatelessComponent {
+/// A basic view component implementation using Component
+class DCFView extends Component {
   /// The layout properties
   final LayoutProps layout;
   

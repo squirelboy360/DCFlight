@@ -35,8 +35,8 @@ class IconProps {
   }
 }
 
-/// An icon component implementation using StatelessComponent
-class DCFIcon extends StatelessComponent {
+/// An icon component implementation using Component
+class DCFIcon extends Component {
   /// The icon properties
   final IconProps iconProps;
   

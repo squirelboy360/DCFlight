@@ -1,7 +1,7 @@
 import 'package:dcflight/dcflight.dart';
 
-/// An animated view component implementation using StatelessComponent
-class DCFAnimatedView extends StatelessComponent {
+/// An animated view component implementation using Component
+class DCFAnimatedView extends Component {
   /// Child nodes
   final List<VDomNode> children;
   

@@ -1,7 +1,7 @@
 import 'package:dcflight/dcflight.dart';
 
-/// A touchable opacity component implementation using StatelessComponent
-class DCFTouchableOpacity extends StatelessComponent {
+/// A touchable opacity component implementation using Component
+class DCFTouchableOpacity extends Component {
   /// Child nodes
   final List<VDomNode> children;
   

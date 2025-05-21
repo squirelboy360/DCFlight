@@ -1,8 +1,8 @@
 import 'package:dcf_primitives/src/components/text_component.dart';
 import 'package:dcflight/dcflight.dart';
 
-/// An animated text component implementation using StatelessComponent
-class DCFAnimatedText extends StatelessComponent {
+/// An animated text component implementation using Component
+class DCFAnimatedText extends Component {
   /// The text content to display
   final String content;
   
