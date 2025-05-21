@@ -68,9 +68,10 @@ class Reconciler {
       await _replaceNode(oldNode, newNode);
     }
 
-    // Calculate and apply layout after reconciliation if this is a root element
+    // Only trigger layout calculation at the root level and debounce it
     if (newNode == vdom.rootComponent?.renderedNode) {
-      await vdom.calculateAndApplyLayout();
+      // Defer to next frame to avoid multiple recalculations in a single frame
+      Future.microtask(() => vdom.calculateAndApplyLayout());
     }
   }
 
@@ -121,7 +122,8 @@ class Reconciler {
 
         // Request layout calculation if any layout props changed
         if (changedProps.keys.any((key) => _isLayoutProp(key))) {
-          vdom.calculateAndApplyLayout();
+          // Defer layout calculation to avoid multiple recalculations
+          Future.microtask(() => vdom.calculateAndApplyLayout());
         }
       }
 
@@ -170,53 +172,44 @@ class Reconciler {
     return false;
   }
 
-  /// Reconcile keyed children with maximum reuse
+  /// Reconcile keyed children with maximum reuse - simplified version
   Future<void> _reconcileKeyedChildren(String parentViewId,
       List<VDomNode> oldChildren, List<VDomNode> newChildren) async {
     // Map old children by key for O(1) lookup
     final oldChildrenMap = <String?, VDomNode>{};
-    final oldChildIndices = <String?, int>{};
-
+    
     for (int i = 0; i < oldChildren.length; i++) {
       final oldChild = oldChildren[i];
       final key = oldChild.key ?? i.toString(); // Use index for null keys
       oldChildrenMap[key] = oldChild;
-      oldChildIndices[key] = i;
     }
 
-    // Track inserted and moved children views
+    // Track updated children views
     final updatedChildren = <String>[];
-    var lastIndex = 0;
+    final processedOldChildren = <VDomNode>{};
 
     // Process each new child
     for (int i = 0; i < newChildren.length; i++) {
       final newChild = newChildren[i];
       final key = newChild.key ?? i.toString();
-
-      VDomNode? oldChild = oldChildrenMap[key];
+      final oldChild = oldChildrenMap[key];
 
       if (oldChild != null) {
+        // Mark as processed
+        processedOldChildren.add(oldChild);
+        
         // Reusable child - update it
         await reconcile(oldChild, newChild);
 
-        // Add to updated children
+        // Add to updated children if it has a view
         if (oldChild.nativeViewId != null) {
           updatedChildren.add(oldChild.nativeViewId!);
-
-          // Check if we need to move this node
-          final oldIndex = oldChildIndices[key] ?? 0;
-          if (oldIndex < lastIndex) {
-            // Node needs to move
-            if (oldChild.nativeViewId != null) {
-              await _moveViewInParent(oldChild.nativeViewId!, parentViewId, i);
-            }
-          } else {
-            // Node stays in place
-            lastIndex = oldIndex;
-          }
+          
+          // Always move to ensure correct order
+          await _moveViewInParent(oldChild.nativeViewId!, parentViewId, i);
         }
       } else {
-        // New or incompatible child - create it
+        // New child - create it
         final childId = await vdom.renderToNative(newChild,
             parentId: parentViewId, index: i);
 
@@ -227,14 +220,10 @@ class Reconciler {
       }
     }
 
-    // Remove any old children that aren't in the new list
+    // Remove old children that aren't in the new list
     for (var oldChild in oldChildren) {
-      final key = oldChild.key ?? oldChildren.indexOf(oldChild).toString();
-      if (!newChildren.any((newChild) =>
-          (newChild.key ?? newChildren.indexOf(newChild).toString()) == key)) {
-        if (oldChild.nativeViewId != null) {
-          await _deleteView(oldChild.nativeViewId!);
-        }
+      if (!processedOldChildren.contains(oldChild) && oldChild.nativeViewId != null) {
+        await _deleteView(oldChild.nativeViewId!);
       }
     }
 
@@ -244,7 +233,7 @@ class Reconciler {
     }
   }
 
-  /// Reconcile non-keyed children (simpler but less efficient for reordering)
+  /// Reconcile non-keyed children - simplified version
   Future<void> _reconcileNonKeyedChildren(String parentViewId,
       List<VDomNode> oldChildren, List<VDomNode> newChildren) async {
     final updatedChildren = <String>[];
@@ -255,15 +244,14 @@ class Reconciler {
       final oldChild = oldChildren[i];
       final newChild = newChildren[i];
 
-      // Transfer native view ID to new child for reconciliation
       if (oldChild.nativeViewId != null) {
+        // Update existing child
         await reconcile(oldChild, newChild);
         newChild.nativeViewId = oldChild.nativeViewId;
         updatedChildren.add(oldChild.nativeViewId!);
       } else {
-        // Render a new child
-        final childId = await vdom.renderToNative(newChild,
-            parentId: parentViewId, index: i);
+        // Create new view for child that doesn't have one
+        final childId = await vdom.renderToNative(newChild, parentId: parentViewId, index: i);
         if (childId != null && childId.isNotEmpty) {
           updatedChildren.add(childId);
           newChild.nativeViewId = childId;
@@ -271,25 +259,21 @@ class Reconciler {
       }
     }
 
-    // Remove extra old children
+    // Handle length differences
     if (oldChildren.length > newChildren.length) {
+      // Remove extra old children
       for (var i = commonLength; i < oldChildren.length; i++) {
-        final oldChild = oldChildren[i];
-        if (oldChild.nativeViewId != null) {
-          await _deleteView(oldChild.nativeViewId!);
+        if (oldChildren[i].nativeViewId != null) {
+          await _deleteView(oldChildren[i].nativeViewId!);
         }
       }
-    }
-
-    // Add new children
-    if (newChildren.length > oldChildren.length) {
+    } else if (newChildren.length > oldChildren.length) {
+      // Add new children
       for (var i = commonLength; i < newChildren.length; i++) {
-        final newChild = newChildren[i];
-        final childId = await vdom.renderToNative(newChild,
-            parentId: parentViewId, index: i);
+        final childId = await vdom.renderToNative(
+          newChildren[i], parentId: parentViewId, index: i);
         if (childId != null && childId.isNotEmpty) {
           updatedChildren.add(childId);
-          newChild.nativeViewId = childId;
         }
       }
     }
@@ -370,10 +354,7 @@ class Reconciler {
 
   /// Generate a unique ID for a node
   static String generateId() {
-    final random = math.Random();
-    final id =
-        'node_${DateTime.now().millisecondsSinceEpoch}_${random.nextInt(10000)}';
-    return id;
+    return DateTime.now().microsecondsSinceEpoch.toString();
   }
 }
 

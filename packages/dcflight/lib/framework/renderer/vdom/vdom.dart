@@ -18,13 +18,28 @@ class PerformanceMonitor {
   /// Map of metrics by name
   final Map<String, _Metric> _metrics = {};
 
+  /// Critical operations that we want to monitor
+  static const List<String> _criticalOperations = [
+    'vdom_initialize',
+    'reconcile',
+    'batch_update',
+    'native_layout_calculation',
+    'render_to_native'
+  ];
+
   /// Start a timer with the given name
   void startTimer(String name) {
-    _timers[name] = _Timer(DateTime.now());
+    // Only time critical operations
+    if (_criticalOperations.contains(name)) {
+      _timers[name] = _Timer(DateTime.now());
+    }
   }
 
   /// End a timer with the given name
   void endTimer(String name) {
+    // Only process critical operations
+    if (!_criticalOperations.contains(name)) return;
+    
     final timer = _timers[name];
     if (timer == null) return;
 
@@ -96,9 +111,6 @@ class _ComponentInstance {
   /// The component node
   final VDomNode component;
 
-  /// Reference to the VDOM
-  final VDom vdomRef;
-
   /// Previous rendered tree
   VDomNode? previousNode;
 
@@ -107,7 +119,6 @@ class _ComponentInstance {
 
   _ComponentInstance({
     required this.component,
-    required this.vdomRef,
   });
 }
 
@@ -131,8 +142,7 @@ class VDom {
   /// Map of view IDs to VDomNodes
   final Map<String, VDomNode> _nodesByViewId = {};
 
-  /// Map to track detached views for potential reuse
-  final Map<String, VDomNode> _detachedNodes = {};
+  // Removed the detached nodes cache
   
   /// Performance monitoring
   final PerformanceMonitor _performanceMonitor = PerformanceMonitor();
@@ -194,7 +204,7 @@ class VDom {
 
   /// Generate a unique view ID
   String _generateViewId() {
-    return 'view_${_viewIdCounter++}';
+    return (_viewIdCounter++).toString();
   }
 
   /// Register a component in the VDOM
@@ -217,7 +227,6 @@ class VDom {
     // Create and register a component instance
     _componentInstances[instanceId] = _ComponentInstance(
       component: component,
-      vdomRef: this,
     );
 
     return component;
@@ -238,23 +247,7 @@ class VDom {
     if (node is VDomElement) {
       // First try direct event matching (used by many native components)
       if (node.props.containsKey(eventType) && node.props[eventType] is Function) {
-        _performanceMonitor.startTimer('event_handler');
-        final handler = node.props[eventType] as Function;
-        
-        try {
-          if (handler is Function(Map<String, dynamic>)) {
-            handler(eventData);
-          } else if (handler is Function()) {
-            handler();
-          } else {
-            Function.apply(handler, [], {});
-          }
-        } catch (e, stack) {
-          developer.log('❌ Error executing event handler: $e', 
-              name: 'VDom', error: e, stackTrace: stack);
-        }
-        
-        _performanceMonitor.endTimer('event_handler');
+        _executeEventHandler(node.props[eventType], eventData);
         _performanceMonitor.endTimer('handle_native_event');
         return;
       }
@@ -266,27 +259,27 @@ class VDom {
       // Call the handler if it exists
       if (node.props.containsKey(propName) &&
           node.props[propName] is Function) {
-        _performanceMonitor.startTimer('event_handler');
-        final handler = node.props[propName] as Function;
-        
-        try {
-          if (handler is Function(Map<String, dynamic>)) {
-            handler(eventData);
-          } else if (handler is Function()) {
-            handler();
-          } else {
-            Function.apply(handler, [], {});
-          }
-        } catch (e, stack) {
-          developer.log('❌ Error executing event handler: $e', 
-              name: 'VDom', error: e, stackTrace: stack);
-        }
-        
-        _performanceMonitor.endTimer('event_handler');
+        _executeEventHandler(node.props[propName], eventData);
       }
     }
     
     _performanceMonitor.endTimer('handle_native_event');
+  }
+  
+  /// Execute an event handler with proper error handling
+  void _executeEventHandler(Function handler, Map<String, dynamic> eventData) {
+    try {
+      if (handler is Function(Map<String, dynamic>)) {
+        handler(eventData);
+      } else if (handler is Function()) {
+        handler();
+      } else {
+        Function.apply(handler, [], {});
+      }
+    } catch (e, stack) {
+      developer.log('❌ Error executing event handler: $e', 
+          name: 'VDom', error: e, stackTrace: stack);
+    }
   }
 
   /// Create a new element
@@ -358,32 +351,46 @@ class VDom {
     }
   }
 
+  /// Get component ID regardless of component type
+  String _getComponentId(VDomNode component) {
+    if (component is StatefulComponent) {
+      return component.instanceId;
+    } else if (component is StatelessComponent) {
+      return component.instanceId;
+    }
+    throw ArgumentError('Component must be StatefulComponent or StatelessComponent');
+  }
+  
+  /// Get the rendered result from a component
+  VDomNode _getRenderResult(VDomNode component) {
+    if (component is StatefulComponent || component is StatelessComponent) {
+      final renderedNode = component.renderedNode;
+      if (renderedNode == null) {
+        throw Exception('Component rendered null');
+      }
+      return renderedNode;
+    }
+    throw ArgumentError('Component must be StatefulComponent or StatelessComponent');
+  }
+
   /// Render a component to native UI
   Future<String?> _renderComponentToNative(VDomNode component,
       {String? parentId, int? index}) async {
-    String instanceId;
-    _ComponentInstance? componentInstance;
+    // Get component ID and instance
+    final instanceId = _getComponentId(component);
+    final componentInstance = _componentInstances[instanceId];
     
+    // Handle specific component type preparations
     if (component is StatefulComponent) {
-      instanceId = component.instanceId;
-      componentInstance = _componentInstances[instanceId];
-
       // Set the update function
       component.scheduleUpdate = () => _scheduleComponentUpdate(component);
       
       // Reset hook state before render for stateful components
       component.prepareForRender();
-    } else if (component is StatelessComponent) {
-      instanceId = component.instanceId;
-      componentInstance = _componentInstances[instanceId];
-    } else {
-      throw ArgumentError('Component must be StatefulComponent or StatelessComponent');
     }
 
     // Render the component
-    _performanceMonitor.startTimer('component_render');
     final renderedNode = _getRenderResult(component);
-    _performanceMonitor.endTimer('component_render');
 
     // Set parent-child relationship
     component.renderedNode = renderedNode;
@@ -396,7 +403,7 @@ class VDom {
     // Store the view ID
     component.contentViewId = viewId;
 
-    // Mark as mounted if not already
+    // Mark as mounted if not already (common lifecycle handling)
     if (componentInstance != null && !componentInstance.isMounted) {
       // Call lifecycle method
       component.componentDidMount();
@@ -416,65 +423,12 @@ class VDom {
 
     return viewId;
   }
-  
-  VDomNode _getRenderResult(VDomNode component) {
-    if (component is StatefulComponent) {
-      return component.renderedNode;
-    } else if (component is StatelessComponent) {
-      return component.renderedNode;
-    }
-    throw ArgumentError('Component must be StatefulComponent or StatelessComponent');
-  }
 
   /// Render an element to native UI
   Future<String?> _renderElementToNative(VDomElement element,
       {String? parentId, int? index}) async {
-    // Check if this is a detached node we can reuse
-    String? viewId = element.nativeViewId;
-    
-    // Get a cached/detached node if same type
-    if (viewId == null && element.key != null) {
-      String cacheKey = '${element.type}-${element.key}';
-      VDomNode? detachedNode = _detachedNodes[cacheKey];
-      
-      if (detachedNode is VDomElement && detachedNode.type == element.type) {
-        // Reuse the detached node's ID
-        viewId = detachedNode.nativeViewId;
-        
-        // Clean up the detached node entry
-        _detachedNodes.remove(cacheKey);
-        
-        // Update node tracking (replace old node with new one)
-        if (viewId != null) {
-          _nodesByViewId.remove(viewId);
-          element.nativeViewId = viewId;
-          _nodesByViewId[viewId] = element;
-          
-          // Update props on the reused view
-          _performanceMonitor.startTimer('update_reused_view');
-          await _nativeBridge.updateView(viewId, element.props);
-          _performanceMonitor.endTimer('update_reused_view');
-          
-          // If parent is specified, reattach to parent
-          if (parentId != null) {
-            await attachView(viewId, parentId, index ?? 0);
-          }
-          
-          // Now reconcile children
-          await _reconcileChildrenForReusedView(detachedNode, element, viewId);
-          
-          // Register event listeners if needed
-          if (element.eventTypes.isNotEmpty) {
-            await _nativeBridge.addEventListeners(viewId, element.eventTypes);
-          }
-          
-          return viewId;
-        }
-      }
-    }
-
-    // Generate a new view ID if we couldn't reuse
-    viewId = element.nativeViewId ?? _generateViewId();
+    // Use existing view ID or generate a new one
+    String? viewId = element.nativeViewId ?? _generateViewId();
 
     // Store map from node to view ID
     _nodesByViewId[viewId] = element;
@@ -494,21 +448,16 @@ class VDom {
 
     // If parent is specified, attach to parent
     if (parentId != null) {
-      _performanceMonitor.startTimer('attach_view');
       await attachView(viewId, parentId, index ?? 0);
-      _performanceMonitor.endTimer('attach_view');
     }
 
     // Register event listeners
     final eventTypes = element.eventTypes;
     if (eventTypes.isNotEmpty) {
-      _performanceMonitor.startTimer('add_event_listeners');
       await _nativeBridge.addEventListeners(viewId, eventTypes);
-      _performanceMonitor.endTimer('add_event_listeners');
     }
 
     // Render children
-    _performanceMonitor.startTimer('render_children');
     final childIds = <String>[];
 
     for (var i = 0; i < element.children.length; i++) {
@@ -519,13 +468,10 @@ class VDom {
         childIds.add(childId);
       }
     }
-    _performanceMonitor.endTimer('render_children');
 
     // Set children order
     if (childIds.isNotEmpty) {
-      _performanceMonitor.startTimer('set_children');
       await _nativeBridge.setChildren(viewId, childIds);
-      _performanceMonitor.endTimer('set_children');
     }
 
     // Call lifecycle methods after full rendering
@@ -534,43 +480,7 @@ class VDom {
     return viewId;
   }
   
-  /// Reconcile children for a reused view
-  Future<void> _reconcileChildrenForReusedView(
-      VDomElement oldElement, VDomElement newElement, String viewId) async {
-    // Process each child using the reconciler
-    final childIds = <String>[];
-    
-    for (var i = 0; i < newElement.children.length; i++) {
-      final newChild = newElement.children[i];
-      
-      // Find matching old child if possible
-      VDomNode? oldChild;
-      if (i < oldElement.children.length) {
-        oldChild = oldElement.children[i];
-      }
-      
-      if (oldChild != null) {
-        // Reconcile existing child
-        await _reconciler.reconcile(oldChild, newChild);
-        
-        // Add to child IDs if it has a native view
-        if (newChild.nativeViewId != null) {
-          childIds.add(newChild.nativeViewId!);
-        }
-      } else {
-        // Render new child
-        final childId = await renderToNative(newChild, parentId: viewId, index: i);
-        if (childId != null && childId.isNotEmpty) {
-          childIds.add(childId);
-        }
-      }
-    }
-    
-    // Set children order
-    if (childIds.isNotEmpty) {
-      await _nativeBridge.setChildren(viewId, childIds);
-    }
-  }
+  // Removed reconcileChildrenForReusedView method
 
   /// Calculate and apply layout
   Future<void> calculateAndApplyLayout({double? width, double? height}) async {
@@ -683,17 +593,32 @@ class VDom {
     }
   }
 
-  /// Find parent view ID for a component
+  // Cache for parent view IDs to avoid repeated tree traversal
+  final Map<VDomNode, String> _parentViewIdCache = {};
+  
+  /// Find parent view ID for a component with caching
   String? _findParentViewId(VDomNode node) {
+    // Check cache first
+    if (_parentViewIdCache.containsKey(node)) {
+      return _parentViewIdCache[node];
+    }
+    
+    // Traverse parent chain
     VDomNode? current = node.parent;
     while (current != null) {
       if (current.nativeViewId != null) {
+        // Cache the result for future lookups
+        _parentViewIdCache[node] = current.nativeViewId!;
         return current.nativeViewId;
       }
       current = current.parent;
     }
+    
+    // Cache and return default
+    _parentViewIdCache[node] = "root";
     return "root"; // Fallback to root if no parent found
   }
+  
 
   /// Call lifecycle methods for components
   void _callLifecycleMethodsIfNeeded(VDomNode node) {
@@ -745,19 +670,9 @@ class VDom {
   /// Delete a view
   Future<bool> deleteView(String viewId) async {
     try {
-      // Get the node before deletion for potential caching
-      final node = _nodesByViewId[viewId];
-      
       final result = await _nativeBridge.deleteView(viewId);
       if (result) {
         _nodesByViewId.remove(viewId);
-        
-        // Cache node for potential reuse if it has a key
-        if (node is VDomElement && node.key != null) {
-          String cacheKey = '${node.type}-${node.key}';
-          _detachedNodes[cacheKey] = node;
-          developer.log('Cached node $viewId with key ${node.key} for reuse', name: 'VDom');
-        }
       }
       return result;
     } catch (e) {
@@ -794,21 +709,8 @@ class VDom {
   /// Detach a view from its parent (without deleting it)
   Future<bool> detachView(String viewId) async {
     try {
-      // Get the node before detachment
-      final node = _nodesByViewId[viewId];
-      
       // Use the native bridge to detach the view
       final result = await _nativeBridge.detachView(viewId);
-      
-      // Cache the node for potential reuse if it has a key and detachment was successful
-      if (result && node is VDomElement && node.key != null) {
-        String cacheKey = '${node.type}-${node.key}';
-        _detachedNodes[cacheKey] = node;
-        developer.log('🔄 Detached and cached node $viewId with key ${node.key}', name: 'VDom');
-      } else if (result) {
-        developer.log('🔄 Detached node $viewId (no caching)', name: 'VDom');
-      }
-      
       return result;
     } catch (e) {
       developer.log('❌ Error detaching view $viewId: $e', name: 'VDom');
@@ -832,10 +734,5 @@ class VDom {
     return _nodesByViewId[id];
   }
   
-  /// Purge all cached/detached nodes to force fresh rendering
-  void purgeDetachedNodes() {
-    int count = _detachedNodes.length;
-    _detachedNodes.clear();
-    developer.log('🧹 Purged $count detached nodes from cache', name: 'VDom');
-  }
+  // Removed purgeDetachedNodes method
 }

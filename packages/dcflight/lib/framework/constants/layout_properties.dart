@@ -42,6 +42,8 @@ class LayoutProps {
   final YogaAlign? alignSelf;
   final YogaAlign? alignContent;
   final YogaWrap? flexWrap;
+  // Another reminder that module dev should be always be sure to set leaf nodes to have a default felx value of one
+  // Not doing this might possiby confuse developers as they expect leaf nodes to fill by default the available space from their parent 
   final double? flex;
   final double? flexGrow;
   final double? flexShrink;
@@ -60,6 +62,7 @@ class LayoutProps {
 
   /// Create layout props with the specified values
   const LayoutProps({
+    // these defauts are just for visibiity reasons. 
     this.width = '100%', // Default to 100% width for proper nesting
     this.height = "50%", // Default to 50% height for visibility
     this.minWidth,
