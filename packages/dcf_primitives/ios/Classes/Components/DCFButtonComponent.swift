@@ -309,35 +309,12 @@ class CustomButton: UIButton {
         self.contentEdgeInsets = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
     }
     
-    // Override hit testing to ensure touches are detected even with transparency
-    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
-        if _debugMode {
-            print("🔍 Hit test on button: \(point), bounds: \(self.bounds)")
-        }
-        
-        // Expand the hit area slightly for better touch handling
-        let hitTestInsets = UIEdgeInsets(top: -8, left: -8, bottom: -8, right: -8)
-        let hitTestRect = bounds.inset(by: hitTestInsets)
-        
-        let result = hitTestRect.contains(point)
-        if _debugMode && !result {
-            print("❌ Point outside hit area")
-        }
-        return result
-    }
-    
-    // Log touch events in debug mode
+  //removed debug logs, making too much noise but maintained the methods just incase
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        if _debugMode {
-            print("👇 Button touchesBegan")
-        }
         super.touchesBegan(touches, with: event)
     }
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        if _debugMode {
-            print("👆 Button touchesEnded")
-        }
         super.touchesEnded(touches, with: event)
     }
 }
