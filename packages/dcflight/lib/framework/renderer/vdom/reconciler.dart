@@ -1,5 +1,6 @@
 import 'dart:developer' as developer;
 import 'dart:math' as math;
+import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 
 import '../../constants/layout_properties.dart';
 
@@ -24,31 +25,9 @@ class Reconciler {
       await _replaceNode(oldNode, newNode);
       return;
     }
-    
-    // Check if this is a component node
-    if (oldNode.isComponent && newNode.isComponent) {
-      // Both are components, check if they're the same type
-      if (oldNode.runtimeType == newNode.runtimeType) {
-        // Copy over native view IDs for proper tracking
-        newNode.nativeViewId = oldNode.nativeViewId;
-        newNode.contentViewId = oldNode.contentViewId;
-        
-        // Now reconcile their rendered content
-        if (oldNode.renderedNode != null && newNode.renderedNode != null) {
-          // Pass parent's native view ID for proper hierarchical updates
-          if (oldNode.contentViewId != null) {
-            newNode.renderedNode!.nativeViewId = oldNode.contentViewId;
-          }
-          
-          await reconcile(oldNode.renderedNode!, newNode.renderedNode!);
-        }
-      } else {
-        // Different component types - replacement needed
-        await _replaceNode(oldNode, newNode);
-      }
-    }
-    // Handle element types (VDomElement)
-    else if (oldNode is VDomElement && newNode is VDomElement) {
+
+    // Handle same node types
+    if (oldNode is VDomElement && newNode is VDomElement) {
       // Same element type?
       if (oldNode.type == newNode.type) {
         // Same key or both null?
@@ -58,21 +37,38 @@ class Reconciler {
           return;
         }
       }
-      
+
       // Different type or key - replacement needed
       await _replaceNode(oldNode, newNode);
-    } 
-    else if (oldNode is EmptyVDomNode && newNode is EmptyVDomNode) {
+    } else if (oldNode is ComponentNode && newNode is ComponentNode) {
+      // Component comparison - check type
+      if (oldNode.component.runtimeType == newNode.component.runtimeType) {
+        // Copy over native view IDs for proper tracking
+        newNode.nativeViewId = oldNode.nativeViewId;
+        newNode.contentViewId = oldNode.contentViewId;
+
+        // Just update rendered content if available
+        if (oldNode.renderedNode != null && newNode.renderedNode != null) {
+          // Pass parent's native view ID for proper hierarchical updates
+          if (oldNode.contentViewId != null) {
+            newNode.renderedNode!.nativeViewId = oldNode.contentViewId;
+          }
+
+          await reconcile(oldNode.renderedNode!, newNode.renderedNode!);
+        }
+      } else {
+        await _replaceNode(oldNode, newNode);
+      }
+    } else if (oldNode is EmptyVDomNode && newNode is EmptyVDomNode) {
       // Nothing to do for empty nodes
       return;
-    } 
-    else {
+    } else {
       // Other node types - replace
       await _replaceNode(oldNode, newNode);
     }
 
     // Calculate and apply layout after reconciliation if this is a root element
-    if (newNode == vdom.rootComponent?.renderedNode) {
+    if (newNode == vdom.rootComponentNode?.renderedNode) {
       await vdom.calculateAndApplyLayout();
     }
   }

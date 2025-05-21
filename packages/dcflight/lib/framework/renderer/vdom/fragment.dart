@@ -1,9 +1,8 @@
-import '../vdom_node.dart';
+import 'vdom_node.dart';
 
 /// Fragment component that renders multiple children without a container
 class Fragment extends VDomNode {
   /// Child nodes
-  @override
   final List<VDomNode> children;
 
   Fragment({

@@ -8,10 +8,9 @@ export 'framework/renderer/vdom/vdom.dart';
 export 'framework/renderer/vdom/vdom_node.dart';
 export 'framework/renderer/vdom/vdom_element.dart';
 export 'framework/renderer/vdom/reconciler.dart';
-export 'framework/renderer/vdom/component/fragment.dart';
 export 'framework/renderer/vdom/component/component.dart';
 export 'framework/renderer/vdom/component/state_hook.dart';
-export 'framework/renderer/vdom/component/store.dart';
+// export 'framework/renderer/vdom/component/store.dart';
 // Native Bridge System
 export 'framework/renderer/interface/interface.dart' ;
 export 'framework/renderer/interface/interface_impl.dart';
@@ -30,6 +29,7 @@ export 'framework/protocol/component_registry.dart';
 export 'framework/protocol/plugin_protocol.dart';
 
 
+import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 import 'package:dcflight/framework/renderer/vdom/vdom_node.dart';
 
 import 'framework/renderer/vdom/vdom.dart';
@@ -68,7 +68,7 @@ class DCFlight {
     final mainApp = app;
     
     // Register the component with the VDOM
-    vdom.rootComponent = mainApp;
+    vdom.rootComponentNode = mainApp as ComponentNode?;
     
     // Render the component to native UI
     await vdom.renderToNative(mainApp, parentId: "root", index: 0);

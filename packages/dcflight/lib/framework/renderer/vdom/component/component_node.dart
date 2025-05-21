@@ -1,103 +1,82 @@
-import 'package:dcflight/framework/renderer/vdom/vdom_node.dart';
+import '../vdom_node.dart';
+import 'component.dart';
 
-/// Base class for all component nodes
-/// Provides common functionality for both stateful and stateless components
-abstract class ComponentNode extends VDomNode {
-  /// Fully qualified type name for component
-  final String typeName;
+/// Node representing a component in the Virtual DOM
+class ComponentNode extends VDomNode {
+  /// The component this node represents
+  final Component component;
 
   /// The rendered node from the component
-  VDomNode? _renderedNode;
+  VDomNode? renderedNode;
 
-  /// Whether the component is mounted
-  bool _isMounted = false;
+  /// The native view ID of the rendered content
+  String? contentViewId;
 
-  /// Create a component node
-  ComponentNode({super.key})
-      : typeName = StackTrace.current.toString().split('\n')[1].split(' ')[0];
+  ComponentNode({
+    required this.component,
+    String? key,
+  }) : super(key: key ?? component.key);
 
-  /// All components must implement a render method
-  VDomNode render();
-  
-  @override
-  bool get isComponent => true;
-  
-  /// Get the rendered node (lazily render if necessary)
-  @override
-  VDomNode get renderedNode {
-    _renderedNode ??= render();
-    return _renderedNode!;
-  }
-  
-  /// Set the rendered node
-  @override
-  set renderedNode(VDomNode? node) {
-    _renderedNode = node;
-    if (_renderedNode != null) {
-      _renderedNode!.parent = this;
-    }
-  }
-
-  /// Get whether the component is mounted
-  bool get isMounted => _isMounted;
-
-  /// Called when the component is mounted
-  @override
-  void componentDidMount() {
-    _isMounted = true;
-  }
-
-  /// Called when the component will unmount
-  @override
-  void componentWillUnmount() {
-    _isMounted = false;
-  }
-  
-  /// Called after the component updates
-  void componentDidUpdate() {}
-  
   @override
   VDomNode clone() {
-    // Components can't be cloned easily due to state, hooks, etc.
-    throw UnsupportedError("Component nodes cannot be cloned directly.");
+    final clone = ComponentNode(
+      component: component,
+      key: key,
+    );
+
+    if (renderedNode != null) {
+      clone.renderedNode = renderedNode!.clone();
+      clone.renderedNode!.parent = clone;
+    }
+
+    return clone;
   }
-  
+
+  /// Get effective native view ID (may be from rendered content)
+  @override
+  String? get nativeViewId {
+    // For component nodes, the native view ID is the ID of their rendered content
+    // This ensures the component appears as one cohesive node in the tree
+    return contentViewId ?? super.nativeViewId;
+  }
+
+  /// Set native view ID and update tracking
+  @override
+  set nativeViewId(String? id) {
+    super.nativeViewId = id;
+    contentViewId = id;
+  }
+
   @override
   bool equals(VDomNode other) {
-    if (!other.isComponent) return false;
-    return runtimeType == other.runtimeType && key == other.key;
-  }
-  
-  @override
-  void mount(VDomNode? parent) {
-    this.parent = parent;
-    
-    // Ensure the component has rendered
-    final node = renderedNode;
-    
-    // Mount the rendered content
-    node.mount(this);
-    
-    // Component lifecycle method
-    componentDidMount();
-  }
-  
-  @override
-  void unmount() {
-    // Unmount the rendered content if any
-    if (_renderedNode != null) {
-      _renderedNode!.unmount();
-    }
-    
-    // Component lifecycle method
-    componentWillUnmount();
+    if (other is! ComponentNode) return false;
+    return component.runtimeType == other.component.runtimeType &&
+        key == other.key;
   }
 
   @override
   String toString() {
-    return '$typeName($instanceId)';
+    return 'ComponentNode(component: ${component.runtimeType}, id: ${component.instanceId}, key: $key)';
   }
-  
-  /// Whether this component supports state and lifecycle updates
-  bool get isStateful => false;
+
+  @override
+  void mount(VDomNode? parent) {
+    this.parent = parent;
+
+    // If there's a rendered node, propagate the mount
+    if (renderedNode != null) {
+      renderedNode!.mount(this);
+    }
+  }
+
+  @override
+  void unmount() {
+    // Clean up the rendered node if any
+    if (renderedNode != null) {
+      renderedNode!.unmount();
+    }
+
+    // Additional cleanup if needed
+    component.componentWillUnmount();
+  }
 }

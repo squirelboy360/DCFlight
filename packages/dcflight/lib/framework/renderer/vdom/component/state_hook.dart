@@ -1,6 +1,5 @@
 // filepath: /Users/tahiruagbanwa/Desktop/Dotcorr/DCFlight/packages/dcflight/lib/framework/renderer/vdom/component/state_hook.dart
 import 'dart:developer' as developer;
-import 'store.dart';
 
 /// Base hook class
 abstract class Hook {
@@ -133,46 +132,4 @@ class RefHook<T> extends Hook {
 
   /// Get the ref object
   RefObject<T> get ref => _ref;
-}
-
-/// Store hook for connecting to global state
-class StoreHook<T> extends Hook {
-  /// The store
-  final Store<T> _store;
-  
-  /// The component that owns this hook
-  final Function() _scheduleUpdate;
-  
-  /// Listener for store updates
-  late final void Function(T) _listener;
-  
-  /// Create a store hook
-  StoreHook(this._store, this._scheduleUpdate) {
-    // Create listener that schedules component update when store changes
-    _listener = (_) {
-      _scheduleUpdate();
-    };
-    
-    // Subscribe to store updates
-    _store.subscribe(_listener);
-  }
-  
-  /// Get the current state from the store
-  T get state => _store.state;
-  
-  /// Update the store state
-  void setState(T newState) {
-    _store.setState(newState);
-  }
-  
-  /// Update the store state using a function
-  void updateState(T Function(T) updater) {
-    _store.updateState(updater);
-  }
-  
-  @override
-  void dispose() {
-    // Unsubscribe from store updates
-    _store.unsubscribe(_listener);
-  }
 }
